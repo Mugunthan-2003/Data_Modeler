@@ -1,5 +1,5 @@
 // src/data.js
-import rawModel from "./grok_output/AccountsPayable.json";
+import rawModel from "./grok_output/VendorPerformance.json";
 
 export function modelToFlow() {
   const nodes = [];

@@ -90,25 +90,6 @@ export default function App() {
     setEdges(layoutedEdges);
   }, [nodes, edges, setNodes, setEdges]);
 
-  const [newTableName, setNewTableName] = useState("");
-  const addTable = () => {
-    if (!newTableName.trim()) return;
-    const id = newTableName.trim();
-    const newNode = {
-      id,
-      type: "tableNode",
-      position: { x: Math.random() * 400, y: Math.random() * 400 },
-      data: {
-        label: id,
-        alias: "",
-        fields: [{ name: "id", ref: [] }],
-        isViewOrCTE: false,
-      },
-    };
-    setNodes((nds) => nds.concat(newNode));
-    setNewTableName("");
-  };
-
   // --- Recursive upstream traversal (dependencies of a field) ---
   const findUpstreamEdges = useCallback(
     (startField) => {
@@ -134,32 +115,6 @@ export default function App() {
     },
     [edges]
   );
-
-  // --- Recursive downstream traversal ---
-  {/*const findDownstreamEdges = useCallback(
-    (startField) => {
-      const visitedFields = new Set();
-      const visitedEdges = new Set();
-      const stack = [startField];
-
-      while (stack.length > 0) {
-        const current = stack.pop();
-        if (visitedFields.has(current)) continue;
-        visitedFields.add(current);
-
-        // traverse edges that start *from* current field
-        edges.forEach((e) => {
-          if (e.sourceHandle === current) {
-            visitedEdges.add(e.id);
-            stack.push(e.targetHandle);
-          }
-        });
-      }
-
-      return visitedEdges;
-    },
-    [edges]
-  );*/}
 
   const handleFieldClick = useCallback(
     (nodeId, fieldName, fieldData) => {
@@ -245,15 +200,6 @@ export default function App() {
             Auto-Arrange
           </button>
 
-          <input
-            placeholder="New table name"
-            value={newTableName}
-            onChange={(e) => setNewTableName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTable()}
-            style={{ padding: "4px" }}
-          />
-          <button onClick={addTable}>Add Table</button>
-
           {/* --- Ref Filter Buttons --- */}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <button
@@ -321,12 +267,12 @@ export default function App() {
             <h3 style={{ margin: 0, color: "#333" }}>Field Calculation</h3>
             <button
               onClick={() => {
-                setSelectedField(false);
+                setSelectedField(null);
                 setHighlightedEdges(new Set());
               }}
               style={{ cursor: "pointer" }}
             >
-              ✖
+              X
             </button>
           </div>
 
@@ -336,6 +282,7 @@ export default function App() {
             <strong>Field:</strong> {selectedField.fieldName}
           </div>
 
+          {/* ----- Scrollable, pre-formatted calculation box ----- */}
           <div
             style={{
               marginTop: "16px",
@@ -343,8 +290,12 @@ export default function App() {
               background: "#f9f9f9",
               borderRadius: 8,
               border: "1px solid #ddd",
-              whiteSpace: "pre-wrap",
+              maxHeight: "calc(100vh - 260px)",
+              overflow: "auto",           
+              whiteSpace: "pre-wrap",  
+              wordBreak: "break-word",
               fontFamily: "monospace",
+              fontSize: 13,
               color: "#007bff",
             }}
           >
