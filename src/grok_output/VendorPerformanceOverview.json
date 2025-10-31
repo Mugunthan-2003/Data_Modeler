@@ -1,0 +1,659 @@
+{
+  "entities": {
+    "BASE_VendorPerformance": {
+      "alias": "VendorPerformance",
+      "fields": {
+        "Client_MANDT": {},
+        "PurchasingDocumentDate_BEDAT": {},
+        "Company_BUKRS": {},
+        "PurchasingOrganization_EKORG": {},
+        "PurchasingGroup_EKGRP": {},
+        "VendorAccountNumber_LIFNR": {},
+        "NAME1": {},
+        "CountryKey_LAND1": {},
+        "FiscalyearVariant_PERIV": {},
+        "MaterialNumber_MATNR": {},
+        "Plant_WERKS": {},
+        "MaterialType_MTART": {},
+        "InvoiceDate": {},
+        "YearOfPurchasingDocumentDate_BEDAT": {},
+        "MonthOfPurchasingDocumentDate_BEDAT": {},
+        "WeekOfPurchasingDocumentDate_BEDAT": {},
+        "CompanyText_BUTXT": {},
+        "PurchasingOrganizationText_EKOTX": {},
+        "PurchasingGroupText_EKNAM": {},
+        "MaterialText_MAKTX": {},
+        "DescriptionOfMaterialType_MTBEZ": {},
+        "POQuantity_MENGE": {},
+        "NetPrice_NETPR": {},
+        "TargetCurrency_TCURR": {},
+        "LanguageKey_SPRAS": {},
+        "ExchangeRate_UKURS": {},
+        "NetPriceInTargetCurrency_NETPR": {},
+        "IsRejected": {},
+        "VendorOnTimeDelivery": {},
+        "VendorInFullDelivery": {},
+        "VendorInvoiceAccuracy": {},
+        "PastDueOrOpenItems": {},
+        "InvoiceAmountInSourceCurrency": {},
+        "InvoiceAmountInTargetCurrency": {},
+        "InvoiceCount": {},
+        "YearOfInvoiceDate": {},
+        "MonthOfInvoiceDate": {},
+        "WeekOfInvoiceDate": {},
+        "FiscalYear": {},
+        "FiscalPeriod": {}
+      }
+    },
+    "BASE_MaterialLedger": {
+      "alias": "MaterialLedger",
+      "fields": {
+        "Client_MANDT": {},
+        "ValuationArea_BWKEY": {},
+        "MaterialNumber_MATNR": {},
+        "FiscalYear": {},
+        "PostingPeriod": {},
+        "ValuationType_BWTAR": {},
+        "StandardCost_STPRS": {},
+        "MovingAveragePrice": {}
+      }
+    },
+    "CTE_VendorPerformance": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_VendorPerformance.Client_MANDT"
+          ]
+        },
+        "PurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "BASE_VendorPerformance.PurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "Company_BUKRS": {
+          "ref": [
+            "BASE_VendorPerformance.Company_BUKRS"
+          ]
+        },
+        "PurchasingOrganization_EKORG": {
+          "ref": [
+            "BASE_VendorPerformance.PurchasingOrganization_EKORG"
+          ]
+        },
+        "PurchasingGroup_EKGRP": {
+          "ref": [
+            "BASE_VendorPerformance.PurchasingGroup_EKGRP"
+          ]
+        },
+        "VendorAccountNumber_LIFNR": {
+          "ref": [
+            "BASE_VendorPerformance.VendorAccountNumber_LIFNR"
+          ]
+        },
+        "VendorName": {
+          "calculation": {
+            "expression": "NAME1",
+            "ref": [
+              "BASE_VendorPerformance.NAME1"
+            ]
+          }
+        },
+        "VendorCountry": {
+          "calculation": {
+            "expression": "CountryKey_LAND1",
+            "ref": [
+              "BASE_VendorPerformance.CountryKey_LAND1"
+            ]
+          }
+        },
+        "FiscalyearVariant_PERIV": {
+          "ref": [
+            "BASE_VendorPerformance.FiscalyearVariant_PERIV"
+          ]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": [
+            "BASE_VendorPerformance.MaterialNumber_MATNR"
+          ]
+        },
+        "Plant_WERKS": {
+          "ref": [
+            "BASE_VendorPerformance.Plant_WERKS"
+          ]
+        },
+        "MaterialType_MTART": {
+          "ref": [
+            "BASE_VendorPerformance.MaterialType_MTART"
+          ]
+        },
+        "InvoiceDate": {
+          "ref": [
+            "BASE_VendorPerformance.InvoiceDate"
+          ]
+        },
+        "YearOfPurchasingDocumentDate_BEDAT": {
+          "calculation": {
+            "expression": "MAX(YearOfPurchasingDocumentDate_BEDAT)",
+            "ref": [
+              "BASE_VendorPerformance.YearOfPurchasingDocumentDate_BEDAT"
+            ]
+          }
+        },
+        "MonthOfPurchasingDocumentDate_BEDAT": {
+          "calculation": {
+            "expression": "MAX(MonthOfPurchasingDocumentDate_BEDAT)",
+            "ref": [
+              "BASE_VendorPerformance.MonthOfPurchasingDocumentDate_BEDAT"
+            ]
+          }
+        },
+        "WeekOfPurchasingDocumentDate_BEDAT": {
+          "calculation": {
+            "expression": "MAX(WeekOfPurchasingDocumentDate_BEDAT)",
+            "ref": [
+              "BASE_VendorPerformance.WeekOfPurchasingDocumentDate_BEDAT"
+            ]
+          }
+        },
+        "Company": {
+          "calculation": {
+            "expression": "ANY_VALUE(CompanyText_BUTXT)",
+            "ref": [
+              "BASE_VendorPerformance.CompanyText_BUTXT"
+            ]
+          }
+        },
+        "PurchasingOrganization": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchasingOrganizationText_EKOTX)",
+            "ref": [
+              "BASE_VendorPerformance.PurchasingOrganizationText_EKOTX"
+            ]
+          }
+        },
+        "PurchasingGroup": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchasingGroupText_EKNAM)",
+            "ref": [
+              "BASE_VendorPerformance.PurchasingGroupText_EKNAM"
+            ]
+          }
+        },
+        "Material": {
+          "calculation": {
+            "expression": "ANY_VALUE(MaterialText_MAKTX)",
+            "ref": [
+              "BASE_VendorPerformance.MaterialText_MAKTX"
+            ]
+          }
+        },
+        "MaterialType": {
+          "calculation": {
+            "expression": "ANY_VALUE(DescriptionOfMaterialType_MTBEZ)",
+            "ref": [
+              "BASE_VendorPerformance.DescriptionOfMaterialType_MTBEZ"
+            ]
+          }
+        },
+        "POQuantity_MENGE": {
+          "calculation": {
+            "expression": "SUM(POQuantity_MENGE)",
+            "ref": [
+              "BASE_VendorPerformance.POQuantity_MENGE"
+            ]
+          }
+        },
+        "AverageNetPrice": {
+          "calculation": {
+            "expression": "AVG(NetPrice_NETPR)",
+            "ref": [
+              "BASE_VendorPerformance.NetPrice_NETPR"
+            ]
+          }
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "BASE_VendorPerformance.TargetCurrency_TCURR"
+          ]
+        },
+        "LanguageKey_SPRAS": {
+          "ref": [
+            "BASE_VendorPerformance.LanguageKey_SPRAS"
+          ]
+        },
+        "ExchangeRate_UKURS": {
+          "calculation": {
+            "expression": "AVG(ExchangeRate_UKURS)",
+            "ref": [
+              "BASE_VendorPerformance.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "AverageNetPriceInTargetCurrency": {
+          "calculation": {
+            "expression": "AVG(NetPriceInTargetCurrency_NETPR)",
+            "ref": [
+              "BASE_VendorPerformance.NetPriceInTargetCurrency_NETPR"
+            ]
+          }
+        },
+        "CountRejectedOrders": {
+          "calculation": {
+            "expression": "COUNTIF(IsRejected)",
+            "ref": [
+              "BASE_VendorPerformance.IsRejected"
+            ]
+          }
+        },
+        "CountNotRejectedOrders": {
+          "calculation": {
+            "expression": "COUNTIF(NOT IsRejected)",
+            "ref": [
+              "BASE_VendorPerformance.IsRejected"
+            ]
+          }
+        },
+        "CountNotDelayedOrders": {
+          "calculation": {
+            "expression": "COUNTIF(VendorOnTimeDelivery = 'NotDelayed')",
+            "ref": [
+              "BASE_VendorPerformance.VendorOnTimeDelivery"
+            ]
+          }
+        },
+        "CountDelayedOrders": {
+          "calculation": {
+            "expression": "COUNTIF(VendorOnTimeDelivery = 'Delayed')",
+            "ref": [
+              "BASE_VendorPerformance.VendorOnTimeDelivery"
+            ]
+          }
+        },
+        "CountInFullOrders": {
+          "calculation": {
+            "expression": "COUNTIF(VendorInFullDelivery = 'DeliveredInFull')",
+            "ref": [
+              "BASE_VendorPerformance.VendorInFullDelivery"
+            ]
+          }
+        },
+        "CountNotInFullOrders": {
+          "calculation": {
+            "expression": "COUNTIF(VendorInFullDelivery = 'NotDeliveredInFull')",
+            "ref": [
+              "BASE_VendorPerformance.VendorInFullDelivery"
+            ]
+          }
+        },
+        "CountAccurateInvoices": {
+          "calculation": {
+            "expression": "COUNTIF(VendorInvoiceAccuracy = 'AccurateInvoice')",
+            "ref": [
+              "BASE_VendorPerformance.VendorInvoiceAccuracy"
+            ]
+          }
+        },
+        "CountInaccurateInvoices": {
+          "calculation": {
+            "expression": "COUNTIF(VendorInvoiceAccuracy = 'InaccurateInvoice')",
+            "ref": [
+              "BASE_VendorPerformance.VendorInvoiceAccuracy"
+            ]
+          }
+        },
+        "CountPastDueOrders": {
+          "calculation": {
+            "expression": "COUNTIF(PastDueOrOpenItems = 'PastDue')",
+            "ref": [
+              "BASE_VendorPerformance.PastDueOrOpenItems"
+            ]
+          }
+        },
+        "CountOpenOrders": {
+          "calculation": {
+            "expression": "COUNTIF(PastDueOrOpenItems = 'Open')",
+            "ref": [
+              "BASE_VendorPerformance.PastDueOrOpenItems"
+            ]
+          }
+        },
+        "TotalSpend": {
+          "calculation": {
+            "expression": "COALESCE(SUM(InvoiceAmountInSourceCurrency), 0)",
+            "ref": [
+              "BASE_VendorPerformance.InvoiceAmountInSourceCurrency"
+            ]
+          }
+        },
+        "TotalSpendInTargetCurrency": {
+          "calculation": {
+            "expression": "COALESCE(SUM(InvoiceAmountInTargetCurrency), 0)",
+            "ref": [
+              "BASE_VendorPerformance.InvoiceAmountInTargetCurrency"
+            ]
+          }
+        },
+        "ClearedInvoices": {
+          "calculation": {
+            "expression": "SUM(InvoiceCount)",
+            "ref": [
+              "BASE_VendorPerformance.InvoiceCount"
+            ]
+          }
+        },
+        "YearOfInvoiceDate": {
+          "calculation": {
+            "expression": "MAX(YearOfInvoiceDate)",
+            "ref": [
+              "BASE_VendorPerformance.YearOfInvoiceDate"
+            ]
+          }
+        },
+        "MonthOfInvoiceDate": {
+          "calculation": {
+            "expression": "MAX(MonthOfInvoiceDate)",
+            "ref": [
+              "BASE_VendorPerformance.MonthOfInvoiceDate"
+            ]
+          }
+        },
+        "WeekOfInvoiceDate": {
+          "calculation": {
+            "expression": "MAX(WeekOfInvoiceDate)",
+            "ref": [
+              "BASE_VendorPerformance.WeekOfInvoiceDate"
+            ]
+          }
+        },
+        "FiscalYear": {
+          "calculation": {
+            "expression": "MAX(FiscalYear)",
+            "ref": [
+              "BASE_VendorPerformance.FiscalYear"
+            ]
+          }
+        },
+        "FiscalPeriod": {
+          "calculation": {
+            "expression": "MAX(FiscalPeriod)",
+            "ref": [
+              "BASE_VendorPerformance.FiscalPeriod"
+            ]
+          }
+        }
+      }
+    },
+    "VIEW_Final": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "CTE_VendorPerformance.Client_MANDT"
+          ]
+        },
+        "PurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_VendorPerformance.PurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "YearOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_VendorPerformance.YearOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "MonthOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_VendorPerformance.MonthOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "WeekOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_VendorPerformance.WeekOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "Company_BUKRS": {
+          "ref": [
+            "CTE_VendorPerformance.Company_BUKRS"
+          ]
+        },
+        "Company": {
+          "ref": [
+            "CTE_VendorPerformance.Company"
+          ]
+        },
+        "PurchasingOrganization_EKORG": {
+          "ref": [
+            "CTE_VendorPerformance.PurchasingOrganization_EKORG"
+          ]
+        },
+        "PurchasingOrganization": {
+          "ref": [
+            "CTE_VendorPerformance.PurchasingOrganization"
+          ]
+        },
+        "PurchasingGroup_EKGRP": {
+          "ref": [
+            "CTE_VendorPerformance.PurchasingGroup_EKGRP"
+          ]
+        },
+        "PurchasingGroup": {
+          "ref": [
+            "CTE_VendorPerformance.PurchasingGroup"
+          ]
+        },
+        "VendorAccountNumber_LIFNR": {
+          "ref": [
+            "CTE_VendorPerformance.VendorAccountNumber_LIFNR"
+          ]
+        },
+        "VendorName": {
+          "ref": [
+            "CTE_VendorPerformance.VendorName"
+          ]
+        },
+        "VendorCountry": {
+          "ref": [
+            "CTE_VendorPerformance.VendorCountry"
+          ]
+        },
+        "FiscalyearVariant_PERIV": {
+          "ref": [
+            "CTE_VendorPerformance.FiscalyearVariant_PERIV"
+          ]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": [
+            "CTE_VendorPerformance.MaterialNumber_MATNR"
+          ]
+        },
+        "Plant_WERKS": {
+          "ref": [
+            "CTE_VendorPerformance.Plant_WERKS"
+          ]
+        },
+        "MaterialType_MTART": {
+          "ref": [
+            "CTE_VendorPerformance.MaterialType_MTART"
+          ]
+        },
+        "POQuantity_MENGE": {
+          "ref": [
+            "CTE_VendorPerformance.POQuantity_MENGE"
+          ]
+        },
+        "FiscalYear": {
+          "ref": [
+            "CTE_VendorPerformance.FiscalYear"
+          ]
+        },
+        "FiscalPeriod": {
+          "ref": [
+            "CTE_VendorPerformance.FiscalPeriod"
+          ]
+        },
+        "InvoiceDate": {
+          "ref": [
+            "CTE_VendorPerformance.InvoiceDate"
+          ]
+        },
+        "TotalSpend": {
+          "ref": [
+            "CTE_VendorPerformance.TotalSpend"
+          ]
+        },
+        "ClearedInvoices": {
+          "ref": [
+            "CTE_VendorPerformance.ClearedInvoices"
+          ]
+        },
+        "YearOfInvoiceDate": {
+          "ref": [
+            "CTE_VendorPerformance.YearOfInvoiceDate"
+          ]
+        },
+        "MonthOfInvoiceDate": {
+          "ref": [
+            "CTE_VendorPerformance.MonthOfInvoiceDate"
+          ]
+        },
+        "WeekOfInvoiceDate": {
+          "ref": [
+            "CTE_VendorPerformance.WeekOfInvoiceDate"
+          ]
+        },
+        "AverageNetPrice": {
+          "ref": [
+            "CTE_VendorPerformance.AverageNetPrice"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "CTE_VendorPerformance.TargetCurrency_TCURR"
+          ]
+        },
+        "AverageNetPriceInTargetCurrency": {
+          "ref": [
+            "CTE_VendorPerformance.AverageNetPriceInTargetCurrency"
+          ]
+        },
+        "TotalSpendInTargetCurrency": {
+          "ref": [
+            "CTE_VendorPerformance.TotalSpendInTargetCurrency"
+          ]
+        },
+        "CountRejectedOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountRejectedOrders"
+          ]
+        },
+        "CountNotRejectedOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountNotRejectedOrders"
+          ]
+        },
+        "CountNotDelayedOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountNotDelayedOrders"
+          ]
+        },
+        "CountDelayedOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountDelayedOrders"
+          ]
+        },
+        "CountInFullOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountInFullOrders"
+          ]
+        },
+        "CountNotInFullOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountNotInFullOrders"
+          ]
+        },
+        "CountAccurateInvoices": {
+          "ref": [
+            "CTE_VendorPerformance.CountAccurateInvoices"
+          ]
+        },
+        "CountInaccurateInvoices": {
+          "ref": [
+            "CTE_VendorPerformance.CountInaccurateInvoices"
+          ]
+        },
+        "CountPastDueOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountPastDueOrders"
+          ]
+        },
+        "CountOpenOrders": {
+          "ref": [
+            "CTE_VendorPerformance.CountOpenOrders"
+          ]
+        },
+        "Material": {
+          "ref": [
+            "CTE_VendorPerformance.Material"
+          ]
+        },
+        "MaterialType": {
+          "ref": [
+            "CTE_VendorPerformance.MaterialType"
+          ]
+        },
+        "LanguageKey_SPRAS": {
+          "ref": [
+            "CTE_VendorPerformance.LanguageKey_SPRAS"
+          ]
+        },
+        "ValuationPrice": {
+          "calculation": {
+            "expression": "CASE WHEN VendorPerformance.MaterialType_MTART = 'FERT' OR VendorPerformance.MaterialType_MTART = 'HALB' THEN COALESCE(MaterialLedger.StandardCost_STPRS, VendorPerformance.AverageNetPrice) WHEN VendorPerformance.MaterialType_MTART = 'ROH' OR VendorPerformance.MaterialType_MTART = 'HIBE' THEN COALESCE(MaterialLedger.MovingAveragePrice, VendorPerformance.AverageNetPrice) END",
+            "ref": [
+              "CTE_VendorPerformance.MaterialType_MTART",
+              "BASE_MaterialLedger.StandardCost_STPRS",
+              "CTE_VendorPerformance.AverageNetPrice",
+              "BASE_MaterialLedger.MovingAveragePrice"
+            ]
+          }
+        },
+        "ValuationPriceInTargetCurrency": {
+          "calculation": {
+            "expression": "CASE WHEN VendorPerformance.MaterialType_MTART = 'FERT' OR VendorPerformance.MaterialType_MTART = 'HALB' THEN COALESCE(MaterialLedger.StandardCost_STPRS, VendorPerformance.AverageNetPrice) * VendorPerformance.ExchangeRate_UKURS WHEN VendorPerformance.MaterialType_MTART = 'ROH' OR VendorPerformance.MaterialType_MTART = 'HIBE' THEN COALESCE(MaterialLedger.MovingAveragePrice, VendorPerformance.AverageNetPrice) * VendorPerformance.ExchangeRate_UKURS END",
+            "ref": [
+              "CTE_VendorPerformance.MaterialType_MTART",
+              "BASE_MaterialLedger.StandardCost_STPRS",
+              "CTE_VendorPerformance.AverageNetPrice",
+              "CTE_VendorPerformance.ExchangeRate_UKURS",
+              "BASE_MaterialLedger.MovingAveragePrice"
+            ]
+          }
+        },
+        "PurchasePriceVariance": {
+          "calculation": {
+            "expression": "ABS(CASE WHEN VendorPerformance.MaterialType_MTART = 'FERT' OR VendorPerformance.MaterialType_MTART = 'HALB' THEN COALESCE(MaterialLedger.StandardCost_STPRS, VendorPerformance.AverageNetPrice) WHEN VendorPerformance.MaterialType_MTART = 'ROH' OR VendorPerformance.MaterialType_MTART = 'HIBE' THEN COALESCE(MaterialLedger.MovingAveragePrice, VendorPerformance.AverageNetPrice) END - VendorPerformance.AverageNetPrice) * VendorPerformance.POQuantity_MENGE",
+            "ref": [
+              "CTE_VendorPerformance.MaterialType_MTART",
+              "BASE_MaterialLedger.StandardCost_STPRS",
+              "CTE_VendorPerformance.AverageNetPrice",
+              "BASE_MaterialLedger.MovingAveragePrice",
+              "CTE_VendorPerformance.POQuantity_MENGE"
+            ]
+          }
+        },
+        "PurchasePriceVarianceInTargetCurrency": {
+          "calculation": {
+            "expression": "ABS(CASE WHEN VendorPerformance.MaterialType_MTART = 'FERT' OR VendorPerformance.MaterialType_MTART = 'HALB' THEN COALESCE(MaterialLedger.StandardCost_STPRS, VendorPerformance.AverageNetPrice) WHEN VendorPerformance.MaterialType_MTART = 'ROH' OR VendorPerformance.MaterialType_MTART = 'HIBE' THEN COALESCE(MaterialLedger.MovingAveragePrice, VendorPerformance.AverageNetPrice) END - VendorPerformance.AverageNetPrice) * VendorPerformance.POQuantity_MENGE * VendorPerformance.ExchangeRate_UKURS",
+            "ref": [
+              "CTE_VendorPerformance.MaterialType_MTART",
+              "BASE_MaterialLedger.StandardCost_STPRS",
+              "CTE_VendorPerformance.AverageNetPrice",
+              "BASE_MaterialLedger.MovingAveragePrice",
+              "CTE_VendorPerformance.POQuantity_MENGE",
+              "CTE_VendorPerformance.ExchangeRate_UKURS"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

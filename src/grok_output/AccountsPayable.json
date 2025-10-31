@@ -1,0 +1,1308 @@
+{
+  "entities": {
+    "BASE_AccountingDocuments": {
+      "alias": "AccountingDocuments",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "AccountingDocumentNumber_BELNR": {},
+        "FiscalYear_GJAHR": {},
+        "Documenttype_BLART": {},
+        "DocumentDateInDocument_BLDAT": {},
+        "PostingDateInTheDocument_BUDAT": {},
+        "FiscalPeriod_MONAT": {},
+        "PurchasingDocumentNumber_EBELN": {},
+        "NumberOfLineItemWithinAccountingDocument_BUZEI": {},
+        "ClearingDate_AUGDT": {},
+        "NetPaymentAmount_NEBTR": {},
+        "AmountInLocalCurrency_DMBTR": {},
+        "AccountType_KOART": {},
+        "TransactionKey_KTOSL": {},
+        "PostingKey_BSCHL": {},
+        "CashDiscountDays1_ZBD1T": {},
+        "BaselineDateForDueDateCalculation_ZFBDT": {},
+        "AmountEligibleForCashDiscountInDocumentCurrency_SKFBT": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "PaymentBlockKey_ZLSPR": {},
+        "SpecialGlIndicator_UMSKZ": {},
+        "ItemNumberOfPurchasingDocument_EBELP": {},
+        "FollowOnDocumentType_REBZT": {},
+        "DocumentNumberOfTheClearingDocument_AUGBL": {},
+        "TermsOfPaymentKey_ZTERM": {},
+        "ReasonCodeForPayments_RSTGR": {},
+        "CashDiscountPercentage1_ZBD1P": {},
+        "NetPaymentTermsPeriod_ZBD3T": {},
+        "CashDiscountDays2_ZBD2T": {},
+        "DebitcreditIndicator_SHKZG": {},
+        "InvoiceToWhichTheTransactionBelongs_REBZG": {},
+        "CurrencyKey_WAERS": {},
+        "SupplyingCountry_LANDL": {},
+        "ObjectKey_AWKEY": {},
+        "YearOfPostingDateInTheDocument_BUDAT": {},
+        "MonthOfPostingDateInTheDocument_BUDAT": {},
+        "WeekOfPostingDateInTheDocument_BUDAT": {},
+        "QuarterOfPostingDateInTheDocument_BUDAT": {}
+      }
+    },
+    "BASE_InvoiceDocuments_Flow": {
+      "alias": "InvoiceDocuments",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "InvoiceDocNum_BELNR": {},
+        "FiscalYear_GJAHR": {},
+        "Documenttype_BLART": {},
+        "DocumentDate_BLDAT": {},
+        "PostingDate_BUDAT": {},
+        "GrossInvAmnt_RMWWR": {},
+        "InvoicingParty_LIFNR": {},
+        "Currency_WAERS": {},
+        "InvStatus_RBSTAT": {},
+        "YearOfPostingDate_BUDAT": {},
+        "MonthOfPostingDate_BUDAT": {},
+        "WeekOfPostingDate_BUDAT": {},
+        "QuarterOfPostingDate_BUDAT": {},
+        "InvoiceDocLineNum_BUZEI": {}
+      }
+    },
+    "BASE_CurrencyConversion": {
+      "fields": {
+        "Client_MANDT": {},
+        "FromCurrency_FCURR": {},
+        "ToCurrency_TCURR": {},
+        "ConvDate": {},
+        "ExchangeRate_UKURS": {}
+      }
+    },
+    "BASE_CompaniesMD": {
+      "alias": "CompaniesMD",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "CompanyText_BUTXT": {},
+        "FiscalyearVariant_PERIV": {}
+      }
+    },
+    "BASE_fiscal_date_dim_BUDAT": {
+      "alias": "FiscalDateDimension_BUDAT",
+      "fields": {
+        "MANDT": {},
+        "PERIV": {},
+        "DATE": {},
+        "FiscalYearPeriod": {}
+      }
+    },
+    "BASE_fiscal_date_dim_KEYDATE": {
+      "alias": "FiscalDateDimension_KEYDATE",
+      "fields": {
+        "MANDT": {},
+        "PERIV": {},
+        "DATE": {},
+        "FiscalYearPeriod": {}
+      }
+    },
+    "BASE_VendorsMD": {
+      "fields": {
+        "Client_MANDT": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "NAME1": {},
+        "ValidToDate_DATE_TO": {},
+        "VersionIdForInternationalAddresses_NATION": {}
+      }
+    },
+    "BASE_VendorConfig": {
+      "alias": "VendorConfig",
+      "fields": {
+        "NameOfVariantVariable_NAME": {},
+        "LowField_LOW": {}
+      }
+    },
+    "BASE_PurchaseDocumentsHistory": {
+      "alias": "POOrderHistory",
+      "fields": {
+        "Client_MANDT": {},
+        "PurchasingDocumentNumber_EBELN": {},
+        "ItemNumberOfPurchasingDocument_EBELP": {},
+        "MaterialDocumentYear_GJAHR": {},
+        "NumberOfMaterialDocument_BELNR": {},
+        "MovementType__inventoryManagement___BWART": {},
+        "AmountInLocalCurrency_DMBTR": {},
+        "Quantity_MENGE": {}
+      }
+    },
+    "CTE_CurrencyConversion": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_CurrencyConversion.Client_MANDT"
+          ]
+        },
+        "FromCurrency_FCURR": {
+          "ref": [
+            "BASE_CurrencyConversion.FromCurrency_FCURR"
+          ]
+        },
+        "ToCurrency_TCURR": {
+          "ref": [
+            "BASE_CurrencyConversion.ToCurrency_TCURR"
+          ]
+        },
+        "ConvDate": {
+          "ref": [
+            "BASE_CurrencyConversion.ConvDate"
+          ]
+        },
+        "ExchangeRate_UKURS": {
+          "ref": [
+            "BASE_CurrencyConversion.ExchangeRate_UKURS"
+          ]
+        }
+      }
+    },
+    "CTE_AccountingInvoices": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_AccountingDocuments.Client_MANDT",
+            "BASE_InvoiceDocuments_Flow.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "BASE_AccountingDocuments.CompanyCode_BUKRS",
+            "BASE_InvoiceDocuments_Flow.CompanyCode_BUKRS"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "BASE_AccountingDocuments.AccountingDocumentNumber_BELNR"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.InvoiceDocNum_BELNR",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.InvoiceDocNum_BELNR"
+            ]
+          }
+        },
+        "FiscalYear_GJAHR": {
+          "ref": [
+            "BASE_AccountingDocuments.FiscalYear_GJAHR",
+            "BASE_InvoiceDocuments_Flow.FiscalYear_GJAHR"
+          ]
+        },
+        "AccountingDocumenttype_BLART": {
+          "ref": [
+            "BASE_AccountingDocuments.Documenttype_BLART"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "InvoiceDocumenttype_BLART": {
+          "calculation": {
+            "expression": "InvoiceDocuments.Documenttype_BLART",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.Documenttype_BLART"
+            ]
+          },
+          "ref": []
+        },
+        "DocumentDateInDocument_BLDAT": {
+          "ref": [
+            "BASE_AccountingDocuments.DocumentDateInDocument_BLDAT"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.DocumentDate_BLDAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.DocumentDate_BLDAT"
+            ]
+          }
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountingDocuments.PostingDateInTheDocument_BUDAT"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.PostingDate_BUDAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.PostingDate_BUDAT"
+            ]
+          }
+        },
+        "PostingDate_BUDAT": {
+          "calculation": {
+            "expression": "InvoiceDocuments.PostingDate_BUDAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.PostingDate_BUDAT"
+            ]
+          }
+        },
+        "FiscalPeriod_MONAT": {
+          "ref": [
+            "BASE_AccountingDocuments.FiscalPeriod_MONAT"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "PurchasingDocumentNumber_EBELN": {
+          "ref": [
+            "BASE_AccountingDocuments.PurchasingDocumentNumber_EBELN"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "NumberOfLineItemWithinAccountingDocument_BUZEI": {
+          "ref": [
+            "BASE_AccountingDocuments.NumberOfLineItemWithinAccountingDocument_BUZEI"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "ClearingDate_AUGDT": {
+          "ref": [
+            "BASE_AccountingDocuments.ClearingDate_AUGDT"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS DATE)",
+            "ref": []
+          }
+        },
+        "NetPaymentAmount_NEBTR": {
+          "calculation": {
+            "expression": "COALESCE(AccountingDocuments.NetPaymentAmount_NEBTR, 0)",
+            "ref": [
+              "BASE_AccountingDocuments.NetPaymentAmount_NEBTR"
+            ]
+          },
+          "ref": []
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "calculation": {
+            "expression": "COALESCE(AccountingDocuments.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "BASE_AccountingDocuments.AmountInLocalCurrency_DMBTR"
+            ]
+          },
+          "ref": [],
+          "calculation2": {
+            "expression": "InvoiceDocuments.GrossInvAmnt_RMWWR",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.GrossInvAmnt_RMWWR"
+            ]
+          }
+        },
+        "AccountType_KOART": {
+          "ref": [
+            "BASE_AccountingDocuments.AccountType_KOART"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "TransactionKey_KTOSL": {
+          "ref": [
+            "BASE_AccountingDocuments.TransactionKey_KTOSL"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "PostingKey_BSCHL": {
+          "ref": [
+            "BASE_AccountingDocuments.PostingKey_BSCHL"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "CashDiscountDays1_ZBD1T": {
+          "ref": [
+            "BASE_AccountingDocuments.CashDiscountDays1_ZBD1T"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS NUMERIC)",
+            "ref": []
+          }
+        },
+        "BaselineDateForDueDateCalculation_ZFBDT": {
+          "ref": [
+            "BASE_AccountingDocuments.BaselineDateForDueDateCalculation_ZFBDT"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS DATE)",
+            "ref": []
+          }
+        },
+        "AmountEligibleForCashDiscountInDocumentCurrency_SKFBT": {
+          "calculation": {
+            "expression": "COALESCE(AccountingDocuments.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT, 0)",
+            "ref": [
+              "BASE_AccountingDocuments.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT"
+            ]
+          },
+          "ref": [],
+          "calculation2": {
+            "expression": "CAST(NULL AS NUMERIC)",
+            "ref": []
+          }
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "BASE_AccountingDocuments.AccountNumberOfVendorOrCreditor_LIFNR"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.InvoicingParty_LIFNR",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.InvoicingParty_LIFNR"
+            ]
+          }
+        },
+        "PaymentBlockKey_ZLSPR": {
+          "ref": [
+            "BASE_AccountingDocuments.PaymentBlockKey_ZLSPR"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "SpecialGlIndicator_UMSKZ": {
+          "ref": [
+            "BASE_AccountingDocuments.SpecialGlIndicator_UMSKZ"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "ItemNumberOfPurchasingDocument_EBELP": {
+          "ref": [
+            "BASE_AccountingDocuments.ItemNumberOfPurchasingDocument_EBELP"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "FollowOnDocumentType_REBZT": {
+          "ref": [
+            "BASE_AccountingDocuments.FollowOnDocumentType_REBZT"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "DocumentNumberOfTheClearingDocument_AUGBL": {
+          "ref": [
+            "BASE_AccountingDocuments.DocumentNumberOfTheClearingDocument_AUGBL"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "TermsOfPaymentKey_ZTERM": {
+          "ref": [
+            "BASE_AccountingDocuments.TermsOfPaymentKey_ZTERM"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "ReasonCodeForPayments_RSTGR": {
+          "ref": [
+            "BASE_AccountingDocuments.ReasonCodeForPayments_RSTGR"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "CashDiscountPercentage1_ZBD1P": {
+          "ref": [
+            "BASE_AccountingDocuments.CashDiscountPercentage1_ZBD1P"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS NUMERIC)",
+            "ref": []
+          }
+        },
+        "NetPaymentTermsPeriod_ZBD3T": {
+          "ref": [
+            "BASE_AccountingDocuments.NetPaymentTermsPeriod_ZBD3T"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS NUMERIC)",
+            "ref": []
+          }
+        },
+        "CashDiscountDays2_ZBD2T": {
+          "ref": [
+            "BASE_AccountingDocuments.CashDiscountDays2_ZBD2T"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS NUMERIC)",
+            "ref": []
+          }
+        },
+        "DebitcreditIndicator_SHKZG": {
+          "ref": [
+            "BASE_AccountingDocuments.DebitcreditIndicator_SHKZG"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "InvoiceToWhichTheTransactionBelongs_REBZG": {
+          "ref": [
+            "BASE_AccountingDocuments.InvoiceToWhichTheTransactionBelongs_REBZG"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "BASE_AccountingDocuments.CurrencyKey_WAERS"
+          ],
+          "calculation": {
+            "expression": "Currency_WAERS",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.Currency_WAERS"
+            ]
+          }
+        },
+        "SupplyingCountry_LANDL": {
+          "ref": [
+            "BASE_AccountingDocuments.SupplyingCountry_LANDL"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "ObjectKey_AWKEY": {
+          "ref": [
+            "BASE_AccountingDocuments.ObjectKey_AWKEY"
+          ],
+          "calculation": {
+            "expression": "CAST(NULL AS STRING)",
+            "ref": []
+          }
+        },
+        "InvStatus_RBSTAT": {
+          "calculation": {
+            "expression": "NULL",
+            "ref": []
+          },
+          "ref": [],
+          "calculation2": {
+            "expression": "InvoiceDocuments.InvStatus_RBSTAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.InvStatus_RBSTAT"
+            ]
+          }
+        },
+        "YearOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountingDocuments.YearOfPostingDateInTheDocument_BUDAT"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.YearOfPostingDate_BUDAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.YearOfPostingDate_BUDAT"
+            ]
+          }
+        },
+        "MonthOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountingDocuments.MonthOfPostingDateInTheDocument_BUDAT"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.MonthOfPostingDate_BUDAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.MonthOfPostingDate_BUDAT"
+            ]
+          }
+        },
+        "WeekOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountingDocuments.WeekOfPostingDateInTheDocument_BUDAT"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.WeekOfPostingDate_BUDAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.WeekOfPostingDate_BUDAT"
+            ]
+          }
+        },
+        "QuarterOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountingDocuments.QuarterOfPostingDateInTheDocument_BUDAT"
+          ],
+          "calculation": {
+            "expression": "InvoiceDocuments.QuarterOfPostingDate_BUDAT",
+            "ref": [
+              "BASE_InvoiceDocuments_Flow.QuarterOfPostingDate_BUDAT"
+            ]
+          }
+        }
+      }
+    },
+    "CTE_AccountingInvoicesKPI": {
+      "fields": {
+        "WeekOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoices.WeekOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "AmountEligibleForCashDiscountInDocumentCurrency_SKFBT": {
+          "ref": [
+            "CTE_AccountingInvoices.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT"
+          ]
+        },
+        "TransactionKey_KTOSL": {
+          "ref": [
+            "CTE_AccountingInvoices.TransactionKey_KTOSL"
+          ]
+        },
+        "BaselineDateForDueDateCalculation_ZFBDT": {
+          "ref": [
+            "CTE_AccountingInvoices.BaselineDateForDueDateCalculation_ZFBDT"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "CTE_AccountingInvoices.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "ObjectKey_AWKEY": {
+          "ref": [
+            "CTE_AccountingInvoices.ObjectKey_AWKEY"
+          ]
+        },
+        "PostingKey_BSCHL": {
+          "ref": [
+            "CTE_AccountingInvoices.PostingKey_BSCHL"
+          ]
+        },
+        "SpecialGlIndicator_UMSKZ": {
+          "ref": [
+            "CTE_AccountingInvoices.SpecialGlIndicator_UMSKZ"
+          ]
+        },
+        "InvoiceDocumenttype_BLART": {
+          "ref": [
+            "CTE_AccountingInvoices.InvoiceDocumenttype_BLART"
+          ]
+        },
+        "FollowOnDocumentType_REBZT": {
+          "ref": [
+            "CTE_AccountingInvoices.FollowOnDocumentType_REBZT"
+          ]
+        },
+        "DocumentDateInDocument_BLDAT": {
+          "ref": [
+            "CTE_AccountingInvoices.DocumentDateInDocument_BLDAT"
+          ]
+        },
+        "PaymentBlockKey_ZLSPR": {
+          "ref": [
+            "CTE_AccountingInvoices.PaymentBlockKey_ZLSPR"
+          ]
+        },
+        "YearOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoices.YearOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "AccountingDocumenttype_BLART": {
+          "ref": [
+            "CTE_AccountingInvoices.AccountingDocumenttype_BLART"
+          ]
+        },
+        "TermsOfPaymentKey_ZTERM": {
+          "ref": [
+            "CTE_AccountingInvoices.TermsOfPaymentKey_ZTERM"
+          ]
+        },
+        "FiscalPeriod_MONAT": {
+          "ref": [
+            "CTE_AccountingInvoices.FiscalPeriod_MONAT"
+          ]
+        },
+        "NetPaymentTermsPeriod_ZBD3T": {
+          "ref": [
+            "CTE_AccountingInvoices.NetPaymentTermsPeriod_ZBD3T"
+          ]
+        },
+        "PurchasingDocumentNumber_EBELN": {
+          "ref": [
+            "CTE_AccountingInvoices.PurchasingDocumentNumber_EBELN"
+          ]
+        },
+        "ItemNumberOfPurchasingDocument_EBELP": {
+          "ref": [
+            "CTE_AccountingInvoices.ItemNumberOfPurchasingDocument_EBELP"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoices.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "PostingDate_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoices.PostingDate_BUDAT"
+          ]
+        },
+        "DebitcreditIndicator_SHKZG": {
+          "ref": [
+            "CTE_AccountingInvoices.DebitcreditIndicator_SHKZG"
+          ]
+        },
+        "SupplyingCountry_LANDL": {
+          "ref": [
+            "CTE_AccountingInvoices.SupplyingCountry_LANDL"
+          ]
+        },
+        "Client_MANDT": {
+          "ref": [
+            "CTE_AccountingInvoices.Client_MANDT"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "CTE_AccountingInvoices.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "AccountType_KOART": {
+          "ref": [
+            "CTE_AccountingInvoices.AccountType_KOART"
+          ]
+        },
+        "CashDiscountDays2_ZBD2T": {
+          "ref": [
+            "CTE_AccountingInvoices.CashDiscountDays2_ZBD2T"
+          ]
+        },
+        "FiscalYear_GJAHR": {
+          "ref": [
+            "CTE_AccountingInvoices.FiscalYear_GJAHR"
+          ]
+        },
+        "InvoiceToWhichTheTransactionBelongs_REBZG": {
+          "ref": [
+            "CTE_AccountingInvoices.InvoiceToWhichTheTransactionBelongs_REBZG"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "CTE_AccountingInvoices.CurrencyKey_WAERS"
+          ]
+        },
+        "MonthOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoices.MonthOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "ClearingDate_AUGDT": {
+          "ref": [
+            "CTE_AccountingInvoices.ClearingDate_AUGDT"
+          ]
+        },
+        "QuarterOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoices.QuarterOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "CTE_AccountingInvoices.CompanyCode_BUKRS"
+          ]
+        },
+        "InvStatus_RBSTAT": {
+          "ref": [
+            "CTE_AccountingInvoices.InvStatus_RBSTAT"
+          ]
+        },
+        "CashDiscountPercentage1_ZBD1P": {
+          "ref": [
+            "CTE_AccountingInvoices.CashDiscountPercentage1_ZBD1P"
+          ]
+        },
+        "NumberOfLineItemWithinAccountingDocument_BUZEI": {
+          "ref": [
+            "CTE_AccountingInvoices.NumberOfLineItemWithinAccountingDocument_BUZEI"
+          ]
+        },
+        "ReasonCodeForPayments_RSTGR": {
+          "ref": [
+            "CTE_AccountingInvoices.ReasonCodeForPayments_RSTGR"
+          ]
+        },
+        "NetPaymentAmount_NEBTR": {
+          "ref": [
+            "CTE_AccountingInvoices.NetPaymentAmount_NEBTR"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "CTE_AccountingInvoices.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "CashDiscountDays1_ZBD1T": {
+          "ref": [
+            "CTE_AccountingInvoices.CashDiscountDays1_ZBD1T"
+          ]
+        },
+        "DocumentNumberOfTheClearingDocument_AUGBL": {
+          "ref": [
+            "CTE_AccountingInvoices.DocumentNumberOfTheClearingDocument_AUGBL"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "BASE_CompaniesMD.CompanyText_BUTXT"
+          ]
+        },
+        "DocFiscPeriod": {
+          "ref": [
+            "BASE_fiscal_date_dim_BUDAT.FiscalYearPeriod"
+          ]
+        },
+        "KeyFiscPeriod": {
+          "ref": [
+            "BASE_fiscal_date_dim_KEYDATE.FiscalYearPeriod"
+          ]
+        },
+        "NetDueDate": {
+          "calculation": {
+            "expression": "DATE_ADD(IF(AccountingInvoices.AccountType_KOART = 'K' AND AccountingInvoices.BaselineDateForDueDateCalculation_ZFBDT IS NULL, AccountingInvoices.DocumentDateInDocument_BLDAT, AccountingInvoices.BaselineDateForDueDateCalculation_ZFBDT), INTERVAL CAST(CASE WHEN AccountingInvoices.AccountType_KOART = 'K' AND AccountingInvoices.NetPaymentTermsPeriod_ZBD3T IS NOT NULL THEN AccountingInvoices.NetPaymentTermsPeriod_ZBD3T WHEN AccountingInvoices.AccountType_KOART = 'K' AND AccountingInvoices.CashDiscountDays2_ZBD2T IS NOT NULL THEN AccountingInvoices.CashDiscountDays2_ZBD2T WHEN AccountingInvoices.AccountType_KOART = 'K' AND AccountingInvoices.CashDiscountDays1_ZBD1T IS NOT NULL THEN AccountingInvoices.CashDiscountDays1_ZBD1T WHEN AccountingInvoices.CashDiscountDays1_ZBD1T IS NULL THEN 0 WHEN AccountingInvoices.AccountType_KOART = 'K' AND AccountingInvoices.DebitcreditIndicator_SHKZG = 'H' AND AccountingInvoices.InvoiceToWhichTheTransactionBelongs_REBZG IS NULL THEN 0 ELSE 0 END AS INT64) DAY)",
+            "ref": [
+              "CTE_AccountingInvoices.AccountType_KOART",
+              "CTE_AccountingInvoices.BaselineDateForDueDateCalculation_ZFBDT",
+              "CTE_AccountingInvoices.DocumentDateInDocument_BLDAT",
+              "CTE_AccountingInvoices.NetPaymentTermsPeriod_ZBD3T",
+              "CTE_AccountingInvoices.CashDiscountDays2_ZBD2T",
+              "CTE_AccountingInvoices.CashDiscountDays1_ZBD1T",
+              "CTE_AccountingInvoices.DebitcreditIndicator_SHKZG",
+              "CTE_AccountingInvoices.InvoiceToWhichTheTransactionBelongs_REBZG"
+            ]
+          }
+        }
+      }
+    },
+    "CTE_Vendors": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_VendorsMD.Client_MANDT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "BASE_VendorsMD.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "BASE_VendorsMD.NAME1"
+          ]
+        }
+      }
+    },
+    "VIEW_Final": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.CompanyCode_BUKRS"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.CompanyText_BUTXT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "CTE_Vendors.NAME1"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "NumberOfLineItemWithinAccountingDocument_BUZEI": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.NumberOfLineItemWithinAccountingDocument_BUZEI"
+          ]
+        },
+        "DocumentNumberOfTheClearingDocument_AUGBL": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.DocumentNumberOfTheClearingDocument_AUGBL"
+          ]
+        },
+        "TermsOfPaymentKey_ZTERM": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.TermsOfPaymentKey_ZTERM"
+          ]
+        },
+        "AccountType_KOART": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.AccountType_KOART"
+          ]
+        },
+        "ReasonCodeForPayments_RSTGR": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.ReasonCodeForPayments_RSTGR"
+          ]
+        },
+        "PaymentBlockKey_ZLSPR": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.PaymentBlockKey_ZLSPR"
+          ]
+        },
+        "ClearingDate_AUGDT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "FiscalYear_GJAHR": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.FiscalYear_GJAHR"
+          ]
+        },
+        "FiscalPeriod_MONAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.FiscalPeriod_MONAT"
+          ]
+        },
+        "DocFiscPeriod": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.DocFiscPeriod"
+          ]
+        },
+        "KeyFiscPeriod": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.KeyFiscPeriod"
+          ]
+        },
+        "NetDueDate": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.NetDueDate"
+          ]
+        },
+        "InvStatus_RBSTAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.InvStatus_RBSTAT"
+          ]
+        },
+        "PostingDate_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.PostingDate_BUDAT"
+          ]
+        },
+        "PurchasingDocumentNumber_EBELN": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.PurchasingDocumentNumber_EBELN"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.CurrencyKey_WAERS"
+          ]
+        },
+        "SupplyingCountry_LANDL": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.SupplyingCountry_LANDL"
+          ]
+        },
+        "AccountingDocumenttype_BLART": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.AccountingDocumenttype_BLART"
+          ]
+        },
+        "InvoiceDocumenttype_BLART": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.InvoiceDocumenttype_BLART"
+          ]
+        },
+        "MovementType__inventoryManagement___BWART": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.MovementType__inventoryManagement___BWART"
+          ]
+        },
+        "POOrderHistory_AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "POOrderHistory_AmountInTargetCurrency_DMBTR": {
+          "calculation": {
+            "expression": "POOrderHistory.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": [
+              "BASE_PurchaseDocumentsHistory.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "YearOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.YearOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "MonthOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.MonthOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "WeekOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.WeekOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "QuarterOfPostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountingInvoicesKPI.QuarterOfPostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "AmountInTargetCurrency_DMBTR": {
+          "calculation": {
+            "expression": "AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "ExchangeRate_UKURS": {
+          "ref": [
+            "CTE_CurrencyConversion.ExchangeRate_UKURS"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "CTE_CurrencyConversion.ToCurrency_TCURR"
+          ]
+        },
+        "OverdueAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND CURRENT_DATE() > AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "OverdueAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND CURRENT_DATE() > AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "OutstandingButNotOverdueInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND CURRENT_DATE() <= AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "OutstandingButNotOverdueInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND CURRENT_DATE() <= AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "OverdueOnPastDateInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.PostingDateInTheDocument_BUDAT < CURRENT_DATE() AND AccountingInvoicesKPI.NetDueDate < CURRENT_DATE() AND AccountingInvoicesKPI.ClearingDate_AUGDT IS NULL, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0) + IF(AccountingInvoicesKPI.FollowOnDocumentType_REBZT = 'Z', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.PostingDateInTheDocument_BUDAT",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_AccountingInvoicesKPI.FollowOnDocumentType_REBZT"
+            ]
+          }
+        },
+        "OverdueOnPastDateInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.PostingDateInTheDocument_BUDAT < CURRENT_DATE() AND AccountingInvoicesKPI.NetDueDate < CURRENT_DATE() AND AccountingInvoicesKPI.ClearingDate_AUGDT IS NULL, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0) + IF(AccountingInvoicesKPI.FollowOnDocumentType_REBZT = 'Z', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.PostingDateInTheDocument_BUDAT",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS",
+              "CTE_AccountingInvoicesKPI.FollowOnDocumentType_REBZT"
+            ]
+          }
+        },
+        "PartialPaymentsInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.FollowOnDocumentType_REBZT = 'Z', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.FollowOnDocumentType_REBZT",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "PartialPaymentsInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.FollowOnDocumentType_REBZT = 'Z', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.FollowOnDocumentType_REBZT",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "LatePaymentsInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.ClearingDate_AUGDT > AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "LatePaymentsInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.ClearingDate_AUGDT > AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "UpcomingPaymentsInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.NetDueDate BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), INTERVAL 14 DAY) AND AccountingInvoicesKPI.ClearingDate_AUGDT IS NULL, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "UpcomingPaymentsInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.NetDueDate BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), INTERVAL 14 DAY) AND AccountingInvoicesKPI.ClearingDate_AUGDT IS NULL, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "PotentialPenaltyInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.ClearingDate_AUGDT > AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0) * COALESCE(SAFE_CAST(VendorConfig.LowField_LOW AS INT64), 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "BASE_VendorConfig.LowField_LOW"
+            ]
+          }
+        },
+        "PotentialPenaltyInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'K' AND AccountingInvoicesKPI.ClearingDate_AUGDT > AccountingInvoicesKPI.NetDueDate, AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0) * COALESCE(SAFE_CAST(VendorConfig.LowField_LOW AS INT64), 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.ClearingDate_AUGDT",
+              "CTE_AccountingInvoicesKPI.NetDueDate",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS",
+              "BASE_VendorConfig.LowField_LOW"
+            ]
+          }
+        },
+        "PurchaseInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'M' AND POOrderHistory.MovementType__inventoryManagement___BWART IN ('101', '501'), AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, IF(AccountingInvoicesKPI.AccountType_KOART = 'M' AND POOrderHistory.MovementType__inventoryManagement___BWART IN ('102', '502'), AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * -1, 0))",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "BASE_PurchaseDocumentsHistory.MovementType__inventoryManagement___BWART",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "PurchaseInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountType_KOART = 'M' AND POOrderHistory.MovementType__inventoryManagement___BWART IN ('101', '501'), AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, IF(AccountingInvoicesKPI.AccountType_KOART = 'M' AND POOrderHistory.MovementType__inventoryManagement___BWART IN ('102', '502'), AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS * -1, 0))",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "BASE_PurchaseDocumentsHistory.MovementType__inventoryManagement___BWART",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "IsParkedInvoice": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.Invstatus_RBSTAT = 'A', TRUE, FALSE)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.InvStatus_RBSTAT"
+            ]
+          }
+        },
+        "IsBlockedInvoice": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.PaymentBlockKey_ZLSPR IN ('A', 'B'), TRUE, FALSE)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.PaymentBlockKey_ZLSPR"
+            ]
+          }
+        },
+        "CashDiscountReceivedInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountingDocumenttype_BLART IN ('KZ', 'ZP') AND AccountingInvoicesKPI.TransactionKey_KTOSL = 'SKE', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountingDocumenttype_BLART",
+              "CTE_AccountingInvoicesKPI.TransactionKey_KTOSL",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "CashDiscountReceivedInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.AccountingDocumenttype_BLART IN ('KZ', 'ZP') AND AccountingInvoicesKPI.TransactionKey_KTOSL = 'SKE', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountingDocumenttype_BLART",
+              "CTE_AccountingInvoicesKPI.TransactionKey_KTOSL",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "TargetCashDiscountInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.PostingKey_BSCHL = '31', (AccountingInvoicesKPI.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT * AccountingInvoicesKPI.CashDiscountPercentage1_ZBD1P) / 100, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.PostingKey_BSCHL",
+              "CTE_AccountingInvoicesKPI.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT",
+              "CTE_AccountingInvoicesKPI.CashDiscountPercentage1_ZBD1P"
+            ]
+          }
+        },
+        "TargetCashDiscountInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.PostingKey_BSCHL = '31', (AccountingInvoicesKPI.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT * CurrencyConversion.ExchangeRate_UKURS * AccountingInvoicesKPI.CashDiscountPercentage1_ZBD1P) / 100, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.PostingKey_BSCHL",
+              "CTE_AccountingInvoicesKPI.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS",
+              "CTE_AccountingInvoicesKPI.CashDiscountPercentage1_ZBD1P"
+            ]
+          }
+        },
+        "AmountOfOpenDebitItemsInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.Accounttype_KOART = 'K' AND AccountingInvoicesKPI.SpecialGlIndicator_UMSKZ = 'A', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.SpecialGlIndicator_UMSKZ",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "AmountOfOpenDebitItemsInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingInvoicesKPI.Accounttype_KOART = 'K' AND AccountingInvoicesKPI.SpecialGlIndicator_UMSKZ = 'A', AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS, 0)",
+            "ref": [
+              "CTE_AccountingInvoicesKPI.AccountType_KOART",
+              "CTE_AccountingInvoicesKPI.SpecialGlIndicator_UMSKZ",
+              "CTE_AccountingInvoicesKPI.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "AmountOfReturnInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(POOrderHistory.MovementType__inventoryManagement___BWART = '122', POOrderHistory.AmountInLocalCurrency_DMBTR * POOrderHistory.Quantity_MENGE, 0)",
+            "ref": [
+              "BASE_PurchaseDocumentsHistory.MovementType__inventoryManagement___BWART",
+              "BASE_PurchaseDocumentsHistory.AmountInLocalCurrency_DMBTR",
+              "BASE_PurchaseDocumentsHistory.Quantity_MENGE"
+            ]
+          }
+        },
+        "AmountOfReturnInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(POOrderHistory.MovementType__inventoryManagement___BWART = '122', POOrderHistory.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS * POOrderHistory.Quantity_MENGE, 0)",
+            "ref": [
+              "BASE_PurchaseDocumentsHistory.MovementType__inventoryManagement___BWART",
+              "BASE_PurchaseDocumentsHistory.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS",
+              "BASE_PurchaseDocumentsHistory.Quantity_MENGE"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

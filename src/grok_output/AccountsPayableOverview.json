@@ -1,0 +1,407 @@
+{
+  "entities": {
+    "BASE_AccountingDocuments": {
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "AccountingDocumentNumber_BELNR": {},
+        "AmountInLocalCurrency_DMBTR": {},
+        "Documenttype_BLART": {},
+        "TransactionKey_KTOSL": {}
+      }
+    },
+    "BASE_AccountsPayable": {
+      "alias": "AccountsPayable",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "CompanyText_BUTXT": {},
+        "Name1": {},
+        "AccountingDocumentNumber_BELNR": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "PostingDateInTheDocument_BUDAT": {},
+        "CurrencyKey_WAERS": {},
+        "TargetCurrency_TCURR": {},
+        "DocFiscPeriod": {},
+        "MonthOfPostingDateInTheDocument_BUDAT": {},
+        "YearOfPostingDateInTheDocument_BUDAT": {},
+        "QuarterOfPostingDateInTheDocument_BUDAT": {},
+        "WeekOfPostingDateInTheDocument_BUDAT": {},
+        "ClearingDate_AUGDT": {},
+        "OverdueAmountInSourceCurrency": {},
+        "OutstandingButNotOverdueInSourceCurrency": {},
+        "OverdueAmountInTargetCurrency": {},
+        "OutstandingButNotOverdueInTargetCurrency": {},
+        "OverdueOnPastDateInSourceCurrency": {},
+        "OverdueOnPastDateInTargetCurrency": {},
+        "LatePaymentsInSourceCurrency": {},
+        "LatePaymentsInTargetCurrency": {},
+        "UpcomingPaymentsInSourceCurrency": {},
+        "UpcomingPaymentsInTargetCurrency": {},
+        "PotentialPenaltyInSourceCurrency": {},
+        "PotentialPenaltyInTargetCurrency": {},
+        "IsParkedInvoice": {},
+        "AmountInLocalCurrency_DMBTR": {},
+        "AmountInTargetCurrency_DMBTR": {},
+        "IsBlockedInvoice": {},
+        "TargetCashDiscountInSourceCurrency": {},
+        "TargetCashDiscountInTargetCurrency": {},
+        "ExchangeRate_UKURS": {},
+        "DocumentNumberOfTheClearingDocument_AUGBL": {}
+      }
+    },
+    "BASE_AccountsPayableTurnover": {
+      "alias": "APT",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "AccountingDocumentNumber_BELNR": {},
+        "TargetCurrency_TCURR": {},
+        "DocFiscPeriod": {},
+        "AccountsPayableTurnoverInSourceCurrency": {},
+        "AccountsPayableTurnoverInTargetCurrency": {}
+      }
+    },
+    "CTE_CashDiscountUtilization": {
+      "alias": "CashDiscountUtilization",
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_AccountingDocuments.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "BASE_AccountingDocuments.CompanyCode_BUKRS"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "BASE_AccountingDocuments.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "CashDiscountReceived": {
+          "calculation": {
+            "expression": "SUM(AmountInLocalCurrency_DMBTR)",
+            "ref": [
+              "BASE_AccountingDocuments.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        }
+      }
+    },
+    "VIEW_Final": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_AccountsPayable.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "BASE_AccountsPayable.CompanyCode_BUKRS"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "BASE_AccountsPayable.CompanyText_BUTXT"
+          ]
+        },
+        "Name1": {
+          "ref": [
+            "BASE_AccountsPayable.Name1"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "BASE_AccountsPayable.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "BASE_AccountsPayable.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountsPayable.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "BASE_AccountsPayable.CurrencyKey_WAERS"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "BASE_AccountsPayable.TargetCurrency_TCURR"
+          ]
+        },
+        "DocFiscPeriod": {
+          "ref": [
+            "BASE_AccountsPayableTurnover.DocFiscPeriod"
+          ]
+        },
+        "MonthOfPostingDateInTheDocument_BUDAT": {
+          "calculation": {
+            "expression": "MAX(AccountsPayable.MonthOfPostingDateInTheDocument_BUDAT)",
+            "ref": [
+              "BASE_AccountsPayable.MonthOfPostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "YearOfPostingDateInTheDocument_BUDAT": {
+          "calculation": {
+            "expression": "MAX(AccountsPayable.YearOfPostingDateInTheDocument_BUDAT)",
+            "ref": [
+              "BASE_AccountsPayable.YearOfPostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "QuarterOfPostingDateInTheDocument_BUDAT": {
+          "calculation": {
+            "expression": "MAX(AccountsPayable.QuarterOfPostingDateInTheDocument_BUDAT)",
+            "ref": [
+              "BASE_AccountsPayable.QuarterOfPostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "WeekOfPostingDateInTheDocument_BUDAT": {
+          "calculation": {
+            "expression": "MAX(AccountsPayable.WeekOfPostingDateInTheDocument_BUDAT)",
+            "ref": [
+              "BASE_AccountsPayable.WeekOfPostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "ClearingDate_AUGDT": {
+          "calculation": {
+            "expression": "MAX(AccountsPayable.ClearingDate_AUGDT)",
+            "ref": [
+              "BASE_AccountsPayable.ClearingDate_AUGDT"
+            ]
+          }
+        },
+        "TotalDueAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "COALESCE(SUM((AccountsPayable.OverdueAmountInSourceCurrency * -1) + (AccountsPayable.OutstandingButNotOverdueInSourceCurrency * -1)), 0)",
+            "ref": [
+              "BASE_AccountsPayable.OverdueAmountInSourceCurrency",
+              "BASE_AccountsPayable.OutstandingButNotOverdueInSourceCurrency"
+            ]
+          }
+        },
+        "TotalDueAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "COALESCE(SUM((AccountsPayable.OverdueAmountInTargetCurrency * -1) + (AccountsPayable.OutstandingButNotOverdueInTargetCurrency * -1)), 0)",
+            "ref": [
+              "BASE_AccountsPayable.OverdueAmountInTargetCurrency",
+              "BASE_AccountsPayable.OutstandingButNotOverdueInTargetCurrency"
+            ]
+          }
+        },
+        "OverdueAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.OverdueAmountInSourceCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.OverdueAmountInSourceCurrency"
+            ]
+          }
+        },
+        "OverdueAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.OverdueAmountInTargetCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.OverdueAmountInTargetCurrency"
+            ]
+          }
+        },
+        "PastDueAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.OverdueOnPastDateInSourceCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.OverdueOnPastDateInSourceCurrency"
+            ]
+          }
+        },
+        "PastDueAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.OverdueOnPastDateInTargetCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.OverdueOnPastDateInTargetCurrency"
+            ]
+          }
+        },
+        "LatePaymentsInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.LatePaymentsInSourceCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.LatePaymentsInSourceCurrency"
+            ]
+          }
+        },
+        "LatePaymentsInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.LatePaymentsInTargetCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.LatePaymentsInTargetCurrency"
+            ]
+          }
+        },
+        "UpcomingPaymentsInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.UpcomingPaymentsInSourceCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.UpcomingPaymentsInSourceCurrency"
+            ]
+          }
+        },
+        "UpcomingPaymentsInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.UpcomingPaymentsInTargetCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.UpcomingPaymentsInTargetCurrency"
+            ]
+          }
+        },
+        "PotentialPenaltyInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.PotentialPenaltyInSourceCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.PotentialPenaltyInSourceCurrency"
+            ]
+          }
+        },
+        "PotentialPenaltyPenaltyInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.PotentialPenaltyInTargetCurrency * -1)",
+            "ref": [
+              "BASE_AccountsPayable.PotentialPenaltyInTargetCurrency"
+            ]
+          }
+        },
+        "AccountsPayableTurnoverInSourceCurrency": {
+          "calculation": {
+            "expression": "COALESCE(MAX(APT.AccountsPayableTurnoverInSourceCurrency * -1), 0)",
+            "ref": [
+              "BASE_AccountsPayableTurnover.AccountsPayableTurnoverInSourceCurrency"
+            ]
+          }
+        },
+        "AccountsPayableTurnoverInTargetCurrency": {
+          "calculation": {
+            "expression": "COALESCE(MAX(APT.AccountsPayableTurnoverInTargetCurrency * -1), 0)",
+            "ref": [
+              "BASE_AccountsPayableTurnover.AccountsPayableTurnoverInTargetCurrency"
+            ]
+          }
+        },
+        "CountParkedInvoice": {
+          "calculation": {
+            "expression": "COUNTIF(AccountsPayable.IsParkedInvoice)",
+            "ref": [
+              "BASE_AccountsPayable.IsParkedInvoice"
+            ]
+          }
+        },
+        "ParkedInvoiceAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(IF(AccountsPayable.IsParkedInvoice, AccountsPayable.AmountInLocalCurrency_DMBTR, 0))",
+            "ref": [
+              "BASE_AccountsPayable.IsParkedInvoice",
+              "BASE_AccountsPayable.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "ParkedInvoiceAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(IF(AccountsPayable.IsParkedInvoice, AccountsPayable.AmountInTargetCurrency_DMBTR, 0))",
+            "ref": [
+              "BASE_AccountsPayable.IsParkedInvoice",
+              "BASE_AccountsPayable.AmountInTargetCurrency_DMBTR"
+            ]
+          }
+        },
+        "CountBlockedInvoice": {
+          "calculation": {
+            "expression": "COUNTIF(AccountsPayable.IsBlockedInvoice)",
+            "ref": [
+              "BASE_AccountsPayable.IsBlockedInvoice"
+            ]
+          }
+        },
+        "BlockedInvoiceAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(IF(AccountsPayable.IsBlockedInvoice, (AccountsPayable.AmountInLocalCurrency_DMBTR * -1), 0))",
+            "ref": [
+              "BASE_AccountsPayable.IsBlockedInvoice",
+              "BASE_AccountsPayable.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "BlockedInvoiceAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(IF(AccountsPayable.IsBlockedInvoice, (AccountsPayable.AmountInTargetCurrency_DMBTR * -1), 0))",
+            "ref": [
+              "BASE_AccountsPayable.IsBlockedInvoice",
+              "BASE_AccountsPayable.AmountInTargetCurrency_DMBTR"
+            ]
+          }
+        },
+        "TargetCashDiscountInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.TargetCashDiscountInSourceCurrency)",
+            "ref": [
+              "BASE_AccountsPayable.TargetCashDiscountInSourceCurrency"
+            ]
+          }
+        },
+        "TargetCashDiscountInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountsPayable.TargetCashDiscountInTargetCurrency)",
+            "ref": [
+              "BASE_AccountsPayable.TargetCashDiscountInTargetCurrency"
+            ]
+          }
+        },
+        "CashDiscountReceivedInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(CashDiscountUtilization.CashDiscountReceived)",
+            "ref": [
+              "CTE_CashDiscountUtilization.CashDiscountReceived"
+            ]
+          }
+        },
+        "CashDiscountReceivedInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(CashDiscountUtilization.CashDiscountReceived * AccountsPayable.ExchangeRate_UKURS)",
+            "ref": [
+              "CTE_CashDiscountUtilization.CashDiscountReceived",
+              "BASE_AccountsPayable.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "CashDiscountUtilizationInSourceCurrency": {
+          "calculation": {
+            "expression": "SAFE_DIVIDE(SUM(CashDiscountUtilization.CashDiscountReceived), SUM(AccountsPayable.TargetCashDiscountInSourceCurrency))",
+            "ref": [
+              "CTE_CashDiscountUtilization.CashDiscountReceived",
+              "BASE_AccountsPayable.TargetCashDiscountInSourceCurrency"
+            ]
+          }
+        },
+        "CashDiscountUtilizationInTargetCurrency": {
+          "calculation": {
+            "expression": "SAFE_DIVIDE(SUM(CashDiscountUtilization.CashDiscountReceived * AccountsPayable.ExchangeRate_UKURS), SUM(AccountsPayable.TargetCashDiscountInTargetCurrency))",
+            "ref": [
+              "CTE_CashDiscountUtilization.CashDiscountReceived",
+              "BASE_AccountsPayable.ExchangeRate_UKURS",
+              "BASE_AccountsPayable.TargetCashDiscountInTargetCurrency"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

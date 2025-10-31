@@ -1,0 +1,1443 @@
+{
+  "entities": {
+    "BASE_Languages_T002": {
+      "fields": {
+        "LanguageKey_SPRAS": {}
+      }
+    },
+    "BASE_CurrencyConversion": {
+      "fields": {
+        "Client_MANDT": {},
+        "FromCurrency_FCURR": {},
+        "ToCurrency_TCURR": {},
+        "ConvDate": {},
+        "ExchangeRate_UKURS": {}
+      }
+    },
+    "BASE_PurchaseDocuments": {
+      "alias": "PurchaseOrders",
+      "fields": {
+        "Client_MANDT": {},
+        "DocumentNumber_EBELN": {},
+        "Item_EBELP": {},
+        "DeliveryCompletedFlag_ELIKZ": {},
+        "PurchasingDocumentDate_BEDAT": {},
+        "NetOrderValueinPOCurrency_NETWR": {},
+        "CurrencyKey_WAERS": {},
+        "POQuantity_MENGE": {},
+        "UoM_MEINS": {},
+        "NetPrice_NETPR": {},
+        "CreatedOn_AEDAT": {},
+        "Status_STATU": {},
+        "MaterialNumber_MATNR": {},
+        "MaterialType_MTART": {},
+        "MaterialGroup_MATKL": {},
+        "PurchasingOrganization_EKORG": {},
+        "PurchasingGroup_EKGRP": {},
+        "VendorAccountNumber_LIFNR": {},
+        "Company_BUKRS": {},
+        "Plant_WERKS": {},
+        "UnderdeliveryToleranceLimit_UNTTO": {},
+        "OverdeliveryToleranceLimit_UEBTO": {},
+        "YearOfPurchasingDocumentDate_BEDAT": {},
+        "MonthOfPurchasingDocumentDate_BEDAT": {},
+        "WeekOfPurchasingDocumentDate_BEDAT": {},
+        "Language_SPRAS": {},
+        "DocumentType_BSART": {},
+        "ItemCategoryinPurchasingDocument_PSTYP": {}
+      }
+    },
+    "BASE_POSchedule": {
+      "fields": {
+        "Client_MANDT": {},
+        "PurchasingDocumentNumber_EBELN": {},
+        "ItemNumberOfPurchasingDocument_EBELP": {},
+        "ItemDeliveryDate_EINDT": {},
+        "OrderDateOfScheduleLine_BEDAT": {}
+      }
+    },
+    "BASE_PurchaseDocumentsHistory": {
+      "fields": {
+        "Client_MANDT": {},
+        "PurchasingDocumentNumber_EBELN": {},
+        "ItemNumberOfPurchasingDocument_EBELP": {},
+        "MovementType__inventoryManagement___BWART": {},
+        "AmountInLocalCurrency_DMBTR": {},
+        "CurrencyKey_WAERS": {},
+        "PostingDateInTheDocument_BUDAT": {},
+        "Quantity_MENGE": {},
+        "TransactioneventType_VGABE": {}
+      }
+    },
+    "BASE_VendorsMD": {
+      "fields": {
+        "Client_MANDT": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "Language_LANGU": {},
+        "ValidToDate_DATE_TO": {},
+        "VersionIdForInternationalAddresses_NATION": {},
+        "CountryKey_LAND1": {},
+        "NAME1": {}
+      }
+    },
+    "BASE_PurchasingOrganizationsMD": {
+      "alias": "PurchasingOrganizations",
+      "fields": {
+        "Client_MANDT": {},
+        "PurchasingOrganization_EKORG": {},
+        "PurchasingOrganizationText_EKOTX": {}
+      }
+    },
+    "BASE_PurchasingGroupsMD": {
+      "alias": "PurchasingGroups",
+      "fields": {
+        "Client_MANDT": {},
+        "PurchasingGroup_EKGRP": {},
+        "PurchasingGroupText_EKNAM": {}
+      }
+    },
+    "BASE_CompaniesMD": {
+      "alias": "Companies",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "CompanyText_BUTXT": {},
+        "FiscalyearVariant_PERIV": {}
+      }
+    },
+    "BASE_fiscal_date_dim": {
+      "alias": "FiscalDateDimension_BEDAT",
+      "fields": {
+        "MANDT": {},
+        "PERIV": {},
+        "DATE": {},
+        "FiscalYear": {},
+        "FiscalPeriod": {}
+      }
+    },
+    "BASE_MaterialsMD": {
+      "alias": "Materials",
+      "fields": {
+        "Client_MANDT": {},
+        "MaterialNumber_MATNR": {},
+        "Language_SPRAS": {},
+        "MaterialText_MAKTX": {}
+      }
+    },
+    "BASE_MaterialTypesMD": {
+      "alias": "MaterialTypes",
+      "fields": {
+        "Client_MANDT": {},
+        "MaterialType_MTART": {},
+        "LanguageKey_SPRAS": {},
+        "DescriptionOfMaterialType_MTBEZ": {}
+      }
+    },
+    "CTE_LanguageKey": {
+      "fields": {
+        "LanguageKey_SPRAS": {
+          "ref": [
+            "BASE_Languages_T002.LanguageKey_SPRAS"
+          ]
+        }
+      }
+    },
+    "CTE_CurrencyConversion": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_CurrencyConversion.Client_MANDT"
+          ]
+        },
+        "FromCurrency_FCURR": {
+          "ref": [
+            "BASE_CurrencyConversion.FromCurrency_FCURR"
+          ]
+        },
+        "ToCurrency_TCURR": {
+          "ref": [
+            "BASE_CurrencyConversion.ToCurrency_TCURR"
+          ]
+        },
+        "ConvDate": {
+          "ref": [
+            "BASE_CurrencyConversion.ConvDate"
+          ]
+        },
+        "ExchangeRate_UKURS": {
+          "ref": [
+            "BASE_CurrencyConversion.ExchangeRate_UKURS"
+          ]
+        }
+      }
+    },
+    "CTE_POScheduleLine": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_POSchedule.Client_MANDT"
+          ]
+        },
+        "PurchasingDocumentNumber_EBELN": {
+          "ref": [
+            "BASE_POSchedule.PurchasingDocumentNumber_EBELN"
+          ]
+        },
+        "ItemNumberOfPurchasingDocument_EBELP": {
+          "ref": [
+            "BASE_POSchedule.ItemNumberOfPurchasingDocument_EBELP"
+          ]
+        },
+        "ItemDeliveryDate_EINDT": {
+          "calculation": {
+            "expression": "MAX(ItemDeliveryDate_EINDT)",
+            "ref": [
+              "BASE_POSchedule.ItemDeliveryDate_EINDT"
+            ]
+          }
+        },
+        "OrderDateOfScheduleLine_BEDAT": {
+          "calculation": {
+            "expression": "MAX(OrderDateOfScheduleLine_BEDAT)",
+            "ref": [
+              "BASE_POSchedule.OrderDateOfScheduleLine_BEDAT"
+            ]
+          }
+        }
+      }
+    },
+    "CTE_PurchaseOrderScheduleLine": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_PurchaseDocuments.Client_MANDT"
+          ]
+        },
+        "DocumentNumber_EBELN": {
+          "ref": [
+            "BASE_PurchaseDocuments.DocumentNumber_EBELN"
+          ]
+        },
+        "Item_EBELP": {
+          "ref": [
+            "BASE_PurchaseDocuments.Item_EBELP"
+          ]
+        },
+        "DeliveryCompletedFlag_ELIKZ": {
+          "ref": [
+            "BASE_PurchaseDocuments.DeliveryCompletedFlag_ELIKZ"
+          ]
+        },
+        "PurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "BASE_PurchaseDocuments.PurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "NetOrderValueinPOCurrency_NETWR": {
+          "ref": [
+            "BASE_PurchaseDocuments.NetOrderValueinPOCurrency_NETWR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "BASE_PurchaseDocuments.CurrencyKey_WAERS"
+          ]
+        },
+        "POQuantity_MENGE": {
+          "ref": [
+            "BASE_PurchaseDocuments.POQuantity_MENGE"
+          ]
+        },
+        "UoM_MEINS": {
+          "ref": [
+            "BASE_PurchaseDocuments.UoM_MEINS"
+          ]
+        },
+        "NetPrice_NETPR": {
+          "ref": [
+            "BASE_PurchaseDocuments.NetPrice_NETPR"
+          ]
+        },
+        "CreatedOn_AEDAT": {
+          "ref": [
+            "BASE_PurchaseDocuments.CreatedOn_AEDAT"
+          ]
+        },
+        "Status_STATU": {
+          "ref": [
+            "BASE_PurchaseDocuments.Status_STATU"
+          ]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": [
+            "BASE_PurchaseDocuments.MaterialNumber_MATNR"
+          ]
+        },
+        "MaterialType_MTART": {
+          "ref": [
+            "BASE_PurchaseDocuments.MaterialType_MTART"
+          ]
+        },
+        "MaterialGroup_MATKL": {
+          "ref": [
+            "BASE_PurchaseDocuments.MaterialGroup_MATKL"
+          ]
+        },
+        "PurchasingOrganization_EKORG": {
+          "ref": [
+            "BASE_PurchaseDocuments.PurchasingOrganization_EKORG"
+          ]
+        },
+        "PurchasingGroup_EKGRP": {
+          "ref": [
+            "BASE_PurchaseDocuments.PurchasingGroup_EKGRP"
+          ]
+        },
+        "VendorAccountNumber_LIFNR": {
+          "ref": [
+            "BASE_PurchaseDocuments.VendorAccountNumber_LIFNR"
+          ]
+        },
+        "Company_BUKRS": {
+          "ref": [
+            "BASE_PurchaseDocuments.Company_BUKRS"
+          ]
+        },
+        "Plant_WERKS": {
+          "ref": [
+            "BASE_PurchaseDocuments.Plant_WERKS"
+          ]
+        },
+        "UnderdeliveryToleranceLimit_UNTTO": {
+          "ref": [
+            "BASE_PurchaseDocuments.UnderdeliveryToleranceLimit_UNTTO"
+          ]
+        },
+        "OverdeliveryToleranceLimit_UEBTO": {
+          "ref": [
+            "BASE_PurchaseDocuments.OverdeliveryToleranceLimit_UEBTO"
+          ]
+        },
+        "YearOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "BASE_PurchaseDocuments.YearOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "MonthOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "BASE_PurchaseDocuments.MonthOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "WeekOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "BASE_PurchaseDocuments.WeekOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "Language_SPRAS": {
+          "ref": [
+            "BASE_PurchaseDocuments.Language_SPRAS"
+          ]
+        },
+        "ItemDeliveryDate_EINDT": {
+          "ref": [
+            "CTE_POScheduleLine.ItemDeliveryDate_EINDT"
+          ]
+        },
+        "OrderDateOfScheduleLine_BEDAT": {
+          "ref": [
+            "CTE_POScheduleLine.OrderDateOfScheduleLine_BEDAT"
+          ]
+        },
+        "UnderdeliveryToleranceLimit": {
+          "calculation": {
+            "expression": "COALESCE((PurchaseOrders.UnderdeliveryToleranceLimit_UNTTO * PurchaseOrders.POQuantity_MENGE) / 100, 0)",
+            "ref": [
+              "BASE_PurchaseDocuments.UnderdeliveryToleranceLimit_UNTTO",
+              "BASE_PurchaseDocuments.POQuantity_MENGE"
+            ]
+          }
+        },
+        "OverdeliveryToleranceLimit": {
+          "calculation": {
+            "expression": "COALESCE((PurchaseOrders.OverdeliveryToleranceLimit_UEBTO * PurchaseOrders.POQuantity_MENGE) / 100, 0)",
+            "ref": [
+              "BASE_PurchaseDocuments.OverdeliveryToleranceLimit_UEBTO",
+              "BASE_PurchaseDocuments.POQuantity_MENGE"
+            ]
+          }
+        }
+      }
+    },
+    "CTE_POOrderHistory": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.Client_MANDT"
+          ]
+        },
+        "PurchasingDocumentNumber_EBELN": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.PurchasingDocumentNumber_EBELN"
+          ]
+        },
+        "ItemNumberOfPurchasingDocument_EBELP": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.ItemNumberOfPurchasingDocument_EBELP"
+          ]
+        },
+        "MovementType__inventoryManagement___BWART": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.MovementType__inventoryManagement___BWART"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.CurrencyKey_WAERS"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "Quantity_MENGE": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.Quantity_MENGE"
+          ]
+        }
+      }
+    },
+    "CTE_PurchaseOrdersGoodsReceipt": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.Client_MANDT"
+          ]
+        },
+        "DocumentNumber_EBELN": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.DocumentNumber_EBELN"
+          ]
+        },
+        "Item_EBELP": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.Item_EBELP"
+          ]
+        },
+        "DeliveryCompletedFlag_ELIKZ": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ"
+          ]
+        },
+        "PurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.PurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "NetOrderValueinPOCurrency_NETWR": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.NetOrderValueinPOCurrency_NETWR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.CurrencyKey_WAERS"
+          ]
+        },
+        "ItemDeliveryDate_EINDT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.ItemDeliveryDate_EINDT"
+          ]
+        },
+        "OrderDateOfScheduleLine_BEDAT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.OrderDateOfScheduleLine_BEDAT"
+          ]
+        },
+        "POQuantity_MENGE": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.POQuantity_MENGE"
+          ]
+        },
+        "UoM_MEINS": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.UoM_MEINS"
+          ]
+        },
+        "NetPrice_NETPR": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.NetPrice_NETPR"
+          ]
+        },
+        "CreatedOn_AEDAT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.CreatedOn_AEDAT"
+          ]
+        },
+        "Status_STATU": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.Status_STATU"
+          ]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.MaterialNumber_MATNR"
+          ]
+        },
+        "MaterialType_MTART": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.MaterialType_MTART"
+          ]
+        },
+        "MaterialGroup_MATKL": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.MaterialGroup_MATKL"
+          ]
+        },
+        "PurchasingOrganization_EKORG": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.PurchasingOrganization_EKORG"
+          ]
+        },
+        "PurchasingGroup_EKGRP": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.PurchasingGroup_EKGRP"
+          ]
+        },
+        "Company_BUKRS": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.Company_BUKRS"
+          ]
+        },
+        "UnderdeliveryToleranceLimit_UNTTO": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit_UNTTO"
+          ]
+        },
+        "OverdeliveryToleranceLimit_UEBTO": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.OverdeliveryToleranceLimit_UEBTO"
+          ]
+        },
+        "UnderdeliveryToleranceLimit": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit"
+          ]
+        },
+        "OverdeliveryToleranceLimit": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.OverdeliveryToleranceLimit"
+          ]
+        },
+        "VendorAccountNumber_LIFNR": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.VendorAccountNumber_LIFNR"
+          ]
+        },
+        "Plant_WERKS": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.Plant_WERKS"
+          ]
+        },
+        "YearOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.YearOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "MonthOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.MonthOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "WeekOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.WeekOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "Language_SPRAS": {
+          "ref": [
+            "CTE_PurchaseOrderScheduleLine.Language_SPRAS"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "CTE_POOrderHistory.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "POOrderHistoryCurrencyKey_WAERS": {
+          "ref": [
+            "CTE_POOrderHistory.CurrencyKey_WAERS"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "calculation": {
+            "expression": "IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.PostingDateInTheDocument_BUDAT, NULL)",
+            "ref": [
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.PostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "IsDelivered": {
+          "calculation": {
+            "expression": "IF(PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ IS NULL, FALSE, TRUE)",
+            "ref": [
+              "CTE_PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ"
+            ]
+          }
+        },
+        "VendorCycleTimeInDays": {
+          "calculation": {
+            "expression": "IF(PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ = 'X', COALESCE(DATE_DIFF(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', MAX(POOrderHistory.PostingDateInTheDocument_BUDAT) OVER (PARTITION BY PurchaseOrderScheduleLine.Client_MANDT, PurchaseOrderScheduleLine.DocumentNumber_EBELN, PurchaseOrderScheduleLine.Item_EBELP), NULL), PurchaseOrderScheduleLine.PurchasingDocumentDate_BEDAT, DAY), 0), NULL)",
+            "ref": [
+              "CTE_PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ",
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.PostingDateInTheDocument_BUDAT",
+              "CTE_PurchaseOrderScheduleLine.Client_MANDT",
+              "CTE_PurchaseOrderScheduleLine.DocumentNumber_EBELN",
+              "CTE_PurchaseOrderScheduleLine.Item_EBELP",
+              "CTE_PurchaseOrderScheduleLine.PurchasingDocumentDate_BEDAT"
+            ]
+          }
+        },
+        "IsRejected": {
+          "calculation": {
+            "expression": "IF(POOrderHistory.MovementType__inventoryManagement___BWART IN ('122', '161'), TRUE, FALSE)",
+            "ref": [
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART"
+            ]
+          }
+        },
+        "RejectedQuantity": {
+          "calculation": {
+            "expression": "IF(POOrderHistory.MovementType__inventoryManagement___BWART IN ('122', '161'), POOrderHistory.Quantity_MENGE, 0)",
+            "ref": [
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.Quantity_MENGE"
+            ]
+          }
+        },
+        "IsDeliveredOnTime": {
+          "calculation": {
+            "expression": "IF(PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ = 'X', IF(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.PostingDateInTheDocument_BUDAT, NULL) <= PurchaseOrderScheduleLine.ItemDeliveryDate_EINDT, TRUE, FALSE), NULL)",
+            "ref": [
+              "CTE_PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ",
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.PostingDateInTheDocument_BUDAT",
+              "CTE_PurchaseOrderScheduleLine.ItemDeliveryDate_EINDT"
+            ]
+          }
+        },
+        "IsDeliveredInFull": {
+          "calculation": {
+            "expression": "IF(PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ = 'X', IF(PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit_UNTTO IS NULL AND PurchaseOrderScheduleLine.OverdeliveryToleranceLimit_UEBTO IS NULL, IF(SUM(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.Quantity_MENGE, (POOrderHistory.Quantity_MENGE * -1))) OVER (PARTITION BY PurchaseOrderScheduleLine.Client_MANDT, PurchaseOrderScheduleLine.DocumentNumber_EBELN, PurchaseOrderScheduleLine.Item_EBELP) >= PurchaseOrderScheduleLine.POQuantity_MENGE, TRUE, FALSE), IF(SUM(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.Quantity_MENGE, (POOrderHistory.Quantity_MENGE * -1))) OVER (PARTITION BY PurchaseOrderScheduleLine.Client_MANDT, PurchaseOrderScheduleLine.DocumentNumber_EBELN, PurchaseOrderScheduleLine.Item_EBELP) >= PurchaseOrderScheduleLine.POQuantity_MENGE - PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit, TRUE, FALSE) OR IF(SUM(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.Quantity_MENGE, (POOrderHistory.Quantity_MENGE * -1))) OVER (PARTITION BY PurchaseOrderScheduleLine.Client_MANDT, PurchaseOrderScheduleLine.DocumentNumber_EBELN, PurchaseOrderScheduleLine.Item_EBELP) <= PurchaseOrderScheduleLine.POQuantity_MENGE + PurchaseOrderScheduleLine.OverdeliveryToleranceLimit, TRUE, FALSE)), NULL)",
+            "ref": [
+              "CTE_PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ",
+              "CTE_PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit_UNTTO",
+              "CTE_PurchaseOrderScheduleLine.OverdeliveryToleranceLimit_UEBTO",
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.Quantity_MENGE",
+              "CTE_PurchaseOrderScheduleLine.Client_MANDT",
+              "CTE_PurchaseOrderScheduleLine.DocumentNumber_EBELN",
+              "CTE_PurchaseOrderScheduleLine.Item_EBELP",
+              "CTE_PurchaseOrderScheduleLine.POQuantity_MENGE",
+              "CTE_PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit",
+              "CTE_PurchaseOrderScheduleLine.OverdeliveryToleranceLimit"
+            ]
+          }
+        },
+        "IsGoodsReceiptAccurate": {
+          "calculation": {
+            "expression": "IF(PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ = 'X', IF(PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit_UNTTO IS NULL AND PurchaseOrderScheduleLine.OverdeliveryToleranceLimit_UEBTO IS NULL, IF(PurchaseOrderScheduleLine.POQuantity_MENGE = SUM(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.Quantity_MENGE, (POOrderHistory.Quantity_MENGE * -1))) OVER (PARTITION BY PurchaseOrderScheduleLine.Client_MANDT, PurchaseOrderScheduleLine.DocumentNumber_EBELN, PurchaseOrderScheduleLine.Item_EBELP), TRUE, FALSE), IF(SUM(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.Quantity_MENGE, (POOrderHistory.Quantity_MENGE * -1))) OVER (PARTITION BY PurchaseOrderScheduleLine.Client_MANDT, PurchaseOrderScheduleLine.DocumentNumber_EBELN, PurchaseOrderScheduleLine.Item_EBELP) BETWEEN PurchaseOrderScheduleLine.POQuantity_MENGE - PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit AND PurchaseOrderScheduleLine.POQuantity_MENGE + PurchaseOrderScheduleLine.OverdeliveryToleranceLimit, TRUE, FALSE) OR IF(SUM(IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.Quantity_MENGE, (POOrderHistory.Quantity_MENGE * -1))) OVER (PARTITION BY PurchaseOrderScheduleLine.Client_MANDT, PurchaseOrderScheduleLine.DocumentNumber_EBELN, PurchaseOrderScheduleLine.Item_EBELP) BETWEEN PurchaseOrderScheduleLine.POQuantity_MENGE - PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit AND PurchaseOrderScheduleLine.POQuantity_MENGE + PurchaseOrderScheduleLine.OverdeliveryToleranceLimit, TRUE, FALSE)), NULL)",
+            "ref": [
+              "CTE_PurchaseOrderScheduleLine.DeliveryCompletedFlag_ELIKZ",
+              "CTE_PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit_UNTTO",
+              "CTE_PurchaseOrderScheduleLine.OverdeliveryToleranceLimit_UEBTO",
+              "CTE_PurchaseOrderScheduleLine.POQuantity_MENGE",
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.Quantity_MENGE",
+              "CTE_PurchaseOrderScheduleLine.Client_MANDT",
+              "CTE_PurchaseOrderScheduleLine.DocumentNumber_EBELN",
+              "CTE_PurchaseOrderScheduleLine.Item_EBELP",
+              "CTE_PurchaseOrderScheduleLine.UnderdeliveryToleranceLimit",
+              "CTE_PurchaseOrderScheduleLine.OverdeliveryToleranceLimit"
+            ]
+          }
+        },
+        "GoodsReceiptAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.AmountInLocalCurrency_DMBTR, (POOrderHistory.AmountInLocalCurrency_DMBTR * -1))",
+            "ref": [
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "GoodsReceiptQuantity": {
+          "calculation": {
+            "expression": "IF(POOrderHistory.MovementType__inventoryManagement___BWART = '101', POOrderHistory.Quantity_MENGE, (POOrderHistory.Quantity_MENGE * -1))",
+            "ref": [
+              "CTE_POOrderHistory.MovementType__inventoryManagement___BWART",
+              "CTE_POOrderHistory.Quantity_MENGE"
+            ]
+          }
+        }
+      }
+    },
+    "CTE_PurchaseDocuments": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "CTE_PurchaseOrdersGoodsReceipt.Client_MANDT"
+          ]
+        },
+        "DocumentNumber_EBELN": {
+          "ref": [
+            "CTE_PurchaseOrdersGoodsReceipt.DocumentNumber_EBELN"
+          ]
+        },
+        "Item_EBELP": {
+          "ref": [
+            "CTE_PurchaseOrdersGoodsReceipt.Item_EBELP"
+          ]
+        },
+        "Language_SPRAS": {
+          "ref": [
+            "CTE_PurchaseOrdersGoodsReceipt.Language_SPRAS"
+          ]
+        },
+        "PurchasingDocumentDate_BEDAT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.PurchasingDocumentDate_BEDAT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.PurchasingDocumentDate_BEDAT"
+            ]
+          }
+        },
+        "NetOrderValueinPOCurrency_NETWR": {
+          "calculation": {
+            "expression": "AVG(PurchaseOrdersGoodsReceipt.NetOrderValueinPOCurrency_NETWR)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.NetOrderValueinPOCurrency_NETWR"
+            ]
+          }
+        },
+        "CurrencyKey_WAERS": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.CurrencyKey_WAERS)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.CurrencyKey_WAERS"
+            ]
+          }
+        },
+        "ItemDeliveryDate_EINDT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.ItemDeliveryDate_EINDT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.ItemDeliveryDate_EINDT"
+            ]
+          }
+        },
+        "OrderDateOfScheduleLine_BEDAT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.OrderDateOfScheduleLine_BEDAT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.OrderDateOfScheduleLine_BEDAT"
+            ]
+          }
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.PostingDateInTheDocument_BUDAT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.PostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "calculation": {
+            "expression": "SUM(PurchaseOrdersGoodsReceipt.AmountInLocalCurrency_DMBTR)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "POOrderHistoryCurrencyKey_WAERS": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.POOrderHistoryCurrencyKey_WAERS)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.POOrderHistoryCurrencyKey_WAERS"
+            ]
+          }
+        },
+        "POQuantity_MENGE": {
+          "calculation": {
+            "expression": "AVG(PurchaseOrdersGoodsReceipt.POQuantity_MENGE)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.POQuantity_MENGE"
+            ]
+          }
+        },
+        "UoM_MEINS": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.UoM_MEINS)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.UoM_MEINS"
+            ]
+          }
+        },
+        "NetPrice_NETPR": {
+          "calculation": {
+            "expression": "AVG(PurchaseOrdersGoodsReceipt.NetPrice_NETPR)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.NetPrice_NETPR"
+            ]
+          }
+        },
+        "CreatedOn_AEDAT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.CreatedOn_AEDAT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.CreatedOn_AEDAT"
+            ]
+          }
+        },
+        "Status_STATU": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.Status_STATU)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.Status_STATU"
+            ]
+          }
+        },
+        "MaterialNumber_MATNR": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.MaterialNumber_MATNR)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.MaterialNumber_MATNR"
+            ]
+          }
+        },
+        "MaterialType_MTART": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.MaterialType_MTART)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.MaterialType_MTART"
+            ]
+          }
+        },
+        "MaterialGroup_MATKL": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.MaterialGroup_MATKL)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.MaterialGroup_MATKL"
+            ]
+          }
+        },
+        "PurchasingOrganization_EKORG": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.PurchasingOrganization_EKORG)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.PurchasingOrganization_EKORG"
+            ]
+          }
+        },
+        "PurchasingGroup_EKGRP": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.PurchasingGroup_EKGRP)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.PurchasingGroup_EKGRP"
+            ]
+          }
+        },
+        "VendorAccountNumber_LIFNR": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.VendorAccountNumber_LIFNR)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.VendorAccountNumber_LIFNR"
+            ]
+          }
+        },
+        "Company_BUKRS": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.Company_BUKRS)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.Company_BUKRS"
+            ]
+          }
+        },
+        "Plant_WERKS": {
+          "calculation": {
+            "expression": "ANY_VALUE(PurchaseOrdersGoodsReceipt.Plant_WERKS)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.Plant_WERKS"
+            ]
+          }
+        },
+        "IsDelivered": {
+          "calculation": {
+            "expression": "LOGICAL_AND(PurchaseOrdersGoodsReceipt.IsDelivered)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.IsDelivered"
+            ]
+          }
+        },
+        "VendorCycleTimeInDays": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.VendorCycleTimeInDays)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.VendorCycleTimeInDays"
+            ]
+          }
+        },
+        "IsRejected": {
+          "calculation": {
+            "expression": "LOGICAL_OR(PurchaseOrdersGoodsReceipt.IsRejected)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.IsRejected"
+            ]
+          }
+        },
+        "RejectedQuantity": {
+          "calculation": {
+            "expression": "SUM(PurchaseOrdersGoodsReceipt.RejectedQuantity)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.RejectedQuantity"
+            ]
+          }
+        },
+        "IsDeliveredOnTime": {
+          "calculation": {
+            "expression": "LOGICAL_AND(PurchaseOrdersGoodsReceipt.IsDeliveredOnTime)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.IsDeliveredOnTime"
+            ]
+          }
+        },
+        "IsDeliveredInFull": {
+          "calculation": {
+            "expression": "LOGICAL_AND(PurchaseOrdersGoodsReceipt.IsDeliveredInFull)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.IsDeliveredInFull"
+            ]
+          }
+        },
+        "IsGoodsReceiptAccurate": {
+          "calculation": {
+            "expression": "LOGICAL_AND(PurchaseOrdersGoodsReceipt.IsGoodsReceiptAccurate)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.IsGoodsReceiptAccurate"
+            ]
+          }
+        },
+        "GoodsReceiptQuantity": {
+          "calculation": {
+            "expression": "SUM(PurchaseOrdersGoodsReceipt.GoodsReceiptQuantity)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.GoodsReceiptQuantity"
+            ]
+          }
+        },
+        "GoodsReceiptAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(PurchaseOrdersGoodsReceipt.GoodsReceiptAmountInSourceCurrency)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.GoodsReceiptAmountInSourceCurrency"
+            ]
+          }
+        },
+        "YearOfPurchasingDocumentDate_BEDAT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.YearOfPurchasingDocumentDate_BEDAT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.YearOfPurchasingDocumentDate_BEDAT"
+            ]
+          }
+        },
+        "MonthOfPurchasingDocumentDate_BEDAT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.MonthOfPurchasingDocumentDate_BEDAT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.MonthOfPurchasingDocumentDate_BEDAT"
+            ]
+          }
+        },
+        "WeekOfPurchasingDocumentDate_BEDAT": {
+          "calculation": {
+            "expression": "MAX(PurchaseOrdersGoodsReceipt.WeekOfPurchasingDocumentDate_BEDAT)",
+            "ref": [
+              "CTE_PurchaseOrdersGoodsReceipt.WeekOfPurchasingDocumentDate_BEDAT"
+            ]
+          }
+        }
+      }
+    },
+    "CTE_Vendors": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_VendorsMD.Client_MANDT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "BASE_VendorsMD.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "Language_LANGU": {
+          "ref": [
+            "BASE_VendorsMD.Language_LANGU"
+          ]
+        },
+        "CountryKey_LAND1": {
+          "ref": [
+            "BASE_VendorsMD.CountryKey_LAND1"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "BASE_VendorsMD.NAME1"
+          ]
+        }
+      }
+    },
+    "CTE_PurchaseOrdersInvoiceReceipt": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.Client_MANDT"
+          ]
+        },
+        "PurchasingDocumentNumber_EBELN": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.PurchasingDocumentNumber_EBELN"
+          ]
+        },
+        "ItemNumberOfPurchasingDocument_EBELP": {
+          "ref": [
+            "BASE_PurchaseDocumentsHistory.ItemNumberOfPurchasingDocument_EBELP"
+          ]
+        },
+        "InvoiceQuantity": {
+          "calculation": {
+            "expression": "SUM(Quantity_MENGE)",
+            "ref": [
+              "BASE_PurchaseDocumentsHistory.Quantity_MENGE"
+            ]
+          }
+        },
+        "InvoiceAmountInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AmountInLocalCurrency_DMBTR)",
+            "ref": [
+              "BASE_PurchaseDocumentsHistory.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "InvoiceDate": {
+          "calculation": {
+            "expression": "MAX(PostingDateInTheDocument_BUDAT)",
+            "ref": [
+              "BASE_PurchaseDocumentsHistory.PostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "YearOfInvoiceDate": {
+          "calculation": {
+            "expression": "MAX(YearOfPostingDateInTheDocument_BUDAT)",
+            "ref": []
+          }
+        },
+        "MonthOfInvoiceDate": {
+          "calculation": {
+            "expression": "MAX(MonthOfPostingDateInTheDocument_BUDAT)",
+            "ref": []
+          }
+        },
+        "WeekOfInvoiceDate": {
+          "calculation": {
+            "expression": "MAX(WeekOfPostingDateInTheDocument_BUDAT)",
+            "ref": []
+          }
+        },
+        "InvoiceCount": {
+          "calculation": {
+            "expression": "COUNT(PurchasingDocumentNumber_EBELN)",
+            "ref": [
+              "BASE_PurchaseDocumentsHistory.PurchasingDocumentNumber_EBELN"
+            ]
+          }
+        }
+      }
+    },
+    "VIEW_Final": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "CTE_PurchaseDocuments.Client_MANDT"
+          ]
+        },
+        "DocumentNumber_EBELN": {
+          "ref": [
+            "CTE_PurchaseDocuments.DocumentNumber_EBELN"
+          ]
+        },
+        "Item_EBELP": {
+          "ref": [
+            "CTE_PurchaseDocuments.Item_EBELP"
+          ]
+        },
+        "PurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseDocuments.PurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "NetOrderValueinPOCurrency_NETWR": {
+          "ref": [
+            "CTE_PurchaseDocuments.NetOrderValueinPOCurrency_NETWR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "CTE_PurchaseDocuments.CurrencyKey_WAERS"
+          ]
+        },
+        "ItemDeliveryDate_EINDT": {
+          "ref": [
+            "CTE_PurchaseDocuments.ItemDeliveryDate_EINDT"
+          ]
+        },
+        "OrderDateOfScheduleLine_BEDAT": {
+          "ref": [
+            "CTE_PurchaseDocuments.OrderDateOfScheduleLine_BEDAT"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_PurchaseDocuments.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "CTE_PurchaseDocuments.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "POOrderHistoryCurrencyKey_WAERS": {
+          "ref": [
+            "CTE_PurchaseDocuments.POOrderHistoryCurrencyKey_WAERS"
+          ]
+        },
+        "POQuantity_MENGE": {
+          "ref": [
+            "CTE_PurchaseDocuments.POQuantity_MENGE"
+          ]
+        },
+        "UoM_MEINS": {
+          "ref": [
+            "CTE_PurchaseDocuments.UoM_MEINS"
+          ]
+        },
+        "NetPrice_NETPR": {
+          "ref": [
+            "CTE_PurchaseDocuments.NetPrice_NETPR"
+          ]
+        },
+        "CreatedOn_AEDAT": {
+          "ref": [
+            "CTE_PurchaseDocuments.CreatedOn_AEDAT"
+          ]
+        },
+        "Status_STATU": {
+          "ref": [
+            "CTE_PurchaseDocuments.Status_STATU"
+          ]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": [
+            "CTE_PurchaseDocuments.MaterialNumber_MATNR"
+          ]
+        },
+        "MaterialType_MTART": {
+          "ref": [
+            "CTE_PurchaseDocuments.MaterialType_MTART"
+          ]
+        },
+        "MaterialGroup_MATKL": {
+          "ref": [
+            "CTE_PurchaseDocuments.MaterialGroup_MATKL"
+          ]
+        },
+        "PurchasingOrganization_EKORG": {
+          "ref": [
+            "CTE_PurchaseDocuments.PurchasingOrganization_EKORG"
+          ]
+        },
+        "PurchasingGroup_EKGRP": {
+          "ref": [
+            "CTE_PurchaseDocuments.PurchasingGroup_EKGRP"
+          ]
+        },
+        "VendorAccountNumber_LIFNR": {
+          "ref": [
+            "CTE_PurchaseDocuments.VendorAccountNumber_LIFNR"
+          ]
+        },
+        "Company_BUKRS": {
+          "ref": [
+            "CTE_PurchaseDocuments.Company_BUKRS"
+          ]
+        },
+        "Plant_WERKS": {
+          "ref": [
+            "CTE_PurchaseDocuments.Plant_WERKS"
+          ]
+        },
+        "YearOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseDocuments.YearOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "MonthOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseDocuments.MonthOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "WeekOfPurchasingDocumentDate_BEDAT": {
+          "ref": [
+            "CTE_PurchaseDocuments.WeekOfPurchasingDocumentDate_BEDAT"
+          ]
+        },
+        "FiscalYear": {
+          "ref": [
+            "BASE_fiscal_date_dim.FiscalYear"
+          ]
+        },
+        "FiscalPeriod": {
+          "ref": [
+            "BASE_fiscal_date_dim.FiscalPeriod"
+          ]
+        },
+        "InvoiceQuantity": {
+          "ref": [
+            "CTE_PurchaseOrdersInvoiceReceipt.InvoiceQuantity"
+          ]
+        },
+        "InvoiceAmountInSourceCurrency": {
+          "ref": [
+            "CTE_PurchaseOrdersInvoiceReceipt.InvoiceAmountInSourceCurrency"
+          ]
+        },
+        "InvoiceDate": {
+          "ref": [
+            "CTE_PurchaseOrdersInvoiceReceipt.InvoiceDate"
+          ]
+        },
+        "YearOfInvoiceDate": {
+          "ref": [
+            "CTE_PurchaseOrdersInvoiceReceipt.YearOfInvoiceDate"
+          ]
+        },
+        "MonthOfInvoiceDate": {
+          "ref": [
+            "CTE_PurchaseOrdersInvoiceReceipt.MonthOfInvoiceDate"
+          ]
+        },
+        "WeekOfInvoiceDate": {
+          "ref": [
+            "CTE_PurchaseOrdersInvoiceReceipt.WeekOfInvoiceDate"
+          ]
+        },
+        "InvoiceCount": {
+          "ref": [
+            "CTE_PurchaseOrdersInvoiceReceipt.InvoiceCount"
+          ]
+        },
+        "PurchasingOrganizationText_EKOTX": {
+          "ref": [
+            "BASE_PurchasingOrganizationsMD.PurchasingOrganizationText_EKOTX"
+          ]
+        },
+        "PurchasingGroupText_EKNAM": {
+          "ref": [
+            "BASE_PurchasingGroupsMD.PurchasingGroupText_EKNAM"
+          ]
+        },
+        "CountryKey_LAND1": {
+          "ref": [
+            "CTE_Vendors.CountryKey_LAND1"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "CTE_Vendors.NAME1"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "BASE_CompaniesMD.CompanyText_BUTXT"
+          ]
+        },
+        "FiscalyearVariant_PERIV": {
+          "ref": [
+            "BASE_CompaniesMD.FiscalyearVariant_PERIV"
+          ]
+        },
+        "LanguageKey_SPRAS": {
+          "ref": [
+            "CTE_LanguageKey.LanguageKey_SPRAS"
+          ]
+        },
+        "MaterialText_MAKTX": {
+          "ref": [
+            "BASE_MaterialsMD.MaterialText_MAKTX"
+          ]
+        },
+        "DescriptionOfMaterialType_MTBEZ": {
+          "ref": [
+            "BASE_MaterialTypesMD.DescriptionOfMaterialType_MTBEZ"
+          ]
+        },
+        "VendorCycleTimeInDays": {
+          "ref": [
+            "CTE_PurchaseDocuments.VendorCycleTimeInDays"
+          ]
+        },
+        "RejectedQuantity": {
+          "ref": [
+            "CTE_PurchaseDocuments.RejectedQuantity"
+          ]
+        },
+        "GoodsReceiptQuantity": {
+          "ref": [
+            "CTE_PurchaseDocuments.GoodsReceiptQuantity"
+          ]
+        },
+        "GoodsReceiptAmountInSourceCurrency": {
+          "ref": [
+            "CTE_PurchaseDocuments.GoodsReceiptAmountInSourceCurrency"
+          ]
+        },
+        "ExchangeRate_UKURS": {
+          "ref": [
+            "CTE_CurrencyConversion.ExchangeRate_UKURS"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "CTE_CurrencyConversion.ToCurrency_TCURR"
+          ]
+        },
+        "AmountInTargetCurrency_DMBTR": {
+          "calculation": {
+            "expression": "PurchaseDocuments.AmountInLocalCurrency_DMBTR * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": [
+              "CTE_PurchaseDocuments.AmountInLocalCurrency_DMBTR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "NetPriceInTargetCurrency_NETPR": {
+          "calculation": {
+            "expression": "PurchaseDocuments.NetPrice_NETPR * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": [
+              "CTE_PurchaseDocuments.NetPrice_NETPR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "NetOrderValueinTargetCurrency_NETWR": {
+          "calculation": {
+            "expression": "PurchaseDocuments.NetOrderValueinPOCurrency_NETWR * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": [
+              "CTE_PurchaseDocuments.NetOrderValueinPOCurrency_NETWR",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "GoodsReceiptAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "PurchaseDocuments.GoodsReceiptAmountInSourceCurrency * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": [
+              "CTE_PurchaseDocuments.GoodsReceiptAmountInSourceCurrency",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "InvoiceAmountInTargetCurrency": {
+          "calculation": {
+            "expression": "PurchaseOrdersInvoiceReceipt.InvoiceAmountInSourceCurrency * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": [
+              "CTE_PurchaseOrdersInvoiceReceipt.InvoiceAmountInSourceCurrency",
+              "CTE_CurrencyConversion.ExchangeRate_UKURS"
+            ]
+          }
+        },
+        "IsDelivered": {
+          "calculation": {
+            "expression": "IF(PurchaseDocuments.IsDelivered, TRUE, FALSE)",
+            "ref": [
+              "CTE_PurchaseDocuments.IsDelivered"
+            ]
+          }
+        },
+        "IsRejected": {
+          "calculation": {
+            "expression": "IF(PurchaseDocuments.IsRejected, TRUE, FALSE)",
+            "ref": [
+              "CTE_PurchaseDocuments.IsRejected"
+            ]
+          }
+        },
+        "VendorOnTimeDelivery": {
+          "calculation": {
+            "expression": "IF(PurchaseDocuments.IsDeliveredOnTime IS NULL, 'NotApplicable', IF(PurchaseDocuments.IsDeliveredOnTime, 'NotDelayed', 'Delayed'))",
+            "ref": [
+              "CTE_PurchaseDocuments.IsDeliveredOnTime"
+            ]
+          }
+        },
+        "VendorInFullDelivery": {
+          "calculation": {
+            "expression": "IF(PurchaseDocuments.IsDeliveredInFull IS NULL, 'NotApplicable', IF(PurchaseDocuments.IsDeliveredInFull, 'DeliveredInFull', 'NotDeliveredInFull'))",
+            "ref": [
+              "CTE_PurchaseDocuments.IsDeliveredInFull"
+            ]
+          }
+        },
+        "VendorOnTimeInFullDelivery": {
+          "calculation": {
+            "expression": "IF(PurchaseDocuments.IsDeliveredInFull IS NULL OR PurchaseDocuments.IsDeliveredOnTime IS NULL, 'NotApplicable', IF(PurchaseDocuments.IsDeliveredInFull AND PurchaseDocuments.IsDeliveredOnTime, 'OTIF', 'NotOTIF'))",
+            "ref": [
+              "CTE_PurchaseDocuments.IsDeliveredInFull",
+              "CTE_PurchaseDocuments.IsDeliveredOnTime"
+            ]
+          }
+        },
+        "VendorInvoiceAccuracy": {
+          "calculation": {
+            "expression": "IF(PurchaseDocuments.IsGoodsReceiptAccurate IS NULL OR PurchaseOrdersInvoiceReceipt.InvoiceQuantity IS NULL, 'NotApplicable', IF(PurchaseDocuments.IsGoodsReceiptAccurate AND PurchaseDocuments.POQuantity_MENGE = PurchaseOrdersInvoiceReceipt.InvoiceQuantity, 'AccurateInvoice', 'InaccurateInvoice'))",
+            "ref": [
+              "CTE_PurchaseDocuments.IsGoodsReceiptAccurate",
+              "CTE_PurchaseOrdersInvoiceReceipt.InvoiceQuantity",
+              "CTE_PurchaseDocuments.POQuantity_MENGE"
+            ]
+          }
+        },
+        "PastDueOrOpenItems": {
+          "calculation": {
+            "expression": "IF(PurchaseDocuments.IsDelivered, 'NotApplicable', IF(CURRENT_DATE() > PurchaseDocuments.ItemDeliveryDate_EINDT, 'PastDue', 'Open'))",
+            "ref": [
+              "CTE_PurchaseDocuments.IsDelivered",
+              "CTE_PurchaseDocuments.ItemDeliveryDate_EINDT"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,387 @@
+{
+  "entities": {
+    "BASE_AccountsPayable": {
+      "alias": "AccountsPayable",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "CompanyText_BUTXT": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "NAME1": {},
+        "AccountingDocumentNumber_BELNR": {},
+        "NumberOfLineItemWithinAccountingDocument_BUZEI": {},
+        "PostingDateInTheDocument_BUDAT": {},
+        "AccountingDocumenttype_BLART": {},
+        "AmountInLocalCurrency_DMBTR": {},
+        "AmountInTargetCurrency_DMBTR": {},
+        "CurrencyKey_WAERS": {},
+        "TargetCurrency_TCURR": {},
+        "DocFiscPeriod": {},
+        "AccountType_KOART": {},
+        "MovementType__inventoryManagement___BWART": {},
+        "POOrderHistory_AmountInLocalCurrency_DMBTR": {},
+        "POOrderHistory_AmountInTargetCurrency_DMBTR": {},
+        "InvoiceDocumenttype_BLART": {},
+        "ClearingDate_AUGDT": {},
+        "KeyFiscPeriod": {}
+      }
+    },
+    "CTE_AccountsPayable": {
+      "alias": "AccountsPayable",
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_AccountsPayable.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "BASE_AccountsPayable.CompanyCode_BUKRS"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "BASE_AccountsPayable.CompanyText_BUTXT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "BASE_AccountsPayable.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "BASE_AccountsPayable.NAME1"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "BASE_AccountsPayable.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "NumberOfLineItemWithinAccountingDocument_BUZEI": {
+          "ref": [
+            "BASE_AccountsPayable.NumberOfLineItemWithinAccountingDocument_BUZEI"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountsPayable.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "AccountingDocumenttype_BLART": {
+          "ref": [
+            "BASE_AccountsPayable.AccountingDocumenttype_BLART"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "BASE_AccountsPayable.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "AmountInTargetCurrency_DMBTR": {
+          "ref": [
+            "BASE_AccountsPayable.AmountInTargetCurrency_DMBTR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "BASE_AccountsPayable.CurrencyKey_WAERS"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "BASE_AccountsPayable.TargetCurrency_TCURR"
+          ]
+        },
+        "DocFiscPeriod": {
+          "ref": [
+            "BASE_AccountsPayable.DocFiscPeriod"
+          ]
+        },
+        "TotalPurchasesInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.AccountType_KOART = 'M' AND AccountsPayable.MovementType__inventoryManagement___BWART IN ('101', '501'), AccountsPayable.POOrderHistory_AmountInLocalCurrency_DMBTR, IF( AccountsPayable.AccountType_KOART = 'M' AND AccountsPayable.MovementType__inventoryManagement___BWART IN ('102', '502'), AccountsPayable.POOrderHistory_AmountInLocalCurrency_DMBTR * -1, 0 ) ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR, AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.MovementType__inventoryManagement___BWART",
+              "BASE_AccountsPayable.POOrderHistory_AmountInLocalCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        },
+        "TotalPurchasesInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.AccountType_KOART = 'M' AND AccountsPayable.MovementType__inventoryManagement___BWART IN ('101', '501'), AccountsPayable.POOrderHistory_AmountInTargetCurrency_DMBTR, IF( AccountsPayable.AccountType_KOART = 'M' AND AccountsPayable.MovementType__inventoryManagement___BWART IN ('102', '502'), AccountsPayable.POOrderHistory_AmountInTargetCurrency_DMBTR * -1, 0 ) ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR, AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.MovementType__inventoryManagement___BWART",
+              "BASE_AccountsPayable.POOrderHistory_AmountInTargetCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        },
+        "PeriodAPInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.Accounttype_KOART = 'K' AND AccountsPayable.InvoiceDocumenttype_BLART = 'RE', AccountsPayable.AmountInLocalCurrency_DMBTR, 0 ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR, AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.InvoiceDocumenttype_BLART",
+              "BASE_AccountsPayable.AmountInLocalCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        },
+        "PeriodAPInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.Accounttype_KOART = 'K' AND AccountsPayable.InvoiceDocumenttype_BLART = 'RE', AccountsPayable.AmountInTargetCurrency_DMBTR, 0 ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR, AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.InvoiceDocumenttype_BLART",
+              "BASE_AccountsPayable.AmountInTargetCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        },
+        "UnpaidPeriodAPInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.Accounttype_KOART = 'K' AND AccountsPayable.InvoiceDocumenttype_BLART = 'RE' AND AccountsPayable.ClearingDate_AUGDT IS NULL, AccountsPayable.AmountInLocalCurrency_DMBTR, 0 ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR, AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.InvoiceDocumenttype_BLART",
+              "BASE_AccountsPayable.ClearingDate_AUGDT",
+              "BASE_AccountsPayable.AmountInLocalCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        },
+        "UnpaidPeriodAPInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.Accounttype_KOART = 'K' AND AccountsPayable.InvoiceDocumenttype_BLART = 'RE' AND AccountsPayable.ClearingDate_AUGDT IS NULL, AccountsPayable.AmountInTargetCurrency_DMBTR, 0 ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR, AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.InvoiceDocumenttype_BLART",
+              "BASE_AccountsPayable.ClearingDate_AUGDT",
+              "BASE_AccountsPayable.AmountInTargetCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        },
+        "ClosingAPInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.Accounttype_KOART = 'K' AND AccountsPayable.InvoiceDocumenttype_BLART = 'RE' AND AccountsPayable.ClearingDate_AUGDT IS NULL, AccountsPayable.AmountInLocalCurrency_DMBTR, 0 ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR ORDER BY AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.InvoiceDocumenttype_BLART",
+              "BASE_AccountsPayable.ClearingDate_AUGDT",
+              "BASE_AccountsPayable.AmountInLocalCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        },
+        "ClosingAPInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM( IF( AccountsPayable.Accounttype_KOART = 'K' AND AccountsPayable.InvoiceDocumenttype_BLART = 'RE' AND AccountsPayable.ClearingDate_AUGDT IS NULL, AccountsPayable.AmountInTargetCurrency_DMBTR, 0 ) ) OVER ( PARTITION BY AccountsPayable.Client_MANDT, AccountsPayable.CompanyCode_BUKRS, AccountsPayable.TargetCurrency_TCURR ORDER BY AccountsPayable.DocFiscPeriod )",
+            "ref": [
+              "BASE_AccountsPayable.AccountType_KOART",
+              "BASE_AccountsPayable.InvoiceDocumenttype_BLART",
+              "BASE_AccountsPayable.ClearingDate_AUGDT",
+              "BASE_AccountsPayable.AmountInTargetCurrency_DMBTR",
+              "BASE_AccountsPayable.Client_MANDT",
+              "BASE_AccountsPayable.CompanyCode_BUKRS",
+              "BASE_AccountsPayable.TargetCurrency_TCURR",
+              "BASE_AccountsPayable.DocFiscPeriod"
+            ]
+          }
+        }
+      }
+    },
+    "VIEW_Final": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "CTE_AccountsPayable.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "CTE_AccountsPayable.CompanyCode_BUKRS"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "CTE_AccountsPayable.CompanyText_BUTXT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "CTE_AccountsPayable.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "CTE_AccountsPayable.NAME1"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "CTE_AccountsPayable.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "NumberOfLineItemWithinAccountingDocument_BUZEI": {
+          "ref": [
+            "CTE_AccountsPayable.NumberOfLineItemWithinAccountingDocument_BUZEI"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "CTE_AccountsPayable.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "AccountingDocumenttype_BLART": {
+          "ref": [
+            "CTE_AccountsPayable.AccountingDocumenttype_BLART"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "CTE_AccountsPayable.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "AmountInTargetCurrency_DMBTR": {
+          "ref": [
+            "CTE_AccountsPayable.AmountInTargetCurrency_DMBTR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "CTE_AccountsPayable.CurrencyKey_WAERS"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "CTE_AccountsPayable.TargetCurrency_TCURR"
+          ]
+        },
+        "DocFiscPeriod": {
+          "ref": [
+            "CTE_AccountsPayable.DocFiscPeriod"
+          ]
+        },
+        "TotalPurchasesInSourceCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.TotalPurchasesInSourceCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.TotalPurchasesInSourceCurrency"
+            ]
+          }
+        },
+        "TotalPurchasesInTargetCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.TotalPurchasesInTargetCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.TotalPurchasesInTargetCurrency"
+            ]
+          }
+        },
+        "OpeningAPInSourceCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.ClosingAPInSourceCurrency, 0) - COALESCE(UnpaidPeriodAPInSourceCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.ClosingAPInSourceCurrency",
+              "CTE_AccountsPayable.UnpaidPeriodAPInSourceCurrency"
+            ]
+          }
+        },
+        "OpeningAPInTargetCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.ClosingAPInTargetCurrency, 0) - COALESCE(UnpaidPeriodAPInTargetCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.ClosingAPInTargetCurrency",
+              "CTE_AccountsPayable.UnpaidPeriodAPInTargetCurrency"
+            ]
+          }
+        },
+        "PeriodAPInSourceCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.PeriodAPInSourceCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.PeriodAPInSourceCurrency"
+            ]
+          }
+        },
+        "PeriodAPInTargetCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.PeriodAPInTargetCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.PeriodAPInTargetCurrency"
+            ]
+          }
+        },
+        "ClosingAPInSourceCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.ClosingAPInSourceCurrency, 0) - COALESCE(UnpaidPeriodAPInSourceCurrency, 0) + COALESCE(AccountsPayable.PeriodAPInSourceCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.ClosingAPInSourceCurrency",
+              "CTE_AccountsPayable.UnpaidPeriodAPInSourceCurrency",
+              "CTE_AccountsPayable.PeriodAPInSourceCurrency"
+            ]
+          }
+        },
+        "ClosingAPInTargetCurrency": {
+          "calculation": {
+            "expression": "COALESCE(AccountsPayable.ClosingAPInTargetCurrency, 0) - COALESCE(UnpaidPeriodAPInTargetCurrency, 0) + COALESCE(AccountsPayable.PeriodAPInTargetCurrency, 0)",
+            "ref": [
+              "CTE_AccountsPayable.ClosingAPInTargetCurrency",
+              "CTE_AccountsPayable.UnpaidPeriodAPInTargetCurrency",
+              "CTE_AccountsPayable.PeriodAPInTargetCurrency"
+            ]
+          }
+        },
+        "AccountsPayableTurnoverInSourceCurrency": {
+          "calculation": {
+            "expression": "SAFE_DIVIDE( AccountsPayable.TotalPurchasesInSourceCurrency, ( (COALESCE(AccountsPayable.ClosingAPInSourceCurrency, 0) - COALESCE(UnpaidPeriodAPInSourceCurrency, 0) + COALESCE(AccountsPayable.PeriodAPInSourceCurrency, 0)) * 2 - COALESCE(AccountsPayable.PeriodAPInSourceCurrency, 0) ) / 2 )",
+            "ref": [
+              "CTE_AccountsPayable.TotalPurchasesInSourceCurrency",
+              "CTE_AccountsPayable.ClosingAPInSourceCurrency",
+              "CTE_AccountsPayable.UnpaidPeriodAPInSourceCurrency",
+              "CTE_AccountsPayable.PeriodAPInSourceCurrency"
+            ]
+          }
+        },
+        "AccountsPayableTurnoverInTargetCurrency": {
+          "calculation": {
+            "expression": "SAFE_DIVIDE( AccountsPayable.TotalPurchasesInTargetCurrency, ( (COALESCE(AccountsPayable.ClosingAPInTargetCurrency, 0) - COALESCE(UnpaidPeriodAPInTargetCurrency, 0) + COALESCE(AccountsPayable.PeriodAPInTargetCurrency, 0)) * 2 - COALESCE(AccountsPayable.PeriodAPInTargetCurrency, 0) ) / 2 )",
+            "ref": [
+              "CTE_AccountsPayable.TotalPurchasesInTargetCurrency",
+              "CTE_AccountsPayable.ClosingAPInTargetCurrency",
+              "CTE_AccountsPayable.UnpaidPeriodAPInTargetCurrency",
+              "CTE_AccountsPayable.PeriodAPInTargetCurrency"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

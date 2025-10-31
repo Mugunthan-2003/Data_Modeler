@@ -1,0 +1,643 @@
+{
+  "entities": {
+    "BASE_CurrencyConversion": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {},
+        "FromCurrency_FCURR": {},
+        "ToCurrency_TCURR": {},
+        "ConvDate": {},
+        "ExchangeRate_UKURS": {}
+      }
+    },
+    "BASE_StockMonthlySnapshots": {
+      "alias": "StockMonthlySnapshots",
+      "fields": {
+        "Client_MANDT": {},
+        "MaterialNumber_MATNR": {},
+        "Plant_WERKS": {},
+        "MonthEndDate": {},
+        "FiscalYear": {},
+        "FiscalPeriod": {},
+        "MaterialType_MTART": {},
+        "DescriptionOfMaterialType_MTBEZ": {},
+        "MaterialText_MAKTX": {},
+        "MaterialGroup_MATKL": {},
+        "MaterialGroupName_WGBEZ": {},
+        "Plant_Name2_NAME2": {},
+        "CompanyCode_BUKRS": {},
+        "CompanyText_BUTXT": {},
+        "CountryKey_LAND1": {},
+        "Languagekey_SPRAS": {},
+        "CalYear": {},
+        "CalMonth": {},
+        "BaseUnitOfMeasure_MEINS": {},
+        "CurrencyKey_WAERS": {},
+ "QuantityMonthlyCumulative": {},
+        "AmountMonthlyCumulative": {},
+        "StockOnHand": {},
+        "StockOnHandValue": {},
+        "QuantityIssuedToDelivery": {},
+        "TotalConsumptionQuantity": {}
+      }
+    },
+    "BASE_MaterialLedger": {
+      "alias": "MaterialLedger",
+      "fields": {
+        "Client_MANDT": {},
+        "MaterialNumber_MATNR": {},
+        "ValuationArea_BWKEY": {},
+        "FiscalYear": {},
+        "PostingPeriod": {},
+        "ValuationType_BWTAR": {},
+        "ValueOfTotalValuatedStock_SALK3": {},
+        "StandardCost_STPRS": {},
+        "MovingAveragePrice": {}
+      }
+    },
+    "BASE_SlowMovingThreshold": {
+      "alias": "SlowMovingThreshold",
+      "fields": {
+        "Client_MANDT": {},
+        "MaterialType_MTART": {},
+        "ThresholdValue": {}
+      }
+    },
+    "CTE_CurrencyConversion": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {
+          "ref": ["BASE_CurrencyConversion.Client_MANDT"]
+        },
+        "FromCurrency_FCURR": {
+          "ref": ["BASE_CurrencyConversion.FromCurrency_FCURR"]
+        },
+        "ToCurrency_TCURR": {
+          "ref": ["BASE_CurrencyConversion.ToCurrency_TCURR"]
+        },
+        "ConvDate": {
+          "ref": ["BASE_CurrencyConversion.ConvDate"]
+        },
+        "ExchangeRate_UKURS": {
+          "ref": ["BASE_CurrencyConversion.ExchangeRate_UKURS"]
+        }
+      }
+    },
+    "CTE_ValueAndCost": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {
+          "ref": ["BASE_StockMonthlySnapshots.Client_MANDT"]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": ["BASE_StockMonthlySnapshots.MaterialNumber_MATNR"]
+        },
+        "Plant_WERKS": {
+          "ref": ["BASE_StockMonthlySnapshots.Plant_WERKS"]
+        },
+        "MonthEndDate": {
+          "ref": ["BASE_StockMonthlySnapshots.MonthEndDate"]
+        },
+        "FiscalYear": {
+          "ref": ["BASE_StockMonthlySnapshots.FiscalYear"]
+        },
+        "FiscalPeriod": {
+          "ref": ["BASE_StockMonthlySnapshots.FiscalPeriod"]
+        },
+        "ValueOfTotalValuatedStock_SALK3": {
+          "calculation": {
+            "expression": "COALESCE(MaterialLedger.ValueOfTotalValuatedStock_SALK3, LAST_VALUE(MaterialLedger.ValueOfTotalValuatedStock_SALK3 IGNORE NULLS) OVER (PARTITION BY StockMonthlySnapshots.MaterialNumber_MATNR, StockMonthlySnapshots.Plant_WERKS ORDER BY StockMonthlySnapshots.MonthEndDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW))",
+            "ref": ["BASE_MaterialLedger.ValueOfTotalValuatedStock_SALK3", "BASE_StockMonthlySnapshots.MaterialNumber_MATNR", "BASE_StockMonthlySnapshots.Plant_WERKS", "BASE_StockMonthlySnapshots.MonthEndDate"]
+          }
+        },
+        "StandardCost_STPRS": {
+          "calculation": {
+            "expression": "COALESCE(MaterialLedger.StandardCost_STPRS, LAST_VALUE(MaterialLedger.StandardCost_STPRS IGNORE NULLS) OVER (PARTITION BY StockMonthlySnapshots.MaterialNumber_MATNR, StockMonthlySnapshots.Plant_WERKS ORDER BY StockMonthlySnapshots.MonthEndDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW))",
+            "ref": ["BASE_MaterialLedger.StandardCost_STPRS", "BASE_StockMonthlySnapshots.MaterialNumber_MATNR", "BASE_StockMonthlySnapshots.Plant_WERKS", "BASE_StockMonthlySnapshots.MonthEndDate"]
+          }
+        },
+        "MovingAveragePrice_VERPR": {
+          "calculation": {
+            "expression": "COALESCE(MaterialLedger.MovingAveragePrice, LAST_VALUE(MaterialLedger.MovingAveragePrice IGNORE NULLS) OVER (PARTITION BY StockMonthlySnapshots.MaterialNumber_MATNR, StockMonthlySnapshots.Plant_WERKS ORDER BY StockMonthlySnapshots.MonthEndDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW))",
+            "ref": ["BASE_MaterialLedger.MovingAveragePrice", "BASE_StockMonthlySnapshots.MaterialNumber_MATNR", "BASE_StockMonthlySnapshots.Plant_WERKS", "BASE_StockMonthlySnapshots.MonthEndDate"]
+          }
+        }
+      }
+    },
+    "CTE_CurrentStock": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {
+          "ref": ["BASE_StockMonthlySnapshots.Client_MANDT"]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": ["BASE_StockMonthlySnapshots.MaterialNumber_MATNR"]
+        },
+        "Plant_WERKS": {
+          "ref": ["BASE_StockMonthlySnapshots.Plant_WERKS"]
+        },
+        "MaterialType_MTART": {
+          "ref": ["BASE_StockMonthlySnapshots.MaterialType_MTART"]
+        },
+        "ThresholdValue": {
+          "ref": ["BASE_SlowMovingThreshold.ThresholdValue"]
+        },
+        "DescriptionOfMaterialType_MTBEZ": {
+          "ref": ["BASE_StockMonthlySnapshots.DescriptionOfMaterialType_MTBEZ"]
+        },
+        "MaterialText_MAKTX": {
+          "ref": ["BASE_StockMonthlySnapshots.MaterialText_MAKTX"]
+        },
+        "MaterialGroup_MATKL": {
+          "ref": ["BASE_StockMonthlySnapshots.MaterialGroup_MATKL"]
+        },
+        "MaterialGroupName_WGBEZ": {
+          "ref": ["BASE_StockMonthlySnapshots.MaterialGroupName_WGBEZ"]
+        },
+        "Plant_Name2_NAME2": {
+          "ref": ["BASE_StockMonthlySnapshots.Plant_Name2_NAME2"]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": ["BASE_StockMonthlySnapshots.CompanyCode_BUKRS"]
+        },
+        "CompanyText_BUTXT": {
+          "ref": ["BASE_StockMonthlySnapshots.CompanyText_BUTXT"]
+        },
+        "CountryKey_LAND1": {
+          "ref": ["BASE_StockMonthlySnapshots.CountryKey_LAND1"]
+        },
+        "Languagekey_SPRAS": {
+          "ref": ["BASE_StockMonthlySnapshots.Languagekey_SPRAS"]
+        },
+        "FiscalYear": {
+          "ref": ["BASE_StockMonthlySnapshots.FiscalYear"]
+        },
+        "FiscalPeriod": {
+          "ref": ["BASE_StockMonthlySnapshots.FiscalPeriod"]
+        },
+        "CalYear": {
+          "ref": ["BASE_StockMonthlySnapshots.CalYear"]
+        },
+        "CalMonth": {
+          "ref": ["BASE_StockMonthlySnapshots.CalMonth"]
+        },
+        "BaseUnitOfMeasure_MEINS": {
+          "ref": ["BASE_StockMonthlySnapshots.BaseUnitOfMeasure_MEINS"]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": ["BASE_StockMonthlySnapshots.CurrencyKey_WAERS"]
+        },
+        "MonthEndDate": {
+          "calculation": {
+            "expression": "IF(StockMonthlySnapshots.MonthEndDate = LAST_DAY(CURRENT_DATE), CURRENT_DATE, StockMonthlySnapshots.MonthEndDate)",
+            "ref": ["BASE_StockMonthlySnapshots.MonthEndDate"]
+          }
+        },
+        "IsPast12MonthsExcludingCurrent": {
+          "calculation": {
+            "expression": "StockMonthlySnapshots.MonthEndDate BETWEEN LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH)) AND LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))",
+            "ref": ["BASE_StockMonthlySnapshots.MonthEndDate"]
+          }
+        },
+        "IsPast12MonthsIncludingCurrent": {
+          "calculation": {
+            "expression": "StockMonthlySnapshots.MonthEndDate BETWEEN LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH)) AND LAST_DAY(CURRENT_DATE)",
+            "ref": ["BASE_StockMonthlySnapshots.MonthEndDate"]
+          }
+        },
+        "ValueOfTotalValuatedStock_SALK3": {
+          "ref": ["CTE_ValueAndCost.ValueOfTotalValuatedStock_SALK3"]
+        },
+        "StandardCost_STPRS": {
+          "ref": ["CTE_ValueAndCost.StandardCost_STPRS"]
+        },
+        "MovingAveragePrice_VERPR": {
+          "ref": ["CTE_ValueAndCost.MovingAveragePrice_VERPR"]
+        },
+        "QuantityMonthlyCumulative": {
+          "calculation": {
+            "expression": "SUM(StockMonthlySnapshots.QuantityMonthlyCumulative)",
+            "ref": ["BASE_StockMonthlySnapshots.QuantityMonthlyCumulative"]
+          }
+        },
+        "AmountMonthlyCumulative": {
+          "calculation": {
+            "expression": "SUM(StockMonthlySnapshots.AmountMonthlyCumulative)",
+            "ref": ["BASE_StockMonthlySnapshots.AmountMonthlyCumulative"]
+          }
+        },
+        "StockOnHand": {
+          "calculation": {
+            "expression": "SUM(StockMonthlySnapshots.StockOnHand)",
+            "ref": ["BASE_StockMonthlySnapshots.StockOnHand"]
+          }
+        },
+        "StockOnHandValue": {
+          "calculation": {
+            "expression": "SUM(StockMonthlySnapshots.StockOnHandValue)",
+            "ref": ["BASE_StockMonthlySnapshots.StockOnHandValue"]
+          }
+        },
+        "QuantityIssuedToDelivery": {
+          "calculation": {
+            "expression": "SUM(StockMonthlySnapshots.QuantityIssuedToDelivery)",
+            "ref": ["BASE_StockMonthlySnapshots.QuantityIssuedToDelivery"]
+          }
+        },
+        "TotalConsumptionQuantity": {
+          "calculation": {
+            "expression": "SUM(StockMonthlySnapshots.TotalConsumptionQuantity)",
+            "ref": ["BASE_StockMonthlySnapshots.TotalConsumptionQuantity"]
+          }
+        }
+      }
+    },
+    "CTE_CalculatedMetrics": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {
+          "ref": ["CTE_CurrentStock.Client_MANDT"]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": ["CTE_CurrentStock.MaterialNumber_MATNR"]
+        },
+        "Plant_WERKS": {
+          "ref": ["CTE_CurrentStock.Plant_WERKS"]
+        },
+        "LanguageKey_SPRAS": {
+          "ref": ["CTE_CurrentStock.Languagekey_SPRAS"]
+        },
+        "MonthEndDate": {
+          "ref": ["CTE_CurrentStock.MonthEndDate"]
+        },
+        "FiscalPeriod": {
+          "ref": ["CTE_CurrentStock.FiscalPeriod"]
+        },
+        "FiscalYear": {
+          "ref": ["CTE_CurrentStock.FiscalYear"]
+        },
+        "TotalConsumptionQuantityForPastYear": {
+          "calculation": {
+            "expression": "IF(IsPast12MonthsExcludingCurrent, SUM(CurrentStock.TotalConsumptionQuantity) OVER (PARTITION BY CurrentStock.Client_MANDT, CurrentStock.MaterialNumber_MATNR, CurrentStock.Plant_WERKS, CurrentStock.Languagekey_SPRAS, IsPast12MonthsExcludingCurrent), 0)",
+            "ref": ["CTE_CurrentStock.IsPast12MonthsExcludingCurrent", "CTE_CurrentStock.TotalConsumptionQuantity", "CTE_CurrentStock.Client_MANDT", "CTE_CurrentStock.MaterialNumber_MATNR", "CTE_CurrentStock.Plant_WERKS", "CTE_CurrentStock.Languagekey_SPRAS"]
+          }
+        },
+        "TotalConsumptionQuantityForPastYearTillToday": {
+          "calculation": {
+            "expression": "IF(IsPast12MonthsIncludingCurrent, SUM(CurrentStock.TotalConsumptionQuantity) OVER (PARTITION BY CurrentStock.Client_MANDT, CurrentStock.MaterialNumber_MATNR, CurrentStock.Plant_WERKS, CurrentStock.Languagekey_SPRAS, IsPast12MonthsIncludingCurrent), 0)",
+            "ref": ["CTE_CurrentStock.IsPast12MonthsIncludingCurrent", "CTE_CurrentStock.TotalConsumptionQuantity", "CTE_CurrentStock.Client_MANDT", "CTE_CurrentStock.MaterialNumber_MATNR", "CTE_CurrentStock.Plant_WERKS", "CTE_CurrentStock.Languagekey_SPRAS"]
+          }
+        },
+        "DemandPerDayForPastYearTillToday": {
+          "calculation": {
+            "expression": "IF(IsPast12MonthsIncludingCurrent, SUM(TotalConsumptionQuantity / (365 + EXTRACT(DAY FROM CURRENT_DATE))) OVER (PARTITION BY CurrentStock.Client_MANDT, CurrentStock.MaterialNumber_MATNR, CurrentStock.Plant_WERKS, CurrentStock.Languagekey_SPRAS, IsPast12MonthsIncludingCurrent), 0)",
+            "ref": ["CTE_CurrentStock.IsPast12MonthsIncludingCurrent", "CTE_CurrentStock.TotalConsumptionQuantity", "CTE_CurrentStock.Client_MANDT", "CTE_CurrentStock.MaterialNumber_MATNR", "CTE_CurrentStock.Plant_WERKS", "CTE_CurrentStock.Languagekey_SPRAS"]
+          }
+        },
+        "InventoryByMonth": {
+          "calculation": {
+            "expression": "SUM(CurrentStock.ValueOfTotalValuatedStock_SALK3) OVER (PARTITION BY CurrentStock.Client_MANDT, CurrentStock.MaterialNumber_MATNR, CurrentStock.Plant_WERKS, CurrentStock.Languagekey_SPRAS ORDER BY CurrentStock.CalYear, CurrentStock.CalMonth ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING)",
+            "ref": ["CTE_CurrentStock.ValueOfTotalValuatedStock_SALK3", "CTE_CurrentStock.Client_MANDT", "CTE_CurrentStock.MaterialNumber_MATNR", "CTE_CurrentStock.Plant_WERKS", "CTE_CurrentStock.Languagekey_SPRAS", "CTE_CurrentStock.CalYear", "CTE_CurrentStock.CalMonth"]
+          }
+        },
+        "AvgInventoryByMonth": {
+          "calculation": {
+            "expression": "SUM(CurrentStock.ValueOfTotalValuatedStock_SALK3 / 2) OVER (PARTITION BY CurrentStock.Client_MANDT, CurrentStock.MaterialNumber_MATNR, CurrentStock.Plant_WERKS, CurrentStock.Languagekey_SPRAS ORDER BY CurrentStock.CalYear, CurrentStock.CalMonth ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING)",
+            "ref": ["CTE_CurrentStock.ValueOfTotalValuatedStock_SALK3", "CTE_CurrentStock.Client_MANDT", "CTE_CurrentStock.MaterialNumber_MATNR", "CTE_CurrentStock.Plant_WERKS", "CTE_CurrentStock.Languagekey_SPRAS", "CTE_CurrentStock.CalYear", "CTE_CurrentStock.CalMonth"]
+          }
+        }
+      }
+    },
+    "CTE_Inventory": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {
+          "ref": ["CTE_CurrentStock.Client_MANDT"]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": ["CTE_CurrentStock.MaterialNumber_MATNR"]
+        },
+        "Plant_WERKS": {
+          "ref": ["CTE_CurrentStock.Plant_WERKS"]
+        },
+        "MaterialType_MTART": {
+          "ref": ["CTE_CurrentStock.MaterialType_MTART"]
+        },
+        "ThresholdValue": {
+          "ref": ["CTE_CurrentStock.ThresholdValue"]
+        },
+        "DescriptionOfMaterialType_MTBEZ": {
+          "ref": ["CTE_CurrentStock.DescriptionOfMaterialType_MTBEZ"]
+        },
+        "MaterialText_MAKTX": {
+          "ref": ["CTE_CurrentStock.MaterialText_MAKTX"]
+        },
+        "MaterialGroup_MATKL": {
+          "ref": ["CTE_CurrentStock.MaterialGroup_MATKL"]
+        },
+        "MaterialGroupName_WGBEZ": {
+          "ref": ["CTE_CurrentStock.MaterialGroupName_WGBEZ"]
+        },
+        "Plant_Name2_NAME2": {
+          "ref": ["CTE_CurrentStock.Plant_Name2_NAME2"]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": ["CTE_CurrentStock.CompanyCode_BUKRS"]
+        },
+        "CompanyText_BUTXT": {
+          "ref": ["CTE_CurrentStock.CompanyText_BUTXT"]
+        },
+        "CountryKey_LAND1": {
+          "ref": ["CTE_CurrentStock.CountryKey_LAND1"]
+        },
+        "Languagekey_SPRAS": {
+          "ref": ["CTE_CurrentStock.Languagekey_SPRAS"]
+        },
+        "ValueOfTotalValuatedStock_SALK3": {
+          "ref": ["CTE_CurrentStock.ValueOfTotalValuatedStock_SALK3"]
+        },
+        "StandardCost_STPRS": {
+          "ref": ["CTE_CurrentStock.StandardCost_STPRS"]
+        },
+        "MovingAveragePrice_VERPR": {
+          "ref": ["CTE_CurrentStock.MovingAveragePrice_VERPR"]
+        },
+        "FiscalYear": {
+          "ref": ["CTE_CurrentStock.FiscalYear"]
+        },
+        "FiscalPeriod": {
+          "ref": ["CTE_CurrentStock.FiscalPeriod"]
+        },
+        "CalYear": {
+          "ref": ["CTE_CurrentStock.CalYear"]
+        },
+        "CalMonth": {
+          "ref": ["CTE_CurrentStock.CalMonth"]
+        },
+        "MonthEndDate": {
+          "ref": ["CTE_CurrentStock.MonthEndDate"]
+        },
+        "BaseUnitOfMeasure_MEINS": {
+          "ref": ["CTE_CurrentStock.BaseUnitOfMeasure_MEINS"]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": ["CTE_CurrentStock.CurrencyKey_WAERS"]
+        },
+        "QuantityMonthlyCumulative": {
+          "ref": ["CTE_CurrentStock.QuantityMonthlyCumulative"]
+        },
+        "AmountMonthlyCumulative": {
+          "ref": ["CTE_CurrentStock.AmountMonthlyCumulative"]
+        },
+        "StockOnHand": {
+          "ref": ["CTE_CurrentStock.StockOnHand"]
+        },
+        "StockOnHandValue": {
+          "ref": ["CTE_CurrentStock.StockOnHandValue"]
+        },
+        "QuantityIssuedToDelivery": {
+          "ref": ["CTE_CurrentStock.QuantityIssuedToDelivery"]
+        },
+        "TotalConsumptionQuantity": {
+          "ref": ["CTE_CurrentStock.TotalConsumptionQuantity"]
+        },
+        "CostOfGoodsSoldByMonth": {
+          "calculation": {
+            "expression": "CurrentStock.QuantityIssuedToDelivery * CurrentStock.StandardCost_STPRS",
+            "ref": ["CTE_CurrentStock.QuantityIssuedToDelivery", "CTE_CurrentStock.StandardCost_STPRS"]
+          }
+        },
+        "TotalConsumptionQuantityForPastYear": {
+          "ref": ["CTE_CalculatedMetrics.TotalConsumptionQuantityForPastYear"]
+        },
+        "TotalConsumptionQuantityForPastYearTillToday": {
+          "ref": ["CTE_CalculatedMetrics.TotalConsumptionQuantityForPastYearTillToday"]
+        },
+        "DemandPerDayForPastYearTillToday": {
+          "ref": ["CTE_CalculatedMetrics.DemandPerDayForPastYearTillToday"]
+        },
+        "InventoryByMonth": {
+          "ref": ["CTE_CalculatedMetrics.InventoryByMonth"]
+        },
+        "AvgInventoryByMonth": {
+          "ref": ["CTE_CalculatedMetrics.AvgInventoryByMonth"]
+        },
+        "InventoryValue": {
+          "calculation": {
+            "expression": "CASE WHEN CurrentStock.MaterialType_MTART IN ('FERT', 'HALB') THEN CurrentStock.QuantityMonthlyCumulative * CurrentStock.StandardCost_STPRS WHEN CurrentStock.MaterialType_MTART IN ('ROH', 'HIBE') THEN CurrentStock.QuantityMonthlyCumulative * CurrentStock.MovingAveragePrice_VERPR ELSE 0 END",
+            "ref": ["CTE_CurrentStock.MaterialType_MTART", "CTE_CurrentStock.QuantityMonthlyCumulative", "CTE_CurrentStock.StandardCost_STPRS", "CTE_CurrentStock.MovingAveragePrice_VERPR"]
+          }
+        }
+      }
+    },
+    "VIEW_Final": {
+      "alias": "",
+      "fields": {
+        "Client_MANDT": {
+          "ref": ["CTE_Inventory.Client_MANDT"]
+        },
+        "MaterialNumber_MATNR": {
+          "ref": ["CTE_Inventory.MaterialNumber_MATNR"]
+        },
+        "Plant_WERKS": {
+          "ref": ["CTE_Inventory.Plant_WERKS"]
+        },
+        "MaterialType_MTART": {
+          "ref": ["CTE_Inventory.MaterialType_MTART"]
+        },
+        "DescriptionOfMaterialType_MTBEZ": {
+          "ref": ["CTE_Inventory.DescriptionOfMaterialType_MTBEZ"]
+        },
+        "MaterialText_MAKTX": {
+          "ref": ["CTE_Inventory.MaterialText_MAKTX"]
+        },
+        "MaterialGroup_MATKL": {
+          "ref": ["CTE_Inventory.MaterialGroup_MATKL"]
+        },
+        "MaterialGroupName_WGBEZ": {
+          "ref": ["CTE_Inventory.MaterialGroupName_WGBEZ"]
+        },
+        "Plant_Name2_NAME2": {
+          "ref": ["CTE_Inventory.Plant_Name2_NAME2"]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": ["CTE_Inventory.CompanyCode_BUKRS"]
+        },
+        "CompanyText_BUTXT": {
+          "ref": ["CTE_Inventory.CompanyText_BUTXT"]
+        },
+        "CountryKey_LAND1": {
+          "ref": ["CTE_Inventory.CountryKey_LAND1"]
+        },
+        "LanguageKey_SPRAS": {
+          "ref": ["CTE_Inventory.Languagekey_SPRAS"]
+        },
+        "FiscalYear": {
+          "ref": ["CTE_Inventory.FiscalYear"]
+        },
+        "FiscalPeriod": {
+          "ref": ["CTE_Inventory.FiscalPeriod"]
+        },
+        "CalYear": {
+          "ref": ["CTE_Inventory.CalYear"]
+        },
+        "CalMonth": {
+          "ref": ["CTE_Inventory.CalMonth"]
+        },
+        "MonthEndDate": {
+          "ref": ["CTE_Inventory.MonthEndDate"]
+        },
+        "QuantityMonthlyCumulative": {
+          "ref": ["CTE_Inventory.QuantityMonthlyCumulative"]
+        },
+        "BaseUnitOfMeasure_MEINS": {
+          "ref": ["CTE_Inventory.BaseUnitOfMeasure_MEINS"]
+        },
+        "AmountMonthlyCumulative": {
+          "ref": ["CTE_Inventory.AmountMonthlyCumulative"]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": ["CTE_Inventory.CurrencyKey_WAERS"]
+        },
+        "StockOnHand": {
+          "ref": ["CTE_Inventory.StockOnHand"]
+        },
+        "StockOnHandValue": {
+          "ref": ["CTE_Inventory.StockOnHandValue"]
+        },
+        "QuantityIssuedToDelivery": {
+          "ref": ["CTE_Inventory.QuantityIssuedToDelivery"]
+        },
+        "TotalConsumptionQuantity": {
+          "ref": ["CTE_Inventory.TotalConsumptionQuantity"]
+        },
+        "ValueOfTotalValuatedStock_SALK3": {
+          "ref": ["CTE_Inventory.ValueOfTotalValuatedStock_SALK3"]
+        },
+        "StandardCost_STPRS": {
+          "ref": ["CTE_Inventory.StandardCost_STPRS"]
+        },
+        "MovingAveragePrice_VERPR": {
+          "ref": ["CTE_Inventory.MovingAveragePrice_VERPR"]
+        },
+        "TotalConsumptionQuantityForPastYear": {
+          "ref": ["CTE_Inventory.TotalConsumptionQuantityForPastYear"]
+        },
+        "TotalConsumptionQuantityForPastYearTillToday": {
+          "ref": ["CTE_Inventory.TotalConsumptionQuantityForPastYearTillToday"]
+        },
+        "DemandPerDayForPastYearTillToday": {
+          "ref": ["CTE_Inventory.DemandPerDayForPastYearTillToday"]
+        },
+        "CostOfGoodsSoldByMonth": {
+          "ref": ["CTE_Inventory.CostOfGoodsSoldByMonth"]
+        },
+        "InventoryValue": {
+          "ref": ["CTE_Inventory.InventoryValue"]
+        },
+        "ThresholdValue": {
+          "ref": ["CTE_Inventory.ThresholdValue"]
+        },
+        "InventoryByMonth": {
+          "ref": ["CTE_Inventory.InventoryByMonth"]
+        },
+        "AvgInventoryByMonth": {
+          "ref": ["CTE_Inventory.AvgInventoryByMonth"]
+        },
+        "ExchangeRate_UKURS": {
+          "ref": ["CTE_CurrencyConversion.ExchangeRate_UKURS"]
+        },
+        "TargetCurrency_TCURR": {
+          "calculation": {
+            "expression": "CurrencyConversion.ToCurrency_TCURR",
+            "ref": ["CTE_CurrencyConversion.ToCurrency_TCURR"]
+          }
+        },
+        "AmountMonthlyCumulativeInTargetCurrency": {
+          "calculation": {
+            "expression": "Inventory.AmountMonthlyCumulative * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.AmountMonthlyCumulative", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "StockOnHandValueInTargetCurrency": {
+          "calculation": {
+            "expression": "Inventory.StockOnHandValue * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.StockOnHandValue", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "StandardCostInTargetCurrency_STPRS": {
+          "calculation": {
+            "expression": "Inventory.StandardCost_STPRS * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.StandardCost_STPRS", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "MovingAveragePriceInTargetCurrency_VERPR": {
+          "calculation": {
+            "expression": "Inventory.MovingAveragePrice_VERPR * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.MovingAveragePrice_VERPR", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "CostofGoodsSoldInTargetCurrency": {
+          "calculation": {
+            "expression": "Inventory.CostOfGoodsSoldByMonth * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.CostOfGoodsSoldByMonth", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "InventoryValueInTargetCurrency": {
+          "calculation": {
+            "expression": "Inventory.InventoryValue * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.InventoryValue", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "InventoryByMonthInTargetCurrency": {
+          "calculation": {
+            "expression": "Inventory.InventoryByMonth * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.InventoryByMonth", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "AvgInventoryByMonthInTargetCurrency": {
+          "calculation": {
+            "expression": "Inventory.AvgInventoryByMonth * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.AvgInventoryByMonth", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "ValueOfTotalValuatedStockInTargetCurrency_SALK3": {
+          "calculation": {
+            "expression": "Inventory.ValueOfTotalValuatedStock_SALK3 * CurrencyConversion.ExchangeRate_UKURS",
+            "ref": ["CTE_Inventory.ValueOfTotalValuatedStock_SALK3", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "SlowMovingInventoryAsOfPreviousMonthInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(COALESCE(IF(Inventory.MonthEndDate = LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)), SAFE_DIVIDE((Inventory.TotalConsumptionQuantityForPastYear * 100), Inventory.StockOnHand), 0), 0) < Inventory.ThresholdValue, IF(Inventory.MonthEndDate = LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)), (Inventory.StockOnHandValue * CurrencyConversion.ExchangeRate_UKURS), 0), 0)",
+            "ref": ["CTE_Inventory.MonthEndDate", "CTE_Inventory.TotalConsumptionQuantityForPastYear", "CTE_Inventory.StockOnHand", "CTE_Inventory.ThresholdValue", "CTE_Inventory.StockOnHandValue", "CTE_CurrencyConversion.ExchangeRate_UKURS"]
+          }
+        },
+        "DaysOfSupplyAsOfToday": {
+          "calculation": {
+            "expression": "COALESCE(IF(Inventory.MonthEndDate = CURRENT_DATE, SAFE_DIVIDE(Inventory.StockOnHand, Inventory.DemandPerDayForPastYearTillToday), 0), 0)",
+            "ref": ["CTE_Inventory.MonthEndDate", "CTE_Inventory.StockOnHand", "CTE_Inventory.DemandPerDayForPastYearTillToday"]
+          }
+        },
+        "SlowMovingIndicatorAsOfPreviousMonth": {
+          "calculation": {
+            "expression": "IF(COALESCE(IF(Inventory.MonthEndDate = LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)), SAFE_DIVIDE((Inventory.TotalConsumptionQuantityForPastYear * 100), Inventory.StockOnHand), 0), 0) < Inventory.ThresholdValue, COALESCE(IF(Inventory.MonthEndDate = LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)), SAFE_DIVIDE((Inventory.TotalConsumptionQuantityForPastYear * 100), Inventory.StockOnHand), 0), 0), 0)",
+            "ref": ["CTE_Inventory.MonthEndDate", "CTE_Inventory.TotalConsumptionQuantityForPastYear", "CTE_Inventory.StockOnHand", "CTE_Inventory.ThresholdValue"]
+          }
+        },
+        "SlowMovingInventoryAsOfPreviousMonthInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(COALESCE(IF(Inventory.MonthEndDate = LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)), SAFE_DIVIDE((Inventory.TotalConsumptionQuantityForPastYear * 100), Inventory.StockOnHand), 0), 0) < Inventory.ThresholdValue, IF(Inventory.MonthEndDate = LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)), Inventory.StockOnHandValue, 0), 0)",
+            "ref": ["CTE_Inventory.MonthEndDate", "CTE_Inventory.TotalConsumptionQuantityForPastYear", "CTE_Inventory.StockOnHand", "CTE_Inventory.ThresholdValue", "CTE_Inventory.StockOnHandValue"]
+          }
+        },
+        "InventoryTurnByMonth": {
+          "calculation": {
+            "expression": "COALESCE(SAFE_DIVIDE(Inventory.CostOfGoodsSoldByMonth, Inventory.AvgInventoryByMonth), 0)",
+            "ref": ["CTE_Inventory.CostOfGoodsSoldByMonth", "CTE_Inventory.AvgInventoryByMonth"]
+          }
+        }
+      }
+    }
+  }
+}

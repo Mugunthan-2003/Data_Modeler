@@ -1,0 +1,280 @@
+{
+  "entities": {
+    "BASE_AccountsPayable": {
+      "alias": "AccountsPayable",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "CompanyText_BUTXT": {},
+        "NAME1": {},
+        "AccountingDocumentNumber_BELNR": {},
+        "CashDiscountReceivedInSourceCurrency": {},
+        "CashDiscountReceivedInTargetCurrency": {},
+        "TargetCurrency_TCURR": {},
+        "ExchangeRate_UKURS": {}
+      }
+    },
+    "BASE_AccountingDocuments": {
+      "alias": "AccountingDocumentsCDU",
+      "fields": {
+        "Client_MANDT": {},
+        "CompanyCode_BUKRS": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "AccountingDocumentNumber_BELNR": {},
+        "AmountInLocalCurrency_DMBTR": {},
+        "ClearingDate_AUGDT": {},
+        "DocumentNumberOfTheClearingDocument_AUGBL": {},
+        "CurrencyKey_WAERS": {},
+        "PostingDateInTheDocument_BUDAT": {},
+        "PostingKey_BSCHL": {},
+        "BaselineDateForDueDateCalculation_ZFBDT": {},
+        "CashDiscountDays1_ZBD1T": {},
+        "AmountEligibleForCashDiscountInDocumentCurrency_SKFBT": {},
+        "CashDiscountPercentage1_ZBD1P": {},
+        "AccountType_KOART": {}
+      }
+    },
+    "BASE_VendorsMD": {
+      "fields": {
+        "Client_MANDT": {},
+        "AccountNumberOfVendorOrCreditor_LIFNR": {},
+        "NAME1": {},
+        "ValidToDate_DATE_TO": {},
+        "VersionIdForInternationalAddresses_NATION": {}
+      }
+    },
+    "CTE_AccountingDocumentsKPI": {
+      "alias": "AccountingDocumentsKPI",
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_AccountsPayable.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "BASE_AccountsPayable.CompanyCode_BUKRS"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "BASE_AccountsPayable.CompanyText_BUTXT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "BASE_AccountingDocuments.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "BASE_AccountsPayable.NAME1"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "BASE_AccountingDocuments.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "ref": [
+            "BASE_AccountingDocuments.AmountInLocalCurrency_DMBTR"
+          ]
+        },
+        "ClearingDate_AUGDT": {
+          "ref": [
+            "BASE_AccountingDocuments.ClearingDate_AUGDT"
+          ]
+        },
+        "DocumentNumberOfTheClearingDocument_AUGBL": {
+          "ref": [
+            "BASE_AccountingDocuments.DocumentNumberOfTheClearingDocument_AUGBL"
+          ]
+        },
+        "CashDiscountReceivedInSourceCurrency": {
+          "ref": [
+            "BASE_AccountsPayable.CashDiscountReceivedInSourceCurrency"
+          ]
+        },
+        "CashDiscountReceivedInTargetCurrency": {
+          "ref": [
+            "BASE_AccountsPayable.CashDiscountReceivedInTargetCurrency"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "BASE_AccountsPayable.TargetCurrency_TCURR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "ref": [
+            "BASE_AccountingDocuments.CurrencyKey_WAERS"
+          ]
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "ref": [
+            "BASE_AccountingDocuments.PostingDateInTheDocument_BUDAT"
+          ]
+        },
+        "TargetCashDiscountInSourceCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingDocumentsCDU.PostingKey_BSCHL = '31' AND AccountingDocumentsCDU.ClearingDate_AUGDT < DATE_ADD(AccountingDocumentsCDU.BaselineDateForDueDateCalculation_ZFBDT, INTERVAL CAST(AccountingDocumentsCDU.CashDiscountDays1_ZBD1T AS INT64) DAY),(AccountingDocumentsCDU.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT * AccountingDocumentsCDU.CashDiscountPercentage1_ZBD1P)/100,0)",
+            "ref": [
+              "BASE_AccountingDocuments.PostingKey_BSCHL",
+              "BASE_AccountingDocuments.ClearingDate_AUGDT",
+              "BASE_AccountingDocuments.BaselineDateForDueDateCalculation_ZFBDT",
+              "BASE_AccountingDocuments.CashDiscountDays1_ZBD1T",
+              "BASE_AccountingDocuments.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT",
+              "BASE_AccountingDocuments.CashDiscountPercentage1_ZBD1P"
+            ]
+          }
+        },
+        "TargetCashDiscountInTargetCurrency": {
+          "calculation": {
+            "expression": "IF(AccountingDocumentsCDU.PostingKey_BSCHL = '31' AND AccountingDocumentsCDU.ClearingDate_AUGDT < DATE_ADD(AccountingDocumentsCDU.BaselineDateForDueDateCalculation_ZFBDT, INTERVAL CAST(AccountingDocumentsCDU.CashDiscountDays1_ZBD1T AS INT64) DAY),(AccountingDocumentsCDU.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT * AccountsPayable.ExchangeRate_UKURS * AccountingDocumentsCDU.CashDiscountPercentage1_ZBD1P)/100,0)",
+            "ref": [
+              "BASE_AccountingDocuments.PostingKey_BSCHL",
+              "BASE_AccountingDocuments.ClearingDate_AUGDT",
+              "BASE_AccountingDocuments.BaselineDateForDueDateCalculation_ZFBDT",
+              "BASE_AccountingDocuments.CashDiscountDays1_ZBD1T",
+              "BASE_AccountingDocuments.AmountEligibleForCashDiscountInDocumentCurrency_SKFBT",
+              "BASE_AccountsPayable.ExchangeRate_UKURS",
+              "BASE_AccountingDocuments.CashDiscountPercentage1_ZBD1P"
+            ]
+          }
+        }
+      }
+    },
+    "CTE_Vendors": {
+      "alias": "Vendors",
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "BASE_VendorsMD.Client_MANDT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "BASE_VendorsMD.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "BASE_VendorsMD.NAME1"
+          ]
+        }
+      }
+    },
+    "VIEW_Final": {
+      "fields": {
+        "Client_MANDT": {
+          "ref": [
+            "CTE_AccountingDocumentsKPI.Client_MANDT"
+          ]
+        },
+        "CompanyCode_BUKRS": {
+          "ref": [
+            "CTE_AccountingDocumentsKPI.CompanyCode_BUKRS"
+          ]
+        },
+        "CompanyText_BUTXT": {
+          "ref": [
+            "CTE_AccountingDocumentsKPI.CompanyText_BUTXT"
+          ]
+        },
+        "AccountNumberOfVendorOrCreditor_LIFNR": {
+          "ref": [
+            "CTE_AccountingDocumentsKPI.AccountNumberOfVendorOrCreditor_LIFNR"
+          ]
+        },
+        "NAME1": {
+          "ref": [
+            "CTE_Vendors.NAME1"
+          ]
+        },
+        "AccountingDocumentNumber_BELNR": {
+          "ref": [
+            "CTE_AccountingDocumentsKPI.AccountingDocumentNumber_BELNR"
+          ]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": [
+            "CTE_AccountingDocumentsKPI.TargetCurrency_TCURR"
+          ]
+        },
+        "CurrencyKey_WAERS": {
+          "calculation": {
+            "expression": "ANY_VALUE(AccountingDocumentsKPI.CurrencyKey_WAERS)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.CurrencyKey_WAERS"
+            ]
+          }
+        },
+        "AmountInLocalCurrency_DMBTR": {
+          "calculation": {
+            "expression": "ANY_VALUE(AccountingDocumentsKPI.AmountInLocalCurrency_DMBTR)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.AmountInLocalCurrency_DMBTR"
+            ]
+          }
+        },
+        "ClearingDate_AUGDT": {
+          "calculation": {
+            "expression": "ANY_VALUE(AccountingDocumentsKPI.ClearingDate_AUGDT)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.ClearingDate_AUGDT"
+            ]
+          }
+        },
+        "DocumentNumberOfTheClearingDocument_AUGBL": {
+          "calculation": {
+            "expression": "ANY_VALUE(AccountingDocumentsKPI.DocumentNumberOfTheClearingDocument_AUGBL)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.DocumentNumberOfTheClearingDocument_AUGBL"
+            ]
+          }
+        },
+        "PostingDateInTheDocument_BUDAT": {
+          "calculation": {
+            "expression": "ANY_VALUE(AccountingDocumentsKPI.PostingDateInTheDocument_BUDAT)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.PostingDateInTheDocument_BUDAT"
+            ]
+          }
+        },
+        "CashDiscountReceivedInSourceCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountingDocumentsKPI.CashDiscountReceivedInSourceCurrency)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.CashDiscountReceivedInSourceCurrency"
+            ]
+          }
+        },
+        "CashDiscountReceivedInTargetCurrency": {
+          "calculation": {
+            "expression": "SUM(AccountingDocumentsKPI.CashDiscountReceivedInTargetCurrency)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.CashDiscountReceivedInTargetCurrency"
+            ]
+          }
+        },
+        "TargetCashDiscountInSourceCurrency": {
+          "calculation": {
+            "expression": "AVG(AccountingDocumentsKPI.TargetCashDiscountInSourceCurrency)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.TargetCashDiscountInSourceCurrency"
+            ]
+          }
+        },
+        "TargetCashDiscountInTargetCurrency": {
+          "calculation": {
+            "expression": "AVG(AccountingDocumentsKPI.TargetCashDiscountInTargetCurrency)",
+            "ref": [
+              "CTE_AccountingDocumentsKPI.TargetCashDiscountInTargetCurrency"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
