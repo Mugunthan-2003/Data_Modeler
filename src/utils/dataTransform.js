@@ -1,6 +1,10 @@
-// src/data.js
-import rawModel from "./grok_output/VendorPerformance.json";
+// src/utils/dataTransform.js
+import rawModel from "../grok_output/VendorPerformance.json";
 
+/**
+ * Transforms the raw model data into ReactFlow nodes and edges
+ * @returns {Object} Object containing nodes and edges arrays
+ */
 export function modelToFlow() {
   const nodes = [];
   const edges = [];
@@ -26,13 +30,13 @@ export function modelToFlow() {
       },
     });
 
-    // 🔹 Normal ref edges
+    // Normal ref edges
     Object.entries(entity.fields).forEach(([fieldName, field]) => {
       if (field.ref) {
         field.ref.forEach((ref) => {
           const [sourceEntity, sourceField] = ref.split(".");
           edges.push({
-            id: `ref-${sourceEntity}.${sourceField}->${entityName}.${fieldName}`, // unique
+            id: `ref-${sourceEntity}.${sourceField}->${entityName}.${fieldName}`,
             ref_type: "normal",
             type: "smoothstep",
             source: sourceEntity,
@@ -45,12 +49,12 @@ export function modelToFlow() {
         });
       }
 
-      // 🔹 Calculation edges (different style prefix)
+      // Calculation edges
       if (field.calculation?.ref) {
         field.calculation.ref.forEach((ref) => {
           const [srcE, srcF] = ref.split(".");
           edges.push({
-            id: `calc-${srcE}.${srcF}->${entityName}.${fieldName}`, // unique
+            id: `calc-${srcE}.${srcF}->${entityName}.${fieldName}`,
             ref_type: "calculation",
             source: srcE,
             type: "smoothstep",
@@ -69,3 +73,4 @@ export function modelToFlow() {
 
   return { nodes, edges };
 }
+
