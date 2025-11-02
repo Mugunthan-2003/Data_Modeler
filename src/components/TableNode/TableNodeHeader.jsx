@@ -1,20 +1,32 @@
+import { FiEdit3, FiCheck } from "react-icons/fi";
+
 /**
  * Header component for TableNode
  */
 const TableNodeHeader = ({ data, onEditClick }) => {
+    // Check if it's a VIEW or CTE to apply different themes
+    const isView = data.label?.includes("VIEW_");
+    const isCTE = data.label?.includes("CTE_");
+    
+    // Green gradient for views, purple gradient for CTEs, gray for base tables
+    const headerBackground = isView
+        ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+        : isCTE
+        ? "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+        : "linear-gradient(135deg, #4b5563 0%, #374151 100%)";
+    
     return (
         <div
             style={{
-                background: "#555",
+                background: headerBackground,
                 color: "#fff",
-                padding: "4px 8px",
-                fontWeight: "bold",
-                borderTopLeftRadius: 5,
-                borderTopRightRadius: 5,
-                fontSize: 13,
+                padding: "12px 14px",
+                fontWeight: 600,
+                fontSize: 14,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
             }}
         >
             <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -75,25 +87,70 @@ const TableNodeHeader = ({ data, onEditClick }) => {
                     )
                 )}
             </div>
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onEditClick?.();
-                }}
-                style={{
-                    background: data.isEditing ? "#f59e0b" : "#6b7280",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 4,
-                    padding: "2px 8px",
-                    fontSize: 11,
-                    cursor: "pointer",
-                    fontWeight: "normal",
-                    marginLeft: "8px",
-                }}
-            >
-                {data.isEditing ? "Done" : "Edit"}
-            </button>
+            <div style={{ position: "relative", marginLeft: "8px" }}>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEditClick?.();
+                    }}
+                    style={{
+                        background: data.isEditing 
+                            ? "rgba(245, 158, 11, 0.9)" 
+                            : "rgba(255, 255, 255, 0.2)",
+                        color: "#fff",
+                        border: "1px solid rgba(255, 255, 255, 0.3)",
+                        borderRadius: 6,
+                        padding: "6px",
+                        fontSize: "16px",
+                        cursor: "pointer",
+                        fontWeight: 500,
+                        width: "28px",
+                        height: "28px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 200ms ease",
+                        backdropFilter: "blur(10px)",
+                    }}
+                    onMouseEnter={(e) => {
+                        e.target.style.background = data.isEditing
+                            ? "rgba(245, 158, 11, 1)"
+                            : "rgba(255, 255, 255, 0.3)";
+                        const tooltip = e.target.nextSibling;
+                        if (tooltip) tooltip.style.opacity = "1";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.target.style.background = data.isEditing
+                            ? "rgba(245, 158, 11, 0.9)"
+                            : "rgba(255, 255, 255, 0.2)";
+                        const tooltip = e.target.nextSibling;
+                        if (tooltip) tooltip.style.opacity = "0";
+                    }}
+                >
+                    {data.isEditing ? <FiCheck size={16} /> : <FiEdit3 size={16} />}
+                </button>
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "100%",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        marginBottom: "4px",
+                        background: "rgba(0, 0, 0, 0.8)",
+                        color: "#fff",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        fontSize: "11px",
+                        whiteSpace: "nowrap",
+                        pointerEvents: "none",
+                        opacity: 0,
+                        transition: "opacity 150ms ease",
+                        zIndex: 1000,
+                    }}
+                >
+                    {data.isEditing ? "Done" : "Edit"}
+                </div>
+            </div>
         </div>
     );
 };

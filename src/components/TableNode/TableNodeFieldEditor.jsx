@@ -36,10 +36,12 @@ const TableNodeFieldEditor = ({ field, onSave, onCancel }) => {
             onClick={(e) => e.stopPropagation()}
             style={{
                 flex: 1,
-                padding: "2px 4px",
-                border: "1px solid #007bff",
-                borderRadius: 3,
-                fontSize: 12,
+                padding: "4px 8px",
+                border: "2px solid #3b82f6",
+                borderRadius: 6,
+                fontSize: 13,
+                background: "#fff",
+                transition: "all 150ms ease",
             }}
         />
     );

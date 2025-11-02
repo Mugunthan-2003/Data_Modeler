@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FiPlus } from "react-icons/fi";
 
 /**
  * Component for adding new fields to a table node
@@ -19,16 +20,18 @@ const TableNodeAddField = ({ onAddField }) => {
         <form
             onSubmit={handleSubmit}
             style={{
-                marginTop: "8px",
-                padding: "4px 8px",
-                borderTop: "1px dashed #ddd",
+                marginTop: "12px",
+                padding: "8px 12px",
+                borderTop: "2px dashed #e5e7eb",
+                background: "rgba(243, 244, 246, 0.3)",
+                borderRadius: "0 0 12px 12px",
             }}
             onClick={(e) => e.stopPropagation()}
         >
             <div
                 style={{
                     display: "flex",
-                    gap: "4px",
+                    gap: "8px",
                     alignItems: "center",
                 }}
             >
@@ -42,28 +45,74 @@ const TableNodeAddField = ({ onAddField }) => {
                     placeholder="New field name..."
                     style={{
                         flex: 1,
-                        padding: "4px 8px",
-                        border: "1px solid #ddd",
-                        borderRadius: 4,
-                        fontSize: 12,
+                        padding: "6px 12px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: 6,
+                        fontSize: 13,
+                        background: "#fff",
+                        transition: "all 150ms ease",
                     }}
                     onClick={(e) => e.stopPropagation()}
                 />
-                <button
-                    type="submit"
-                    style={{
-                        padding: "4px 12px",
-                        background: "#007bff",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 4,
-                        fontSize: 11,
-                        cursor: "pointer",
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    Add
-                </button>
+                <div style={{ position: "relative" }}>
+                    <button
+                        type="submit"
+                        style={{
+                            padding: "6px",
+                            background: "#10b981",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 6,
+                            fontSize: "16px",
+                            cursor: "pointer",
+                            fontWeight: 500,
+                            transition: "all 150ms ease",
+                            boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
+                            width: "32px",
+                            height: "32px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = "#059669";
+                            e.target.style.transform = "scale(1.05)";
+                            const tooltip = e.target.parentElement?.querySelector('.tooltip');
+                            if (tooltip) tooltip.style.opacity = "1";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = "#10b981";
+                            e.target.style.transform = "scale(1)";
+                            const tooltip = e.target.parentElement?.querySelector('.tooltip');
+                            if (tooltip) tooltip.style.opacity = "0";
+                        }}
+                    >
+                        <FiPlus size={16} />
+                    </button>
+                    <div
+                        className="tooltip"
+                        style={{
+                            position: "absolute",
+                            bottom: "100%",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            marginBottom: "4px",
+                            background: "rgba(0, 0, 0, 0.8)",
+                            color: "#fff",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "11px",
+                            whiteSpace: "nowrap",
+                            pointerEvents: "none",
+                            opacity: 0,
+                            transition: "opacity 150ms ease",
+                            zIndex: 1000,
+                        }}
+                    >
+                        Add field
+                    </div>
+                </div>
             </div>
         </form>
     );

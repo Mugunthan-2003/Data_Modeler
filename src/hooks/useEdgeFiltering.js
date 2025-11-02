@@ -39,7 +39,8 @@ export const useEdgeFiltering = (
                         ...e.style,
                         stroke: isInactive ? "#ccc" : baseColor,
                         opacity: isInactive ? 0.4 : 1,
-                        strokeWidth: isInactive ? 1 : 1.8,
+                        // Ensure edges are always visible with minimum stroke width
+                        strokeWidth: isInactive ? 2 : (e.style?.strokeWidth || 3),
                     },
                     animated:
                         highlightedEdges.size === 0

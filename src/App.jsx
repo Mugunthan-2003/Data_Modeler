@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import ReactFlow, { MiniMap, Controls, Background } from "reactflow";
+import { useCallback, useEffect, useState, useRef } from "react";
+import ReactFlow, {
+    MiniMap,
+    Controls,
+    Background,
+    useReactFlow,
+} from "reactflow";
 import TableNode from "./components/TableNode/TableNode";
 import EdgeConfigDialog from "./components/EdgeConfigDialog";
 import FlowHeader from "./components/FlowHeader";
@@ -11,11 +16,64 @@ import { useEdgeHandlers } from "./hooks/useEdgeHandlers";
 import { useEdgeFiltering } from "./hooks/useEdgeFiltering";
 import { useFieldHighlighting } from "./hooks/useFieldHighlighting";
 import { useNodeDecoration } from "./hooks/useNodeDecoration";
-import { getLayoutedElements } from "./utils/layout";
+import { applyLayout } from "./utils/layout";
+import { flowToModel } from "./utils/flowToModel";
 import "reactflow/dist/style.css";
 import "./index.css";
 
 const nodeTypes = { tableNode: TableNode };
+
+// Inner component to access ReactFlow instance for fitView
+function FitViewHelper({ onFitView, onCenterNode }) {
+    const { fitView, getNode, setCenter, getZoom } = useReactFlow();
+
+    useEffect(() => {
+        // Fit view when nodes are ready
+        const timer = setTimeout(() => {
+            fitView({ padding: 0.1, duration: 0 });
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [fitView]);
+
+    // Expose fitView to parent
+    useEffect(() => {
+        if (onFitView) {
+            onFitView(() => {
+                fitView({ padding: 0.1, duration: 300 });
+            });
+        }
+    }, [fitView]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Expose centerNode function to parent
+    useEffect(() => {
+        if (onCenterNode) {
+            onCenterNode((nodeId, position) => {
+                // Try to get the node from ReactFlow
+                const node = getNode(nodeId);
+                if (node) {
+                    // Calculate center position accounting for zoom
+                    const zoom = getZoom();
+                    const nodeWidth = 380; // Width of the node
+                    const nodeHeight = 200; // Approximate height of the node
+                    const centerX = node.position.x + nodeWidth / 2;
+                    const centerY = node.position.y + nodeHeight / 2;
+
+                    // Set center to the node's center position
+                    setCenter(centerX, centerY, { duration: 400, zoom });
+                } else if (position) {
+                    // Fallback to provided position if node not found yet
+                    const nodeWidth = 380;
+                    const nodeHeight = 200;
+                    const centerX = position.x + nodeWidth / 2;
+                    const centerY = position.y + nodeHeight / 2;
+                    setCenter(centerX, centerY, { duration: 400 });
+                }
+            });
+        }
+    }, [getNode, setCenter, getZoom]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return null;
+}
 
 export default function App() {
     // Flow state management
@@ -29,10 +87,15 @@ export default function App() {
     const [edgeConfigDialog, setEdgeConfigDialog] = useState(null);
     const [edgeContextMenu, setEdgeContextMenu] = useState(null);
 
+    // Layout always uses LR direction
+
     // Filter toggles
     const [showNormalRefs, setShowNormalRefs] = useState(true);
     const [showCalcRefs, setShowCalcRefs] = useState(true);
     const [showOnlyHighlighted, setShowOnlyHighlighted] = useState(false);
+
+    // Link direction for highlighting
+    const [linkDirection, setLinkDirection] = useState("upstream");
 
     // Field highlighting
     const {
@@ -42,7 +105,12 @@ export default function App() {
         setSelectedField,
         setHighlightedEdges,
         clearHighlighting,
-    } = useFieldHighlighting(edges);
+    } = useFieldHighlighting(edges, linkDirection);
+
+    // Clear highlighting when link direction changes
+    useEffect(() => {
+        clearHighlighting();
+    }, [linkDirection, clearHighlighting]);
 
     // Node handlers
     const {
@@ -135,13 +203,54 @@ export default function App() {
         showOnlyHighlighted
     );
 
-    // Layout handler
+    // Fit view ref
+    const fitViewRef = useRef(null);
+    const centerNodeRef = useRef(null);
+
+    // Stable callback for fitView ref
+    const setFitViewRef = useCallback((fn) => {
+        fitViewRef.current = fn;
+    }, []);
+
+    // Stable callback for centerNode ref
+    const setCenterNodeRef = useCallback((fn) => {
+        centerNodeRef.current = fn;
+    }, []);
+
+    // Layout handler - always use dagre layout with LR direction
     const onLayout = useCallback(() => {
-        const { nodes: layoutedNodes, edges: layoutedEdges } =
-            getLayoutedElements(nodes, edges, "LR");
+        const { nodes: layoutedNodes, edges: layoutedEdges } = applyLayout(
+            nodes,
+            edges,
+            "dagre",
+            "LR"
+        );
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
+        // Fit view after layout
+        setTimeout(() => {
+            if (fitViewRef.current) {
+                fitViewRef.current();
+            }
+        }, 100);
     }, [nodes, edges, setNodes, setEdges]);
+
+    // Export handler - convert flow to JSON and download
+    const onExport = useCallback(() => {
+        const model = flowToModel(nodes, edges);
+        const jsonString = JSON.stringify(model, null, 2);
+
+        // Create a blob and download it
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "data_model.json";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, [nodes, edges]);
 
     // Auto-arrange on mount
     useEffect(() => {
@@ -166,6 +275,11 @@ export default function App() {
             x: event.clientX,
             y: event.clientY,
         });
+    }, []);
+
+    // Disable browser context menu on background/pane
+    const onPaneContextMenu = useCallback((event) => {
+        event.preventDefault();
     }, []);
 
     // Edge config confirm handler wrapper
@@ -238,6 +352,8 @@ export default function App() {
                 height: "100vh",
                 display: "flex",
                 flexDirection: "row",
+                background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                overflow: "hidden",
             }}
         >
             {/* Main Graph Section */}
@@ -245,7 +361,19 @@ export default function App() {
                 {/* Header */}
                 <FlowHeader
                     onLayout={onLayout}
-                    onAddNewTable={handleAddNewTable}
+                    onAddNewTable={() => {
+                        const newTableInfo = handleAddNewTable();
+                        if (newTableInfo && centerNodeRef.current) {
+                            // Use setTimeout to ensure node is rendered before navigating
+                            setTimeout(() => {
+                                centerNodeRef.current(
+                                    newTableInfo.nodeId,
+                                    newTableInfo.position
+                                );
+                            }, 100);
+                        }
+                    }}
+                    onExport={onExport}
                     showNormalRefs={showNormalRefs}
                     showCalcRefs={showCalcRefs}
                     showOnlyHighlighted={showOnlyHighlighted}
@@ -254,6 +382,8 @@ export default function App() {
                     onToggleOnlyHighlighted={() =>
                         setShowOnlyHighlighted((v) => !v)
                     }
+                    linkDirection={linkDirection}
+                    onLinkDirectionChange={setLinkDirection}
                 />
 
                 <ReactFlow
@@ -263,10 +393,33 @@ export default function App() {
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
                     onEdgeContextMenu={onEdgeContextMenu}
+                    onPaneContextMenu={onPaneContextMenu}
                     nodeTypes={nodeTypes}
-                    fitView
-                    connectionLineType="smoothstep"
+                    minZoom={0.05}
+                    maxZoom={4}
+                    connectionLineType="step"
+                    defaultEdgeOptions={{
+                        type: "step", // Use step for better edge separation
+                        animated: false,
+                        style: {
+                            strokeWidth: 3, // Thicker for visibility
+                        },
+                        pathOptions: {
+                            offset: 10, // Better separation between parallel edges
+                            borderRadius: 10,
+                        },
+                    }}
+                    // Improve edge routing to avoid congestion
+                    snapToGrid={false}
+                    snapGrid={[20, 20]}
+                    // Better edge rendering
+                    edgeUpdaterRadius={10}
+                    connectionRadius={20}
                 >
+                    <FitViewHelper
+                        onFitView={setFitViewRef}
+                        onCenterNode={setCenterNodeRef}
+                    />
                     <MiniMap />
                     <Controls />
                     <Background gap={16} />
@@ -282,11 +435,13 @@ export default function App() {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        background: "rgba(0, 0, 0, 0.5)",
+                        background: "rgba(0, 0, 0, 0.65)",
+                        backdropFilter: "blur(6px)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         zIndex: 1000,
+                        animation: "fadeIn 200ms ease",
                     }}
                     onClick={() => setEdgeConfigDialog(null)}
                 >

@@ -251,6 +251,9 @@ export const useNodeHandlers = (
             ...prev,
             [tableName]: "",
         }));
+
+        // Return the new node info for navigation
+        return { nodeId: tableName, position };
     }, [nodes, setNodes, setEditingNode, setEditingLabels, setEditingAliases]);
 
     return {

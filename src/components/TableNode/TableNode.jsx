@@ -7,8 +7,18 @@ import TableNodeAddField from "./TableNodeAddField";
  * Main TableNode component
  */
 const TableNode = ({ data }) => {
-    const bg = data.isViewOrCTE ? "#f0e6ff" : "#fff";
-    const border = data.isViewOrCTE ? "2px solid #a855f7" : "1px solid #fff";
+    // Check if it's a VIEW or CTE to apply different themes
+    const isView = data.label?.includes("VIEW_");
+    const isCTE = data.label?.includes("CTE_");
+
+    // Green theme for views, purple theme for CTEs, default for base tables
+    const bg = isView ? "#ecfdf5" : isCTE ? "#f0e6ff" : "#fff";
+    const border = isView
+        ? "2px solid #10b981"
+        : isCTE
+        ? "2px solid #a855f7"
+        : "1px solid #fff";
+
     const [editingField, setEditingField] = useState(null);
 
     // Get edges for a specific field
@@ -16,7 +26,8 @@ const TableNode = ({ data }) => {
         const handleId = `${data.label}-${fieldName}`;
         return (
             data.edges?.filter(
-                (e) => e.sourceHandle === handleId || e.targetHandle === handleId
+                (e) =>
+                    e.sourceHandle === handleId || e.targetHandle === handleId
             ) || []
         );
     };
@@ -26,17 +37,31 @@ const TableNode = ({ data }) => {
             style={{
                 background: bg,
                 border,
-                borderRadius: 6,
+                borderRadius: 12,
                 minWidth: 300,
-                fontFamily: "Arial, sans-serif",
-                boxShadow: "0 2px 6px rgba(0,0,0,.1)",
+                width: 380,
+                fontFamily: "inherit",
+                boxShadow:
+                    "0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1)",
+                transition: "all 200ms ease",
+                overflow: "hidden",
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow =
+                    "0 8px 20px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.15)";
+                e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1)";
+                e.currentTarget.style.transform = "translateY(0)";
             }}
         >
             {/* Header */}
             <TableNodeHeader data={data} onEditClick={data.onEditClick} />
 
             {/* Field List */}
-            <div style={{ padding: "4px 8px" }}>
+            <div style={{ padding: "8px 12px" }}>
                 {data.fields.map((field, idx) => {
                     const isSelected =
                         data.selectedField?.nodeId === data.label &&
@@ -53,7 +78,9 @@ const TableNode = ({ data }) => {
                             onFieldClick={data.onFieldClick}
                             onUpdateFieldName={data.onUpdateFieldName}
                             onDeleteField={data.onDeleteField}
-                            onUpdateFieldCalculation={data.onUpdateFieldCalculation}
+                            onUpdateFieldCalculation={
+                                data.onUpdateFieldCalculation
+                            }
                             onDeleteFieldRef={data.onDeleteFieldRef}
                         />
                     );
@@ -69,4 +96,3 @@ const TableNode = ({ data }) => {
 };
 
 export default memo(TableNode);
-

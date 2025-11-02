@@ -32,15 +32,32 @@ export const createEdge = (config) => {
     return {
         id,
         ref_type,
-        type: "smoothstep",
+        type: "step", // Use step for better parallel edge separation
         source,
         target,
         sourceHandle,
         targetHandle,
         animated: !isCalcEdge,
         style: isCalcEdge
-            ? { stroke: "#0066ff", strokeDasharray: "5,5" }
-            : { stroke: "#fd5d5dff" },
+            ? { 
+                stroke: "#0066ff", 
+                strokeDasharray: "8,4", // More visible dash pattern
+                strokeWidth: 3, // Thicker for better visibility
+            }
+            : { 
+                stroke: "#ef4444", // More vibrant red
+                strokeWidth: 3, // Thicker for better visibility
+            },
+        // Better edge routing with more separation
+        pathOptions: {
+            offset: 10, // Increased offset for parallel edges
+            borderRadius: 10, // Smooth curves
+        },
+        // Add marker for better visibility
+        markerEnd: {
+            type: "arrowclosed",
+            color: isCalcEdge ? "#0066ff" : "#ef4444",
+        },
     };
 };
 
