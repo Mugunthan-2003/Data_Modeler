@@ -7,6 +7,7 @@ import ReactFlow, {
 } from "reactflow";
 import TableNode from "./components/TableNode/TableNode";
 import EdgeConfigDialog from "./components/EdgeConfigDialog";
+import ImportJsonDialog from "./components/ImportJsonDialog";
 import FlowHeader from "./components/FlowHeader";
 import EdgeContextMenu from "./components/EdgeContextMenu";
 import FieldDrawer from "./components/FieldDrawer";
@@ -18,6 +19,7 @@ import { useFieldHighlighting } from "./hooks/useFieldHighlighting";
 import { useNodeDecoration } from "./hooks/useNodeDecoration";
 import { applyLayout } from "./utils/layout";
 import { flowToModel } from "./utils/flowToModel";
+import { modelToFlow } from "./utils/dataTransform";
 import "reactflow/dist/style.css";
 import "./index.css";
 
@@ -87,6 +89,7 @@ export default function App() {
     const [edgeConfigDialog, setEdgeConfigDialog] = useState(null);
     const [edgeContextMenu, setEdgeContextMenu] = useState(null);
     const [selectedTableType, setSelectedTableType] = useState("BASE");
+    const [importDialog, setImportDialog] = useState(false);
 
     // Layout always uses LR direction
 
@@ -239,20 +242,52 @@ export default function App() {
     }, [nodes, edges, setNodes, setEdges]);
 
     // Export handler - convert flow to JSON and download
-    const onExport = useCallback(() => {
-        const model = flowToModel(nodes, edges);
-        const jsonString = JSON.stringify(model, null, 2);
+    const onExport = useCallback(async () => {
+        try {
+            const model = flowToModel(nodes, edges);
+            const jsonString = JSON.stringify(model, null, 2);
+            const blob = new Blob([jsonString], { type: "application/json" });
 
-        // Create a blob and download it
-        const blob = new Blob([jsonString], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "data_model.json";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+            // Try using File System Access API (modern browsers)
+            if (window.showSaveFilePicker) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: "data_model.json",
+                        types: [
+                            {
+                                description: "JSON Files",
+                                accept: { "application/json": [".json"] },
+                            },
+                        ],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    alert("File exported successfully!");
+                } catch (error) {
+                    if (error.name !== "AbortError") {
+                        console.error("Error using File System API:", error);
+                        // Fallback to download if API fails
+                        throw error;
+                    }
+                }
+            } else {
+                // Fallback: traditional download
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "data_model.json";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        } catch (error) {
+            console.error("Export error:", error);
+            if (error.name !== "AbortError") {
+                alert("Error exporting file. Please try again.");
+            }
+        }
     }, [nodes, edges]);
 
     // Auto-arrange on mount
@@ -345,6 +380,45 @@ export default function App() {
         [handleDeleteEdge]
     );
 
+    // Import handler
+    const handleImportJson = useCallback((modelData) => {
+        try {
+            // Transform model data to flow
+            const { nodes: importedNodes, edges: importedEdges } = modelToFlow(modelData);
+
+            // Clear existing nodes and edges, then set imported ones
+            setNodes(importedNodes);
+            setEdges(importedEdges);
+
+            // Reset editing states
+            setEditingNode(null);
+            setEditingLabels({});
+            setEditingAliases({});
+
+            // Auto-arrange the imported data
+            setTimeout(() => {
+                const { nodes: layoutedNodes, edges: layoutedEdges } = applyLayout(
+                    importedNodes,
+                    importedEdges,
+                    "dagre",
+                    "LR"
+                );
+                setNodes(layoutedNodes);
+                setEdges(layoutedEdges);
+
+                // Fit view after layout
+                if (fitViewRef.current) {
+                    fitViewRef.current();
+                }
+            }, 100);
+
+            setImportDialog(false);
+        } catch (error) {
+            console.error("Error importing JSON:", error);
+            alert("Error importing JSON file. Please try again.");
+        }
+    }, [setNodes, setEdges]);
+
     return (
         <div
             style={{
@@ -373,6 +447,7 @@ export default function App() {
                         }
                     }}
                     onExport={onExport}
+                    onImport={() => setImportDialog(true)}
                     showNormalRefs={showNormalRefs}
                     showCalcRefs={showCalcRefs}
                     showOnlyHighlighted={showOnlyHighlighted}
@@ -482,6 +557,35 @@ export default function App() {
                 />
             )}
 
+            {/* Import JSON Dialog */}
+            {importDialog && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: "rgba(0, 0, 0, 0.65)",
+                        backdropFilter: "blur(6px)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 1000,
+                        animation: "fadeIn 200ms ease",
+                    }}
+                    onClick={() => setImportDialog(false)}
+                >
+                    <ImportJsonDialog
+                        onConfirm={(jsonData) => {
+                            handleImportJson(jsonData);
+                        }}
+                        onCancel={() => setImportDialog(false)}
+                    />
+                </div>
+            )}
+
+            {/* Export Dialog */}
             {/* Field Drawer */}
             <FieldDrawer
                 selectedField={selectedField}

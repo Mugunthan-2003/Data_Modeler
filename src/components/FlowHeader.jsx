@@ -7,6 +7,7 @@ import {
     FiEye,
     FiStar,
     FiDownload,
+    FiUpload,
     FiChevronDown,
     FiArrowUp,
     FiArrowDown,
@@ -21,6 +22,7 @@ const FlowHeader = ({
     onLayout,
     onAddNewTable,
     onExport,
+    onImport,
     showNormalRefs,
     showCalcRefs,
     showOnlyHighlighted,
@@ -303,6 +305,43 @@ const FlowHeader = ({
                 >
                     <FiDownload size={16} />
                     Export JSON
+                </button>
+
+                <button
+                    onClick={onImport}
+                    style={{
+                        padding: "10px 18px",
+                        background: "rgba(168, 85, 247, 0.15)",
+                        color: "#e9d5ff",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontSize: 14,
+                        transition: "all 200ms ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        backdropFilter: "blur(10px)",
+                        boxShadow: "0 2px 8px rgba(168, 85, 247, 0.2)",
+                    }}
+                    onMouseEnter={(e) => {
+                        e.target.style.background = "rgba(168, 85, 247, 0.25)";
+                        e.target.style.borderColor = "rgba(168, 85, 247, 0.5)";
+                        e.target.style.transform = "translateY(-1px)";
+                        e.target.style.boxShadow =
+                            "0 4px 12px rgba(168, 85, 247, 0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.target.style.background = "rgba(168, 85, 247, 0.15)";
+                        e.target.style.borderColor = "rgba(168, 85, 247, 0.3)";
+                        e.target.style.transform = "translateY(0)";
+                        e.target.style.boxShadow =
+                            "0 2px 8px rgba(168, 85, 247, 0.2)";
+                    }}
+                >
+                    <FiUpload size={16} />
+                    Import JSON
                 </button>
             </div>
 

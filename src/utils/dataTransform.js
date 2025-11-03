@@ -43,15 +43,16 @@ export function addTablePrefix(entityName, tableType) {
 
 /**
  * Transforms the raw model data into ReactFlow nodes and edges
+ * @param {Object} modelData - The model data object (default: imported rawModel)
  * @returns {Object} Object containing nodes and edges arrays
  */
-export function modelToFlow() {
+export function modelToFlow(modelData = rawModel) {
   const nodes = [];
   const edges = [];
   let y = 0;
   const rowHeight = 180;
 
-  Object.entries(rawModel.entities).forEach(([entityName, entity]) => {
+  Object.entries(modelData.entities).forEach(([entityName, entity]) => {
     const tableType = extractTableType(entityName);
     const displayName = removeTablePrefix(entityName);
     const nodeId = displayName;
