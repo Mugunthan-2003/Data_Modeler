@@ -125,9 +125,9 @@ const FieldDrawer = ({ selectedField, onClose }) => {
             <div
                 style={{
                     padding: "16px",
-                    background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                    background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
                     borderRadius: 12,
-                    border: "2px solid #fbbf24",
+                    border: "2px solid #3b82f6",
                     maxHeight: "calc(100vh - 300px)",
                     overflow: "auto",
                     whiteSpace: "pre-wrap",

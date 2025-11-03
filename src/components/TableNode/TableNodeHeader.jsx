@@ -1,9 +1,9 @@
-import { FiEdit3, FiCheck } from "react-icons/fi";
+import { FiEdit3, FiCheck, FiTrash2 } from "react-icons/fi";
 
 /**
  * Header component for TableNode
  */
-const TableNodeHeader = ({ data, onEditClick }) => {
+const TableNodeHeader = ({ data, onEditClick, onDeleteClick }) => {
     // Check if it's a VIEW or CTE to apply different themes
     const isView = data.label?.includes("VIEW_");
     const isCTE = data.label?.includes("CTE_");
@@ -24,6 +24,7 @@ const TableNodeHeader = ({ data, onEditClick }) => {
                 fontWeight: 600,
                 fontSize: 14,
                 display: "flex",
+                borderRadius: "12px 12px 0 0",
                 justifyContent: "space-between",
                 alignItems: "center",
                 boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
@@ -87,13 +88,14 @@ const TableNodeHeader = ({ data, onEditClick }) => {
                     )
                 )}
             </div>
-            <div style={{ position: "relative", marginLeft: "8px" }}>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEditClick?.();
-                    }}
-                    style={{
+            <div style={{ display: "flex", gap: "8px", marginLeft: "8px" }}>
+                <div style={{ position: "relative" }}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEditClick?.();
+                        }}
+                        style={{
                         background: data.isEditing 
                             ? "rgba(245, 158, 11, 0.9)" 
                             : "rgba(255, 255, 255, 0.2)",
@@ -128,27 +130,87 @@ const TableNodeHeader = ({ data, onEditClick }) => {
                     }}
                 >
                     {data.isEditing ? <FiCheck size={16} /> : <FiEdit3 size={16} />}
-                </button>
-                <div
+                    </button>
+                    <div
+                        style={{
+                            position: "absolute",
+                            bottom: "100%",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            marginBottom: "4px",
+                            background: "rgba(0, 0, 0, 0.8)",
+                            color: "#fff",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "11px",
+                            whiteSpace: "nowrap",
+                            pointerEvents: "none",
+                            opacity: 0,
+                            transition: "opacity 150ms ease",
+                            zIndex: 9999,
+                        }}
+                    >
+                        {data.isEditing ? "Done" : "Edit"}
+                    </div>
+                </div>
+                <div style={{ position: "relative" }}>
+                    <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteClick?.();
+                    }}
                     style={{
-                        position: "absolute",
-                        bottom: "100%",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        marginBottom: "4px",
-                        background: "rgba(0, 0, 0, 0.8)",
+                        background: "rgba(239, 68, 68, 0.9)",
                         color: "#fff",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "11px",
-                        whiteSpace: "nowrap",
-                        pointerEvents: "none",
-                        opacity: 0,
-                        transition: "opacity 150ms ease",
-                        zIndex: 1000,
+                        border: "1px solid rgba(255, 255, 255, 0.3)",
+                        borderRadius: 6,
+                        padding: "6px",
+                        fontSize: "16px",
+                        cursor: "pointer",
+                        fontWeight: 500,
+                        width: "28px",
+                        height: "28px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 200ms ease",
+                        backdropFilter: "blur(10px)",
+                        marginLeft: "8px",
+                    }}
+                    onMouseEnter={(e) => {
+                        e.target.style.background = "rgba(239, 68, 68, 1)";
+                        const tooltip = e.target.nextSibling;
+                        if (tooltip) tooltip.style.opacity = "1";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.target.style.background = "rgba(239, 68, 68, 0.9)";
+                        const tooltip = e.target.nextSibling;
+                        if (tooltip) tooltip.style.opacity = "0";
                     }}
                 >
-                    {data.isEditing ? "Done" : "Edit"}
+                    <FiTrash2 size={16} />
+                    </button>
+                    <div
+                        style={{
+                            position: "absolute",
+                            bottom: "100%",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            marginBottom: "4px",
+                            background: "rgba(0, 0, 0, 0.8)",
+                            color: "#fff",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "11px",
+                            whiteSpace: "nowrap",
+                            pointerEvents: "none",
+                            opacity: 0,
+                            transition: "opacity 150ms ease",
+                            zIndex: 9999,
+                        }}
+                    >
+                        Delete
+                    </div>
                 </div>
             </div>
         </div>

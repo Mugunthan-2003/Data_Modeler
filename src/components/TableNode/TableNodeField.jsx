@@ -25,8 +25,8 @@ const TableNodeField = ({
     // The layout direction will determine node positioning, not handle positions
     const leftHandleType = "target";  // Always target (input) on the left
     const rightHandleType = "source";  // Always source (output) on the right
-    const leftHandleColor = "#3b82f6";  // Blue for input
-    const rightHandleColor = "#10b981";  // Green for output
+    const leftHandleColor = "#3b82f6"; 
+    const rightHandleColor = "#3b82f6";
 
     return (
         <div

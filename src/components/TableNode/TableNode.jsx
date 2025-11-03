@@ -44,7 +44,7 @@ const TableNode = ({ data }) => {
                 boxShadow:
                     "0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1)",
                 transition: "all 200ms ease",
-                overflow: "hidden",
+                // overflow: "hidden",
             }}
             onMouseEnter={(e) => {
                 e.currentTarget.style.boxShadow =
@@ -58,7 +58,11 @@ const TableNode = ({ data }) => {
             }}
         >
             {/* Header */}
-            <TableNodeHeader data={data} onEditClick={data.onEditClick} />
+            <TableNodeHeader 
+                data={data} 
+                onEditClick={data.onEditClick}
+                onDeleteClick={data.onDeleteTable}
+            />
 
             {/* Field List */}
             <div style={{ padding: "8px 12px" }}>

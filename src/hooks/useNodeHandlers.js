@@ -256,6 +256,25 @@ export const useNodeHandlers = (
         return { nodeId: tableName, position };
     }, [nodes, setNodes, setEditingNode, setEditingLabels, setEditingAliases]);
 
+    const handleDeleteTable = useCallback(
+        (nodeId) => {
+            // Delete all edges connected to this node
+            setEdges((eds) =>
+                eds.filter(
+                    (edge) =>
+                        edge.source !== nodeId &&
+                        edge.target !== nodeId
+                )
+            );
+
+            // Delete the node
+            setNodes((nds) =>
+                nds.filter((node) => node.id !== nodeId)
+            );
+        },
+        [setNodes, setEdges]
+    );
+
     return {
         handleAddField,
         handleUpdateNodeLabel,
@@ -264,6 +283,7 @@ export const useNodeHandlers = (
         handleDeleteField,
         handleUpdateFieldCalculation,
         handleAddNewTable,
+        handleDeleteTable,
     };
 };
 

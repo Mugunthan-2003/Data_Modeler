@@ -121,6 +121,7 @@ export default function App() {
         handleDeleteField,
         handleUpdateFieldCalculation,
         handleAddNewTable,
+        handleDeleteTable,
     } = useNodeHandlers(
         nodes,
         edges,
@@ -191,7 +192,8 @@ export default function App() {
         handleDeleteFieldRef,
         handleLabelChange,
         handleAliasChange,
-        handleEditClick
+        handleEditClick,
+        handleDeleteTable
     );
 
     // Edge filtering
@@ -341,9 +343,6 @@ export default function App() {
         },
         [handleDeleteEdge]
     );
-
-    // Use change handlers from useFlowState directly
-    // onNodesChange and onEdgesChange are already wrapped by useNodesState/useEdgesState
 
     return (
         <div
