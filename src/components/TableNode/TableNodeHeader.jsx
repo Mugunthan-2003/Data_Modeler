@@ -176,9 +176,9 @@ const TableNodeHeader = ({ data, onEditClick, onDeleteClick }) => {
                         onDeleteClick?.();
                     }}
                     style={{
-                        background: "rgba(239, 68, 68, 0.9)",
+                        background: "rgba(239, 68, 68, 0.2)",
                         color: "#fff",
-                        border: "1px solid rgba(255, 255, 255, 0.3)",
+                        border: "1px solid rgba(239, 68, 68, 0.4)",
                         borderRadius: 6,
                         padding: "6px",
                         fontSize: "16px",
@@ -194,12 +194,12 @@ const TableNodeHeader = ({ data, onEditClick, onDeleteClick }) => {
                         marginLeft: "8px",
                     }}
                     onMouseEnter={(e) => {
-                        e.target.style.background = "rgba(239, 68, 68, 1)";
+                        e.target.style.background = "rgba(239, 68, 68, 0.3)";
                         const tooltip = e.target.nextSibling;
                         if (tooltip) tooltip.style.opacity = "1";
                     }}
                     onMouseLeave={(e) => {
-                        e.target.style.background = "rgba(239, 68, 68, 0.9)";
+                        e.target.style.background = "rgba(239, 68, 68, 0.2)";
                         const tooltip = e.target.nextSibling;
                         if (tooltip) tooltip.style.opacity = "0";
                     }}

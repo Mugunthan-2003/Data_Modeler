@@ -29,9 +29,13 @@ const FlowHeader = ({
     onToggleOnlyHighlighted,
     linkDirection,
     onLinkDirectionChange,
+    selectedTableType,
+    onTableTypeChange,
 }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isTableTypeDropdownOpen, setIsTableTypeDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const tableTypeDropdownRef = useRef(null);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -42,16 +46,22 @@ const FlowHeader = ({
             ) {
                 setIsDropdownOpen(false);
             }
+            if (
+                tableTypeDropdownRef.current &&
+                !tableTypeDropdownRef.current.contains(event.target)
+            ) {
+                setIsTableTypeDropdownOpen(false);
+            }
         };
 
-        if (isDropdownOpen) {
+        if (isDropdownOpen || isTableTypeDropdownOpen) {
             document.addEventListener("mousedown", handleClickOutside);
         }
 
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [isDropdownOpen]);
+    }, [isDropdownOpen, isTableTypeDropdownOpen]);
 
     return (
         <div
@@ -129,42 +139,134 @@ const FlowHeader = ({
                     Auto-Arrange
                 </button>
 
-                <button
-                    onClick={onAddNewTable}
+                {/* New Table with Type Dropdown */}
+                <div
+                    ref={tableTypeDropdownRef}
                     style={{
-                        padding: "10px 18px",
-                        background: "rgba(139, 92, 246, 0.15)",
-                        color: "#c4b5fd",
-                        border: "1px solid rgba(139, 92, 246, 0.3)",
-                        borderRadius: 10,
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        fontSize: 14,
-                        transition: "all 200ms ease",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        backdropFilter: "blur(10px)",
-                        boxShadow: "0 2px 8px rgba(139, 92, 246, 0.2)",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.target.style.background = "rgba(139, 92, 246, 0.25)";
-                        e.target.style.borderColor = "rgba(139, 92, 246, 0.5)";
-                        e.target.style.transform = "translateY(-1px)";
-                        e.target.style.boxShadow =
-                            "0 4px 12px rgba(139, 92, 246, 0.3)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.target.style.background = "rgba(139, 92, 246, 0.15)";
-                        e.target.style.borderColor = "rgba(139, 92, 246, 0.3)";
-                        e.target.style.transform = "translateY(0)";
-                        e.target.style.boxShadow =
-                            "0 2px 8px rgba(139, 92, 246, 0.2)";
+                        position: "relative",
                     }}
                 >
-                    <FiPlus size={16} />
-                    New Table
-                </button>
+                    <button
+                        onClick={() => {
+                            setIsTableTypeDropdownOpen(!isTableTypeDropdownOpen);
+                        }}
+                        style={{
+                            padding: "10px 18px",
+                            background: "rgba(139, 92, 246, 0.15)",
+                            color: "#c4b5fd",
+                            border: "1px solid rgba(139, 92, 246, 0.3)",
+                            borderRadius: 10,
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            fontSize: 14,
+                            transition: "all 200ms ease",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            backdropFilter: "blur(10px)",
+                            boxShadow: "0 2px 8px rgba(139, 92, 246, 0.2)",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = "rgba(139, 92, 246, 0.25)";
+                            e.target.style.borderColor = "rgba(139, 92, 246, 0.5)";
+                            e.target.style.transform = "translateY(-1px)";
+                            e.target.style.boxShadow =
+                                "0 4px 12px rgba(139, 92, 246, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = "rgba(139, 92, 246, 0.15)";
+                            e.target.style.borderColor = "rgba(139, 92, 246, 0.3)";
+                            e.target.style.transform = "translateY(0)";
+                            e.target.style.boxShadow =
+                                "0 2px 8px rgba(139, 92, 246, 0.2)";
+                        }}
+                    >
+                        <FiPlus size={16} />
+                        New Table ({selectedTableType})
+                        <FiChevronDown
+                            size={14}
+                            style={{
+                                transform: isTableTypeDropdownOpen
+                                    ? "rotate(180deg)"
+                                    : "rotate(0deg)",
+                                transition: "transform 200ms ease",
+                                marginLeft: 4,
+                            }}
+                        />
+                    </button>
+
+                    {isTableTypeDropdownOpen && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: "100%",
+                                left: 0,
+                                marginTop: 8,
+                                background: "rgba(30, 41, 59, 0.95)",
+                                backdropFilter: "blur(10px)",
+                                border: "1px solid rgba(139, 92, 246, 0.3)",
+                                borderRadius: 10,
+                                padding: 4,
+                                minWidth: 200,
+                                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3)",
+                                zIndex: 1000,
+                            }}
+                        >
+                            {["BASE", "CTE", "VIEW"].map((type) => (
+                                <button
+                                    key={type}
+                                    onClick={() => {
+                                        setIsTableTypeDropdownOpen(false);
+                                        // Close dropdown first, then call with the type
+                                        onAddNewTable(type);
+                                    }}
+                                    style={{
+                                        width: "100%",
+                                        padding: "12px 14px",
+                                        background:
+                                            selectedTableType === type
+                                                ? "rgba(139, 92, 246, 0.2)"
+                                                : "transparent",
+                                        color:
+                                            selectedTableType === type
+                                                ? "#c4b5fd"
+                                                : "#cbd5e1",
+                                        border: "none",
+                                        borderRadius: 8,
+                                        cursor: "pointer",
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        transition: "all 200ms ease",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 10,
+                                        justifyContent: "space-between",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (selectedTableType !== type) {
+                                            e.target.style.background =
+                                                "rgba(139, 92, 246, 0.1)";
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (selectedTableType !== type) {
+                                            e.target.style.background =
+                                                "transparent";
+                                        }
+                                    }}
+                                >
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <FiPlus size={14} />
+                                        <span>New {type} Table</span>
+                                    </div>
+                                    {selectedTableType === type && (
+                                        <FiCheck size={14} />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 <button
                     onClick={onExport}

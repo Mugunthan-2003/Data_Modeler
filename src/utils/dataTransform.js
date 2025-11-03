@@ -1,5 +1,5 @@
 // src/utils/dataTransform.js
-import rawModel from "../grok_output/VendorPerformance.json";
+import rawModel from "../grok_output/AccountsPayableOverview.json";
 
 /**
  * Extract table type (prefix) from table name
