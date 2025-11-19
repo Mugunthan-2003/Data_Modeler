@@ -81,7 +81,9 @@ export function addTablePrefix(entityName, tableType) {
     Object.entries(entity.fields).forEach(([fieldName, field]) => {
       if (field.ref) {
         field.ref.forEach((ref) => {
-          const [sourceEntity, sourceField] = ref.split(".");
+          const lastDot = ref.lastIndexOf(".");
+          const sourceEntity = ref.substring(0, lastDot);
+          const sourceField = ref.substring(lastDot + 1);
           // Use full prefixed entity names for edge endpoints and handles
           edges.push({
             id: `ref-${sourceEntity}.${sourceField}->${entityName}.${fieldName}`,
@@ -100,7 +102,9 @@ export function addTablePrefix(entityName, tableType) {
       // Calculation edges
       if (field.calculation?.ref) {
         field.calculation.ref.forEach((ref) => {
-          const [srcE, srcF] = ref.split(".");
+          const lastDot = ref.lastIndexOf(".");
+          const srcE = ref.substring(0, lastDot);
+          const srcF = ref.substring(lastDot + 1);
           edges.push({
             id: `calc-${srcE}.${srcF}->${entityName}.${fieldName}`,
             ref_type: "calculation",

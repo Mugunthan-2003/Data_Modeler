@@ -48,8 +48,8 @@ const TableNode = ({ data }) => {
                 background: bg,
                 border,
                 borderRadius: 12,
-                minWidth: 300,
-                width: 380,
+                // minWidth: 300,
+                // width: 380,
                 fontFamily: "inherit",
                 boxShadow:
                     "0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1)",
