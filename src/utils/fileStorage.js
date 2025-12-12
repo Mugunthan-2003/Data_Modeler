@@ -95,6 +95,7 @@ export async function selectStorageDirectory() {
         store.put(directoryPath, DIRECTORY_PATH_KEY);
 
         await syncFilesFromDirectory(handle);
+        await syncMergedFilesFromDirectory(handle);
 
         return handle;
     } catch (error) {
@@ -164,6 +165,80 @@ async function syncFilesFromDirectory(directoryHandle) {
         }
     } catch (error) {
         console.error('Error syncing files from directory:', error);
+    }
+}
+
+async function syncMergedFilesFromDirectory(directoryHandle) {
+    try {
+        const database = await openDB();
+        
+        let mergedFolderHandle;
+        try {
+            mergedFolderHandle = await directoryHandle.getDirectoryHandle('merged');
+        } catch (error) {
+            console.log('Merged folder does not exist, skipping sync');
+            return;
+        }
+
+        await new Promise((resolve, reject) => {
+            const transaction = database.transaction([STORE_MERGED], 'readwrite');
+            const store = transaction.objectStore(STORE_MERGED);
+            const clearRequest = store.clear();
+            clearRequest.onsuccess = () => resolve();
+            clearRequest.onerror = () => reject(clearRequest.error);
+        });
+
+        const fileEntries = [];
+        for await (const entry of mergedFolderHandle.values()) {
+            if (entry.kind === 'file' && entry.name.endsWith('.json')) {
+                try {
+                    const fileHandle = await mergedFolderHandle.getFileHandle(entry.name);
+                    const fileObj = await fileHandle.getFile();
+                    const text = await fileObj.text();
+                    const fileData = JSON.parse(text);
+                    
+                    const fileEntry = {
+                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${fileEntries.length}`,
+                        name: entry.name,
+                        sourceFileIds: [],
+                        createdAt: fileObj.lastModified ? new Date(fileObj.lastModified).toISOString() : new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        data: fileData,
+                    };
+                    
+                    fileEntries.push(fileEntry);
+                } catch (error) {
+                    console.error(`Error reading merged file ${entry.name}:`, error);
+                }
+            }
+        }
+
+        if (fileEntries.length > 0) {
+            await new Promise((resolve, reject) => {
+                const transaction = database.transaction([STORE_MERGED], 'readwrite');
+                const store = transaction.objectStore(STORE_MERGED);
+                let completed = 0;
+                let hasError = false;
+
+                for (const fileEntry of fileEntries) {
+                    const addRequest = store.add(fileEntry);
+                    addRequest.onsuccess = () => {
+                        completed++;
+                        if (completed === fileEntries.length && !hasError) {
+                            resolve();
+                        }
+                    };
+                    addRequest.onerror = () => {
+                        if (!hasError) {
+                            hasError = true;
+                            reject(addRequest.error);
+                        }
+                    };
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error syncing merged files from directory:', error);
     }
 }
 
@@ -473,15 +548,35 @@ export async function saveMergedFile(fileName, fileData, sourceFileIds) {
 
 export async function getMergedFile(fileId) {
     try {
-        const database = await openDB();
-        const transaction = database.transaction([STORE_MERGED], 'readonly');
-        const store = transaction.objectStore(STORE_MERGED);
-        const request = store.get(fileId);
+        const mergedFiles = await getAllMergedFiles();
+        const mergedFile = mergedFiles.find(f => f.id === fileId);
+        if (!mergedFile) return null;
 
-        return new Promise((resolve, reject) => {
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-        });
+        const handle = await getDirectoryHandle();
+        if (!handle) {
+            if (mergedFile.data) {
+                return mergedFile;
+            }
+            throw new Error('No storage directory available');
+        }
+
+        try {
+            const mergedFolderHandle = await handle.getDirectoryHandle('merged');
+            const fileHandle = await mergedFolderHandle.getFileHandle(mergedFile.name);
+            const fileObj = await fileHandle.getFile();
+            const text = await fileObj.text();
+            const data = JSON.parse(text);
+
+            return {
+                ...mergedFile,
+                data: data
+            };
+        } catch (error) {
+            if (mergedFile.data) {
+                return mergedFile;
+            }
+            throw error;
+        }
     } catch (error) {
         console.error('Error getting merged file from storage:', error);
         return null;

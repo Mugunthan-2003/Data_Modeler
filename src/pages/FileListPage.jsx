@@ -47,6 +47,7 @@ const FileListPage = () => {
             const path = await getStorageDirectoryPath();
             setDirectoryPath(path || "");
             await loadFiles();
+            await loadMergedFiles();
         } catch (error) {
             if (error.message.includes('not supported')) {
                 alert('File System Access API is not supported in this browser. Please use Chrome, Edge, or Opera.');
