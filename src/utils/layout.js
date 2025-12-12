@@ -4,6 +4,9 @@ import dagre from "dagre";
  * Calculate node dimensions
  */
 const getNodeDimensions = (node) => {
+    if (node.type === "circleNode") {
+        return { width: 120, height: 120 };
+    }
     const fieldRows = node.data.fields?.length ?? 0;
     const headerHeight = 50;
     const fieldListPadding = 16;
