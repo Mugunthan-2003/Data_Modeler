@@ -8,55 +8,62 @@ export const mergedJsonToVisNetwork = (mergedData) => {
 
     const defaultSourceColor = "#cbd5e1";
     const defaultTargetColor = "#86efac";
-    const sourceHighlightColor = "#64748b";
-    const targetHighlightColor = "#16a34a";
 
     sourceEntities.forEach((entityName) => {
-        if (!nodeMap.has(entityName)) {
+        const sourceNodeId = `SOURCE_${entityName}`;
+        if (!nodeMap.has(sourceNodeId)) {
             visNodes.push({
-                id: entityName,
+                id: sourceNodeId,
                 label: entityName,
                 color: defaultSourceColor,
                 font: { color: "#475569", size: 12 },
                 shape: "dot",
                 size: 30,
             });
-            nodeMap.set(entityName, "source");
+            nodeMap.set(sourceNodeId, "source");
+            nodeMap.set(entityName, sourceNodeId);
         }
     });
 
     Object.keys(targetEntities).forEach((targetName) => {
-        if (!nodeMap.has(targetName)) {
+        const targetNodeId = `TARGET_${targetName}`;
+
+        if (!nodeMap.has(targetNodeId)) {
             visNodes.push({
-                id: targetName,
+                id: targetNodeId,
                 label: targetName,
                 color: defaultTargetColor,
                 font: { color: "#166534", size: 12 },
                 shape: "dot",
                 size: 30,
             });
-            nodeMap.set(targetName, "target");
+            nodeMap.set(targetNodeId, "target");
         }
 
         const refs = targetEntities[targetName].ref || [];
         refs.forEach((sourceName) => {
-            if (!nodeMap.has(sourceName)) {
-                visNodes.push({
-                    id: sourceName,
-                    label: sourceName,
-                    color: defaultSourceColor,
-                    font: { color: "#475569", size: 12 },
-                    shape: "dot",
-                    size: 30,
-                });
-                nodeMap.set(sourceName, "source");
+            let sourceNodeId = nodeMap.get(sourceName);
+            if (!sourceNodeId) {
+                sourceNodeId = `SOURCE_${sourceName}`;
+                if (!nodeMap.has(sourceNodeId)) {
+                    visNodes.push({
+                        id: sourceNodeId,
+                        label: sourceName,
+                        color: defaultSourceColor,
+                        font: { color: "#475569", size: 12 },
+                        shape: "dot",
+                        size: 30,
+                    });
+                    nodeMap.set(sourceNodeId, "source");
+                    nodeMap.set(sourceName, sourceNodeId);
+                }
             }
 
-            const edgeId = `${sourceName}-${targetName}`;
+            const edgeId = `${sourceNodeId}-${targetNodeId}`;
             visEdges.push({
                 id: edgeId,
-                from: sourceName,
-                to: targetName,
+                from: sourceNodeId,
+                to: targetNodeId,
                 color: { color: "#94a3b8" },
                 width: 2,
                 arrows: { to: { enabled: false } },
@@ -66,4 +73,3 @@ export const mergedJsonToVisNetwork = (mergedData) => {
 
     return { nodes: visNodes, edges: visEdges, nodeMap };
 };
-

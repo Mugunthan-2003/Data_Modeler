@@ -1,80 +1,50 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Network } from "vis-network";
-import { DataSet } from "vis-data";
 import "vis-network/styles/vis-network.min.css";
 import { mergedJsonToVisNetwork } from "../utils/lineageToVisNetwork";
 import { getMergedFile } from "../utils/fileStorage";
-import { FiArrowLeft, FiLayout } from "react-icons/fi";
+import { FiArrowLeft, FiZoomIn, FiZoomOut, FiMaximize2 } from "react-icons/fi";
 
-const LineageViewer = () => {
+function LineageViewer() {
     const { fileId } = useParams();
     const navigate = useNavigate();
     const networkRef = useRef(null);
     const containerRef = useRef(null);
-    const nodesRef = useRef(new DataSet());
-    const edgesRef = useRef(new DataSet());
-    const loadedFileIdRef = useRef(null);
+    const minimapRef = useRef(null);
+    const minimapNetworkRef = useRef(null);
 
-    const defaultSourceColor = "#cbd5e1";
-    const defaultTargetColor = "#86efac";
-    const sourceHighlightColor = "#64748b";
-    const targetHighlightColor = "#16a34a";
-    const edgeHighlightColor = "#3b82f6";
+    const handleBack = useCallback(() => {
+        navigate("/");
+    }, [navigate]);
 
-    const resetHighlights = useCallback(() => {
-        nodesRef.current.forEach((node) => {
-            const nodeType = node.nodeType || "source";
-            nodesRef.current.update({
-                id: node.id,
-                color: nodeType === "source" ? defaultSourceColor : defaultTargetColor,
+    const handleZoomIn = useCallback(() => {
+        if (networkRef.current) {
+            const currentZoom = networkRef.current.getScale();
+            networkRef.current.moveTo({
+                scale: Math.min(currentZoom * 1.2, 4),
+                animation: {
+                    duration: 200,
+                    easingFunction: "easeInOutQuad",
+                },
             });
-        });
-        edgesRef.current.forEach((edge) => {
-            edgesRef.current.update({
-                id: edge.id,
-                color: { color: "#94a3b8" },
-                width: 2,
-            });
-        });
+        }
     }, []);
 
-    const highlightSelected = useCallback((nodeId) => {
-        resetHighlights();
-
-        const node = nodesRef.current.get(nodeId);
-        if (!node) return;
-
-        const nodeType = node.nodeType || "source";
-        nodesRef.current.update({
-            id: nodeId,
-            color: nodeType === "source" ? sourceHighlightColor : targetHighlightColor,
-        });
-
-        const connectedEdges = edgesRef.current.get({
-            filter: (edge) => edge.from === nodeId || edge.to === nodeId,
-        });
-
-        connectedEdges.forEach((edge) => {
-            edgesRef.current.update({
-                id: edge.id,
-                color: { color: edgeHighlightColor },
-                width: 3,
+    const handleZoomOut = useCallback(() => {
+        if (networkRef.current) {
+            const currentZoom = networkRef.current.getScale();
+            networkRef.current.moveTo({
+                scale: Math.max(currentZoom / 1.2, 0.1),
+                animation: {
+                    duration: 200,
+                    easingFunction: "easeInOutQuad",
+                },
             });
+        }
+    }, []);
 
-            const connectedNodeId = edge.from === nodeId ? edge.to : edge.from;
-            const connectedNode = nodesRef.current.get(connectedNodeId);
-            if (connectedNode) {
-                const connectedNodeType = connectedNode.nodeType || "source";
-                nodesRef.current.update({
-                    id: connectedNodeId,
-                    color: connectedNodeType === "source" ? sourceHighlightColor : targetHighlightColor,
-                });
-            }
-        });
-    }, [resetHighlights]);
-
-    const onLayout = useCallback(() => {
+    const handleFitView = useCallback(() => {
         if (networkRef.current) {
             networkRef.current.fit({
                 animation: {
@@ -85,151 +55,264 @@ const LineageViewer = () => {
         }
     }, []);
 
-    const handleBack = useCallback(() => {
-        navigate("/");
-    }, [navigate]);
-
     useEffect(() => {
-        if (!containerRef.current) return;
+        const loadAndRender = async () => {
+            if (!containerRef.current) return;
 
-        const options = {
-            physics: {
-                enabled: true,
-                barnesHut: {
-                    theta: 0.2,
-                    gravitationalConstant: -30000,
-                    centralGravity: 0.2,
-                    springLength: 250,
-                    springConstant: 0.3,
-                    damping: 0.1,
-                    avoidOverlap: 0,
-                },
-                stabilization: {
-                    enabled: true,
-                    iterations: 1000,
-                    updateInterval: 25,
-                    onlyDynamicEdges: false,
-                    fit: true,
-                },
-                adaptiveTimestep: true,
-            },
-            nodes: {
-                shape: "dot",
-                shadow: {
-                    enabled: true,
-                    color: "rgba(0,0,0,0.3)",
-                    size: 5,
-                    x: -5,
-                    y: 5,
-                },
-                font: {
-                    face: "arial",
-                    align: "center",
-                },
-            },
-            edges: {
-                color: { color: "#94a3b8" },
-                width: 2,
-                smooth: {
-                    enabled: true,
-                    type: "dynamic",
-                },
-                shadow: {
-                    enabled: true,
-                    color: "rgba(0,0,0,0.3)",
-                    size: 7,
-                    x: -5,
-                    y: 5,
-                },
-            },
-            interaction: {
-                dragNodes: true,
-                selectable: true,
-                hover: true,
-                tooltipDelay: 10,
-            },
-            layout: {
-                improvedLayout: true,
-            },
-        };
+            let nodes = [];
+            let edges = [];
 
-        const data = {
-            nodes: nodesRef.current,
-            edges: edgesRef.current,
-        };
-
-        networkRef.current = new Network(containerRef.current, data, options);
-
-        networkRef.current.on("click", (params) => {
-            if (params.nodes.length > 0) {
-                const nodeId = params.nodes[0];
-                highlightSelected(nodeId);
-            } else {
-                resetHighlights();
-            }
-        });
-
-        networkRef.current.on("stabilizationEnd", () => {
-            if (networkRef.current) {
-                networkRef.current.fit({
-                    animation: {
-                        duration: 300,
-                        easingFunction: "easeInOutQuad",
-                    },
-                });
-            }
-        });
-
-        return () => {
-            if (networkRef.current) {
-                networkRef.current.destroy();
-                networkRef.current = null;
-            }
-        };
-    }, [highlightSelected, resetHighlights]);
-
-    useEffect(() => {
-        if (fileId) {
-            if (loadedFileIdRef.current === fileId) {
-                return;
-            }
-            loadedFileIdRef.current = null;
-            const loadFile = async () => {
+            if (fileId) {
                 const mergedFile = await getMergedFile(fileId);
                 if (mergedFile && mergedFile.data) {
                     try {
-                        const { nodes: visNodes, edges: visEdges, nodeMap } = mergedJsonToVisNetwork(mergedFile.data);
-
-                        visNodes.forEach((node) => {
-                            node.nodeType = nodeMap.get(node.id) || "source";
-                        });
-
-                        nodesRef.current.clear();
-                        edgesRef.current.clear();
-                        nodesRef.current.add(visNodes);
-                        edgesRef.current.add(visEdges);
-
-                        loadedFileIdRef.current = fileId;
-
-                        if (networkRef.current) {
-                            networkRef.current.fit({
-                                animation: {
-                                    duration: 300,
-                                    easingFunction: "easeInOutQuad",
-                                },
-                            });
-                        }
+                        const { nodes: visNodes, edges: visEdges } =
+                            mergedJsonToVisNetwork(mergedFile.data);
+                        nodes = visNodes;
+                        edges = visEdges;
                     } catch (error) {
                         console.error("Error loading merged file data:", error);
-                        alert("Error loading file. Please try again.");
                         navigate("/");
+                        return;
                     }
                 } else {
                     navigate("/");
+                    return;
+                }
+            }
+
+            const data = {
+                nodes: nodes,
+                edges: edges,
+            };
+
+            const options = {
+                nodes: {
+                    shape: "dot",
+                    size: 30,
+                    font: {
+                        size: 14,
+                        color: "#000000",
+                    },
+                    borderWidth: 2,
+                },
+                edges: {
+                    width: 2,
+                    color: { color: "#848484" },
+                    smooth: {
+                        type: "continuous",
+                    },
+                },
+                physics: {
+                    enabled: true,
+                    solver: "forceAtlas2Based",
+                    forceAtlas2Based: {
+                        gravitationalConstant: -100,
+                        centralGravity: 0.01,
+                        springLength: 150,
+                        springConstant: 0.1,
+                        damping: 0.8,
+                        avoidOverlap: 1,
+                    },
+                    stabilization: {
+                        enabled: true,
+                        iterations: 1000,
+                        updateInterval: 25,
+                    },
+                },
+                layout: {
+                    hierarchical: {
+                        enabled: false,
+                    },
+                },
+                interaction: {
+                    zoomView: true,
+                    dragView: true,
+                },
+                configure: {
+                    enabled: false,
+                },
+            };
+
+            if (containerRef.current) {
+                networkRef.current = new Network(
+                    containerRef.current,
+                    data,
+                    options
+                );
+
+                const originalNodes = JSON.parse(JSON.stringify(nodes));
+                const originalEdges = JSON.parse(JSON.stringify(edges));
+
+                const resetHighlighting = () => {
+                    networkRef.current.setData({
+                        nodes: JSON.parse(JSON.stringify(originalNodes)),
+                        edges: JSON.parse(JSON.stringify(originalEdges)),
+                    });
+                };
+
+                const highlightConnected = (nodeId) => {
+                    const isTarget = nodeId.startsWith("TARGET_");
+                    const isSource = nodeId.startsWith("SOURCE_");
+
+                    if (!isTarget && !isSource) return;
+
+                    const connectedNodeIds = new Set();
+                    const connectedEdgeIds = new Set();
+
+                    if (isTarget) {
+                        originalEdges.forEach((edge) => {
+                            if (edge.to === nodeId) {
+                                connectedNodeIds.add(edge.from);
+                                connectedEdgeIds.add(edge.id);
+                            }
+                        });
+                    } else if (isSource) {
+                        originalEdges.forEach((edge) => {
+                            if (edge.from === nodeId) {
+                                connectedNodeIds.add(edge.to);
+                                connectedEdgeIds.add(edge.id);
+                            }
+                        });
+                    }
+
+                    connectedNodeIds.add(nodeId);
+
+                    const updatedNodes = originalNodes.map((node) => {
+                        if (connectedNodeIds.has(node.id)) {
+                            const originalColor =
+                                typeof node.color === "string"
+                                    ? node.color
+                                    : node.color?.background || node.color;
+                            return {
+                                ...node,
+                                color: {
+                                    background: originalColor,
+                                    border: "#64748b",
+                                },
+                                borderWidth: 4,
+                            };
+                        }
+                        return { ...node };
+                    });
+
+                    const updatedEdges = originalEdges.map((edge) => {
+                        if (connectedEdgeIds.has(edge.id)) {
+                            return {
+                                ...edge,
+                                color: { color: "#64748b" },
+                                width: 3,
+                            };
+                        }
+                        return { ...edge };
+                    });
+
+                    networkRef.current.setData({
+                        nodes: updatedNodes,
+                        edges: updatedEdges,
+                    });
+                };
+
+                networkRef.current.on("click", (params) => {
+                    if (params.nodes.length > 0) {
+                        const clickedNodeId = params.nodes[0];
+                        highlightConnected(clickedNodeId);
+                    } else {
+                        resetHighlighting();
+                    }
+                });
+
+                const updateMinimap = () => {
+                    if (
+                        minimapRef.current &&
+                        networkRef.current &&
+                        nodes.length > 0
+                    ) {
+                        if (minimapNetworkRef.current) {
+                            minimapNetworkRef.current.destroy();
+                        }
+
+                        const positions = networkRef.current.getPositions();
+                        const nodesWithPositions = nodes.map((node) => ({
+                            ...node,
+                            x: positions[node.id]?.x,
+                            y: positions[node.id]?.y,
+                            fixed: true,
+                        }));
+
+                        const minimapData = {
+                            nodes: nodesWithPositions,
+                            edges: edges,
+                        };
+
+                        const minimapOptions = {
+                            nodes: {
+                                shape: "dot",
+                                size: 8,
+                                font: {
+                                    size: 0,
+                                    color: "#000000",
+                                },
+                                borderWidth: 1,
+                            },
+                            edges: {
+                                width: 1,
+                                color: { color: "#848484" },
+                                smooth: {
+                                    type: "continuous",
+                                },
+                            },
+                            physics: {
+                                enabled: false,
+                            },
+                            interaction: {
+                                zoomView: false,
+                                dragView: false,
+                                selectConnectedEdges: false,
+                                dragNodes: false,
+                            },
+                        };
+
+                        minimapNetworkRef.current = new Network(
+                            minimapRef.current,
+                            minimapData,
+                            minimapOptions
+                        );
+
+                        setTimeout(() => {
+                            if (minimapNetworkRef.current) {
+                                minimapNetworkRef.current.fit({
+                                    animation: false,
+                                    padding: 15,
+                                });
+                            }
+                        }, 200);
+                    }
+                };
+
+                networkRef.current.once("stabilizationIterationsDone", () => {
+                    updateMinimap();
+                    if (networkRef.current) {
+                        networkRef.current.setOptions({ physics: false });
+                    }
+                });
+
+                networkRef.current.on("stabilizationEnd", () => {
+                    updateMinimap();
+                });
+            }
+
+            return () => {
+                if (networkRef.current) {
+                    networkRef.current.destroy();
+                }
+                if (minimapNetworkRef.current) {
+                    minimapNetworkRef.current.destroy();
                 }
             };
-            loadFile();
-        }
+        };
+
+        loadAndRender();
     }, [fileId, navigate]);
 
     return (
@@ -246,12 +329,14 @@ const LineageViewer = () => {
             <div
                 style={{
                     padding: "16px 24px",
-                    background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+                    background:
+                        "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
                     borderBottom: "2px solid rgba(148, 163, 184, 0.2)",
                     display: "flex",
                     gap: 12,
                     alignItems: "center",
-                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2)",
+                    boxShadow:
+                        "0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2)",
                     backdropFilter: "blur(10px)",
                     position: "relative",
                     zIndex: 100,
@@ -264,7 +349,8 @@ const LineageViewer = () => {
                         left: 0,
                         right: 0,
                         height: "2px",
-                        background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)",
+                        background:
+                            "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)",
                         opacity: 0.8,
                     }}
                 />
@@ -295,67 +381,183 @@ const LineageViewer = () => {
                             backdropFilter: "blur(10px)",
                         }}
                         onMouseEnter={(e) => {
-                            e.target.style.background = "rgba(148, 163, 184, 0.25)";
-                            e.target.style.borderColor = "rgba(148, 163, 184, 0.5)";
+                            e.target.style.background =
+                                "rgba(148, 163, 184, 0.25)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.5)";
                             e.target.style.transform = "translateY(-1px)";
                         }}
                         onMouseLeave={(e) => {
-                            e.target.style.background = "rgba(148, 163, 184, 0.15)";
-                            e.target.style.borderColor = "rgba(148, 163, 184, 0.3)";
+                            e.target.style.background =
+                                "rgba(148, 163, 184, 0.15)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.3)";
                             e.target.style.transform = "translateY(0)";
                         }}
                     >
                         <FiArrowLeft size={16} />
                         Back
                     </button>
-                    <button
-                        onClick={onLayout}
-                        style={{
-                            padding: "10px 18px",
-                            background: "rgba(59, 130, 246, 0.15)",
-                            color: "#e2e8f0",
-                            border: "1px solid rgba(59, 130, 246, 0.3)",
-                            borderRadius: 10,
-                            cursor: "pointer",
-                            fontWeight: 600,
-                            fontSize: 14,
-                            transition: "all 200ms ease",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            backdropFilter: "blur(10px)",
-                            boxShadow: "0 2px 8px rgba(59, 130, 246, 0.2)",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.target.style.background = "rgba(59, 130, 246, 0.25)";
-                            e.target.style.borderColor = "rgba(59, 130, 246, 0.5)";
-                            e.target.style.transform = "translateY(-1px)";
-                            e.target.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.3)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.target.style.background = "rgba(59, 130, 246, 0.15)";
-                            e.target.style.borderColor = "rgba(59, 130, 246, 0.3)";
-                            e.target.style.transform = "translateY(0)";
-                            e.target.style.boxShadow = "0 2px 8px rgba(59, 130, 246, 0.2)";
-                        }}
-                    >
-                        <FiLayout size={16} />
-                        Auto-Arrange
-                    </button>
                 </div>
             </div>
-
             <div
-                ref={containerRef}
                 style={{
                     flex: 1,
                     width: "100%",
                     height: "100%",
-                    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                    position: "relative",
+                    background:
+                        "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
                 }}
-            />
+            >
+                <div
+                    ref={containerRef}
+                    style={{
+                        width: "100%",
+                        height: "100%",
+                    }}
+                />
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: 80,
+                        left: 20,
+                        width: 200,
+                        height: 150,
+                        background: "rgba(30, 41, 59, 0.9)",
+                        border: "1px solid rgba(148, 163, 184, 0.3)",
+                        borderRadius: 8,
+                        backdropFilter: "blur(10px)",
+                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                        zIndex: 10,
+                        overflow: "hidden",
+                        padding: 8,
+                        boxSizing: "border-box",
+                    }}
+                >
+                    <div
+                        ref={minimapRef}
+                        style={{
+                            width: "100%",
+                            height: "100%",
+                            position: "relative",
+                        }}
+                    />
+                </div>
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: 80,
+                        right: 20,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                        zIndex: 100,
+                    }}
+                >
+                    <button
+                        onClick={handleZoomIn}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            background: "rgba(30, 41, 59, 0.9)",
+                            color: "#cbd5e1",
+                            border: "1px solid rgba(148, 163, 184, 0.3)",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backdropFilter: "blur(10px)",
+                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = "rgba(30, 41, 59, 1)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.5)";
+                            e.target.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = "rgba(30, 41, 59, 0.9)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.3)";
+                            e.target.style.transform = "scale(1)";
+                        }}
+                        title="Zoom In"
+                    >
+                        <FiZoomIn size={20} />
+                    </button>
+                    <button
+                        onClick={handleZoomOut}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            background: "rgba(30, 41, 59, 0.9)",
+                            color: "#cbd5e1",
+                            border: "1px solid rgba(148, 163, 184, 0.3)",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backdropFilter: "blur(10px)",
+                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = "rgba(30, 41, 59, 1)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.5)";
+                            e.target.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = "rgba(30, 41, 59, 0.9)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.3)";
+                            e.target.style.transform = "scale(1)";
+                        }}
+                        title="Zoom Out"
+                    >
+                        <FiZoomOut size={20} />
+                    </button>
+                    <button
+                        onClick={handleFitView}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            background: "rgba(30, 41, 59, 0.9)",
+                            color: "#cbd5e1",
+                            border: "1px solid rgba(148, 163, 184, 0.3)",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backdropFilter: "blur(10px)",
+                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = "rgba(30, 41, 59, 1)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.5)";
+                            e.target.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = "rgba(30, 41, 59, 0.9)";
+                            e.target.style.borderColor =
+                                "rgba(148, 163, 184, 0.3)";
+                            e.target.style.transform = "scale(1)";
+                        }}
+                        title="Fit View"
+                    >
+                        <FiMaximize2 size={18} />
+                    </button>
+                </div>
+            </div>
         </div>
     );
-};
+}
 
 export default LineageViewer;
