@@ -431,7 +431,7 @@ function LineageViewer() {
                 style={{
                     flex: 1,
                     width: "100%",
-                    height: "100%",
+                    height: "90%",
                     position: "relative",
                     background:
                         "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
@@ -447,7 +447,7 @@ function LineageViewer() {
                 <div
                     style={{
                         position: "absolute",
-                        bottom: 80,
+                        bottom: 50,
                         left: 20,
                         width: 200,
                         height: 150,
@@ -474,7 +474,7 @@ function LineageViewer() {
                 <div
                     style={{
                         position: "absolute",
-                        bottom: 80,
+                        bottom: 50,
                         right: 20,
                         display: "flex",
                         flexDirection: "column",
