@@ -143,12 +143,25 @@ function LineageViewer() {
 
                 const originalNodes = JSON.parse(JSON.stringify(nodes));
                 const originalEdges = JSON.parse(JSON.stringify(edges));
+                let physicsDisabled = false;
 
                 const resetHighlighting = () => {
+                    const positions = networkRef.current.getPositions();
+                    const nodesWithPositions = originalNodes.map((node) => ({
+                        ...node,
+                        x: positions[node.id]?.x,
+                        y: positions[node.id]?.y,
+                        fixed: true,
+                    }));
+
                     networkRef.current.setData({
-                        nodes: JSON.parse(JSON.stringify(originalNodes)),
+                        nodes: nodesWithPositions,
                         edges: JSON.parse(JSON.stringify(originalEdges)),
                     });
+
+                    if (physicsDisabled) {
+                        networkRef.current.setOptions({ physics: false });
+                    }
                 };
 
                 const highlightConnected = (nodeId) => {
@@ -178,14 +191,23 @@ function LineageViewer() {
 
                     connectedNodeIds.add(nodeId);
 
+                    const positions = networkRef.current.getPositions();
+
                     const updatedNodes = originalNodes.map((node) => {
+                        const nodeWithPosition = {
+                            ...node,
+                            x: positions[node.id]?.x,
+                            y: positions[node.id]?.y,
+                            // fixed: true,
+                        };
+
                         if (connectedNodeIds.has(node.id)) {
                             const originalColor =
                                 typeof node.color === "string"
                                     ? node.color
                                     : node.color?.background || node.color;
                             return {
-                                ...node,
+                                ...nodeWithPosition,
                                 color: {
                                     background: originalColor,
                                     border: "#64748b",
@@ -193,7 +215,7 @@ function LineageViewer() {
                                 borderWidth: 4,
                             };
                         }
-                        return { ...node };
+                        return nodeWithPosition;
                     });
 
                     const updatedEdges = originalEdges.map((edge) => {
@@ -211,6 +233,10 @@ function LineageViewer() {
                         nodes: updatedNodes,
                         edges: updatedEdges,
                     });
+
+                    if (physicsDisabled) {
+                        networkRef.current.setOptions({ physics: false });
+                    }
                 };
 
                 networkRef.current.on("click", (params) => {
@@ -294,6 +320,7 @@ function LineageViewer() {
                     updateMinimap();
                     if (networkRef.current) {
                         networkRef.current.setOptions({ physics: false });
+                        physicsDisabled = true;
                     }
                 });
 
@@ -313,7 +340,7 @@ function LineageViewer() {
         };
 
         loadAndRender();
-    }, [fileId, navigate]);
+    }, [fileId]);
 
     return (
         <div
