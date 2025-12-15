@@ -144,6 +144,8 @@ function LineageViewer() {
                 const originalNodes = JSON.parse(JSON.stringify(nodes));
                 const originalEdges = JSON.parse(JSON.stringify(edges));
                 let physicsDisabled = false;
+                let currentNodes = JSON.parse(JSON.stringify(nodes));
+                let currentEdges = JSON.parse(JSON.stringify(edges));
 
                 const resetHighlighting = () => {
                     const positions = networkRef.current.getPositions();
@@ -154,6 +156,9 @@ function LineageViewer() {
                         fixed: true,
                     }));
 
+                    currentNodes = JSON.parse(JSON.stringify(nodesWithPositions));
+                    currentEdges = JSON.parse(JSON.stringify(originalEdges));
+
                     networkRef.current.setData({
                         nodes: nodesWithPositions,
                         edges: JSON.parse(JSON.stringify(originalEdges)),
@@ -162,6 +167,10 @@ function LineageViewer() {
                     if (physicsDisabled) {
                         networkRef.current.setOptions({ physics: false });
                     }
+
+                    setTimeout(() => {
+                        updateMinimap();
+                    }, 50);
                 };
 
                 const highlightConnected = (nodeId) => {
@@ -229,6 +238,9 @@ function LineageViewer() {
                         return { ...edge };
                     });
 
+                    currentNodes = JSON.parse(JSON.stringify(updatedNodes));
+                    currentEdges = JSON.parse(JSON.stringify(updatedEdges));
+
                     networkRef.current.setData({
                         nodes: updatedNodes,
                         edges: updatedEdges,
@@ -237,6 +249,10 @@ function LineageViewer() {
                     if (physicsDisabled) {
                         networkRef.current.setOptions({ physics: false });
                     }
+
+                    setTimeout(() => {
+                        updateMinimap();
+                    }, 50);
                 };
 
                 networkRef.current.on("click", (params) => {
@@ -252,14 +268,14 @@ function LineageViewer() {
                     if (
                         minimapRef.current &&
                         networkRef.current &&
-                        nodes.length > 0
+                        currentNodes.length > 0
                     ) {
                         if (minimapNetworkRef.current) {
                             minimapNetworkRef.current.destroy();
                         }
 
                         const positions = networkRef.current.getPositions();
-                        const nodesWithPositions = nodes.map((node) => ({
+                        const nodesWithPositions = currentNodes.map((node) => ({
                             ...node,
                             x: positions[node.id]?.x,
                             y: positions[node.id]?.y,
@@ -268,7 +284,7 @@ function LineageViewer() {
 
                         const minimapData = {
                             nodes: nodesWithPositions,
-                            edges: edges,
+                            edges: currentEdges,
                         };
 
                         const minimapOptions = {
