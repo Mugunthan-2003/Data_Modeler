@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiUpload, FiFile, FiTrash2, FiFolder, FiSearch, FiX, FiEdit2 } from "react-icons/fi";
+import { FiUpload, FiFile, FiTrash2, FiFolder, FiSearch, FiX, FiEdit2, FiPackage } from "react-icons/fi";
 import { getAllFiles, saveFile, deleteFile, selectStorageDirectory, getStorageDirectory, getStorageDirectoryPath, getAllMergedFiles, saveMergedFile, deleteMergedFile, getFile, renameFile, renameMergedFile } from "../utils/fileStorage";
 
 const FileListPage = () => {
@@ -12,6 +12,8 @@ const FileListPage = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedFiles, setSelectedFiles] = useState(new Set());
     const [activeTab, setActiveTab] = useState("individual");
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [distinctTables, setDistinctTables] = useState([]);
     const fileInputRef = useRef(null);
     const navigate = useNavigate();
 
@@ -301,6 +303,49 @@ const FileListPage = () => {
         await loadMergedFiles();
         setSelectedFiles(new Set());
         setActiveTab("merged");
+    };
+
+    const handleNewDataProduct = async () => {
+        if (selectedFiles.size === 0) {
+            alert("Please select at least 1 file.");
+            return;
+        }
+
+        const selectedFileList = files.filter(f => selectedFiles.has(f.id));
+        const allEntities = {};
+        const allBaseTables = new Set();
+        const allViewTables = new Set();
+
+        for (const file of selectedFileList) {
+            try {
+                const fileData = await getFile(file.id);
+                if (fileData && fileData.data && fileData.data.entities) {
+                    Object.assign(allEntities, fileData.data.entities);
+                }
+            } catch (error) {
+                console.error(`Error reading file ${file.name}:`, error);
+            }
+        }
+
+        // Extract distinct BASE and VIEW tables (exclude CTEs)
+        for (const entityName in allEntities) {
+            if (entityName.startsWith('BASE_')) {
+                const baseName = entityName.replace('BASE_', '');
+                allBaseTables.add(baseName);
+            } else if (entityName.startsWith('VIEW_')) {
+                const viewName = entityName.replace('VIEW_', '');
+                allViewTables.add(viewName);
+            }
+            // Skip CTE_ entities - they won't be listed
+        }
+
+        const distinctData = {
+            baseTables: Array.from(allBaseTables).sort(),
+            viewTables: Array.from(allViewTables).sort()
+        };
+
+        setDistinctTables([...distinctData.baseTables, ...distinctData.viewTables]);
+        setDrawerOpen(true);
     };
 
     const filteredFiles = files.filter((file) =>
@@ -721,6 +766,32 @@ const FileListPage = () => {
                                                             Merge Selected
                                                         </button>
                                                         <button
+                                                            onClick={handleNewDataProduct}
+                                                            style={{
+                                                                padding: "6px 12px",
+                                                                background: "#10b981",
+                                                                color: "white",
+                                                                border: "none",
+                                                                borderRadius: "6px",
+                                                                cursor: "pointer",
+                                                                fontSize: "13px",
+                                                                fontWeight: 500,
+                                                                transition: "all 200ms ease",
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                gap: "6px",
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.target.style.background = "#059669";
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.target.style.background = "#10b981";
+                                                            }}
+                                                        >
+                                                            <FiPackage size={14} />
+                                                            New Data Product
+                                                        </button>
+                                                        <button
                                                             onClick={handleDeleteSelected}
                                                             style={{
                                                                 padding: "6px 12px",
@@ -1068,6 +1139,214 @@ const FileListPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Side Drawer for Distinct Tables */}
+            {drawerOpen && (
+                <>
+                    <div
+                        onClick={() => setDrawerOpen(false)}
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: "rgba(0, 0, 0, 0.5)",
+                            zIndex: 999,
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            right: 0,
+                            bottom: 0,
+                            width: "500px",
+                            background: "white",
+                            boxShadow: "-4px 0 12px rgba(0, 0, 0, 0.15)",
+                            zIndex: 1000,
+                            display: "flex",
+                            flexDirection: "column",
+                        }}
+                    >
+                        <div
+                            style={{
+                                padding: "24px",
+                                borderBottom: "1px solid #e5e7eb",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                            }}
+                        >
+                            <div>
+                                <h2
+                                    style={{
+                                        fontSize: "20px",
+                                        fontWeight: 600,
+                                        color: "#1f2937",
+                                        marginBottom: "4px",
+                                    }}
+                                >
+                                    Distinct Tables
+                                </h2>
+                                <p
+                                    style={{
+                                        fontSize: "14px",
+                                        color: "#6b7280",
+                                    }}
+                                >
+                                    {distinctTables.length} table(s) found from {selectedFiles.size} selected file(s)
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setDrawerOpen(false)}
+                                style={{
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    padding: "8px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderRadius: "6px",
+                                    transition: "all 200ms ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.target.style.background = "#f3f4f6";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.background = "transparent";
+                                }}
+                            >
+                                <FiX size={24} color="#6b7280" />
+                            </button>
+                        </div>
+                        <div
+                            style={{
+                                flex: 1,
+                                overflowY: "auto",
+                                padding: "16px",
+                            }}
+                        >
+                            {distinctTables.length === 0 ? (
+                                <div
+                                    style={{
+                                        padding: "60px 20px",
+                                        textAlign: "center",
+                                        color: "#9ca3af",
+                                    }}
+                                >
+                                    <FiPackage size={48} style={{ marginBottom: "16px", opacity: 0.5 }} />
+                                    <div style={{ fontSize: "16px", fontWeight: 500 }}>
+                                        No tables found
+                                    </div>
+                                    <div style={{ fontSize: "14px", marginTop: "8px" }}>
+                                        The selected files don't contain any BASE tables
+                                    </div>
+                                </div>
+                            ) : (
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "8px",
+                                    }}
+                                >
+                                    {distinctTables.map((table, index) => (
+                                        <div
+                                            key={index}
+                                            style={{
+                                                padding: "16px",
+                                                background: "#f9fafb",
+                                                border: "1px solid #e5e7eb",
+                                                borderRadius: "8px",
+                                                fontSize: "14px",
+                                                fontWeight: 500,
+                                                color: "#1f2937",
+                                                transition: "all 200ms ease",
+                                                cursor: "pointer",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = "#eff6ff";
+                                                e.currentTarget.style.borderColor = "#3b82f6";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = "#f9fafb";
+                                                e.currentTarget.style.borderColor = "#e5e7eb";
+                                            }}
+                                        >
+                                            {table}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div
+                            style={{
+                                padding: "20px 24px",
+                                borderTop: "1px solid #e5e7eb",
+                                display: "flex",
+                                gap: "12px",
+                            }}
+                        >
+                            <button
+                                onClick={() => setDrawerOpen(false)}
+                                style={{
+                                    flex: 1,
+                                    padding: "10px 16px",
+                                    background: "transparent",
+                                    color: "#6b7280",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                    fontSize: "14px",
+                                    transition: "all 200ms ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.target.style.background = "#f3f4f6";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.background = "transparent";
+                                }}
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={() => {
+                                    navigate("/data-product", {
+                                        state: {
+                                            distinctTables: distinctTables,
+                                            selectedFileIds: Array.from(selectedFiles)
+                                        }
+                                    });
+                                    setDrawerOpen(false);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: "10px 16px",
+                                    background: "#10b981",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                    fontSize: "14px",
+                                    transition: "all 200ms ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.target.style.background = "#059669";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.background = "#10b981";
+                                }}
+                            >
+                                Create Product
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };
