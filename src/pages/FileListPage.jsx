@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiUpload, FiFile, FiTrash2, FiFolder, FiSearch, FiX, FiEdit2, FiPackage } from "react-icons/fi";
-import { getAllFiles, saveFile, deleteFile, selectStorageDirectory, getStorageDirectory, getStorageDirectoryPath, getAllMergedFiles, saveMergedFile, deleteMergedFile, getFile, renameFile, renameMergedFile } from "../utils/fileStorage";
+import { getAllFiles, saveFile, deleteFile, selectStorageDirectory, getStorageDirectory, getStorageDirectoryPath, getAllMergedFiles, saveMergedFile, deleteMergedFile, getFile, renameFile, renameMergedFile, getAllDataProducts, deleteDataProduct, renameDataProduct, getDataProduct } from "../utils/fileStorage";
 
 const FileListPage = () => {
     const [files, setFiles] = useState([]);
     const [mergedFiles, setMergedFiles] = useState([]);
+    const [dataProducts, setDataProducts] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [directorySelected, setDirectorySelected] = useState(false);
     const [directoryPath, setDirectoryPath] = useState("");
@@ -21,6 +22,7 @@ const FileListPage = () => {
         checkDirectory();
         loadFiles();
         loadMergedFiles();
+        loadDataProducts();
     }, []);
 
     const checkDirectory = async () => {
@@ -40,6 +42,11 @@ const FileListPage = () => {
     const loadMergedFiles = async () => {
         const storedMergedFiles = await getAllMergedFiles();
         setMergedFiles(storedMergedFiles);
+    };
+
+    const loadDataProducts = async () => {
+        const storedDataProducts = await getAllDataProducts();
+        setDataProducts(storedDataProducts);
     };
 
     const handleSelectDirectory = async () => {
@@ -181,6 +188,54 @@ const FileListPage = () => {
         const success = await renameMergedFile(fileId, newName);
         if (success) {
             await loadMergedFiles();
+        } else {
+            alert("Failed to rename file. Please try again.");
+        }
+    };
+
+    const handleDataProductClick = async (dataProduct) => {
+        try {
+            // Load the full data product data
+            const fullData = await getDataProduct(dataProduct.id);
+            if (fullData) {
+                navigate('/data-product', { 
+                    state: { 
+                        dataProductData: fullData.data,
+                        dataProductId: dataProduct.id,
+                        dataProductName: dataProduct.name
+                    } 
+                });
+            }
+        } catch (error) {
+            console.error('Error loading data product:', error);
+            alert('Failed to load data product');
+        }
+    };
+
+    const handleDeleteDataProduct = async (e, fileId) => {
+        e.stopPropagation();
+        if (window.confirm("Are you sure you want to delete this data product?")) {
+            await deleteDataProduct(fileId);
+            await loadDataProducts();
+        }
+    };
+
+    const handleRenameDataProduct = async (e, fileId) => {
+        e.stopPropagation();
+        const dataProduct = dataProducts.find(f => f.id === fileId);
+        if (!dataProduct) return;
+
+        const newName = window.prompt("Enter new file name:", dataProduct.name);
+        if (!newName || newName === dataProduct.name) return;
+
+        if (!newName.endsWith('.json')) {
+            alert("File name must end with .json");
+            return;
+        }
+
+        const success = await renameDataProduct(fileId, newName);
+        if (success) {
+            await loadDataProducts();
         } else {
             alert("Failed to rename file. Please try again.");
         }
@@ -353,6 +408,10 @@ const FileListPage = () => {
     );
 
     const filteredMergedFiles = mergedFiles.filter((file) =>
+        file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const filteredDataProducts = dataProducts.filter((file) =>
         file.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -704,6 +763,23 @@ const FileListPage = () => {
                                         }}
                                     >
                                         Merged ({filteredMergedFiles.length})
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab("dataProducts")}
+                                        style={{
+                                            flex: 1,
+                                            padding: "12px 20px",
+                                            background: activeTab === "dataProducts" ? "white" : "transparent",
+                                            border: "none",
+                                            borderBottom: activeTab === "dataProducts" ? "2px solid #8b5cf6" : "2px solid transparent",
+                                            cursor: "pointer",
+                                            fontWeight: activeTab === "dataProducts" ? 600 : 500,
+                                            color: activeTab === "dataProducts" ? "#8b5cf6" : "#6b7280",
+                                            fontSize: "14px",
+                                            transition: "all 200ms ease",
+                                        }}
+                                    >
+                                        Data Products ({filteredDataProducts.length})
                                     </button>
                                 </div>
 
@@ -1105,6 +1181,149 @@ const FileListPage = () => {
                                                             </button>
                                                             <button
                                                                 onClick={(e) => handleDeleteMerged(e, file.id)}
+                                                                style={{
+                                                                    background: "rgba(239, 68, 68, 0.1)",
+                                                                    border: "none",
+                                                                    borderRadius: "6px",
+                                                                    padding: "6px",
+                                                                    cursor: "pointer",
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    justifyContent: "center",
+                                                                    transition: "all 200ms ease",
+                                                                    width: "32px",
+                                                                    height: "32px",
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    e.target.style.background = "rgba(239, 68, 68, 0.2)";
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    e.target.style.background = "rgba(239, 68, 68, 0.1)";
+                                                                }}
+                                                            >
+                                                                <FiTrash2 size={16} color="#ef4444" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+
+                                {activeTab === "dataProducts" && (
+                                    <>
+                                        {filteredDataProducts.length === 0 ? (
+                                            <div
+                                                style={{
+                                                    padding: "60px 20px",
+                                                    textAlign: "center",
+                                                    color: "#9ca3af",
+                                                }}
+                                            >
+                                                <FiPackage size={64} style={{ marginBottom: "16px", opacity: 0.5 }} />
+                                                <div style={{ fontSize: "18px", fontWeight: 500 }}>
+                                                    {searchQuery ? "No data products found" : "No data products yet"}
+                                                </div>
+                                                <div style={{ fontSize: "14px", marginTop: "8px" }}>
+                                                    {searchQuery
+                                                        ? "Try a different search term"
+                                                        : "Create data products from the editor"}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div
+                                                    style={{
+                                                        display: "grid",
+                                                        gridTemplateColumns: "1fr auto auto auto",
+                                                        gap: "16px",
+                                                        padding: "16px 20px",
+                                                        background: "#f9fafb",
+                                                        borderBottom: "1px solid #e5e7eb",
+                                                        alignItems: "center",
+                                                        fontSize: "12px",
+                                                        fontWeight: 600,
+                                                        color: "#6b7280",
+                                                        textTransform: "uppercase",
+                                                        letterSpacing: "0.5px",
+                                                    }}
+                                                >
+                                                    <div>Product Name</div>
+                                                    <div>Created Date</div>
+                                                    <div style={{ width: "40px" }}></div>
+                                                    <div style={{ width: "40px" }}></div>
+                                                </div>
+                                                <div>
+                                                    {filteredDataProducts.map((file, index) => (
+                                                        <div
+                                                            key={file.id}
+                                                            onClick={() => handleDataProductClick(file)}
+                                                            style={{
+                                                                display: "grid",
+                                                                gridTemplateColumns: "1fr auto auto auto",
+                                                                gap: "16px",
+                                                                padding: "16px 20px",
+                                                                borderBottom: index < filteredDataProducts.length - 1 ? "1px solid #e5e7eb" : "none",
+                                                                cursor: "pointer",
+                                                                transition: "all 200ms ease",
+                                                                alignItems: "center",
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = "#f9fafb";
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = "white";
+                                                            }}
+                                                        >
+                                                            <div
+                                                                style={{
+                                                                    fontSize: "14px",
+                                                                    fontWeight: 500,
+                                                                    color: "#1f2937",
+                                                                    wordBreak: "break-word",
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    gap: "8px",
+                                                                }}
+                                                            >
+                                                                <FiPackage size={20} color="#8b5cf6" />
+                                                                {file.name}
+                                                            </div>
+                                                            <div
+                                                                style={{
+                                                                    fontSize: "13px",
+                                                                    color: "#6b7280",
+                                                                }}
+                                                            >
+                                                                {new Date(file.createdAt).toLocaleDateString()}
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => handleRenameDataProduct(e, file.id)}
+                                                                style={{
+                                                                    background: "rgba(139, 92, 246, 0.1)",
+                                                                    border: "none",
+                                                                    borderRadius: "6px",
+                                                                    padding: "6px",
+                                                                    cursor: "pointer",
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    justifyContent: "center",
+                                                                    transition: "all 200ms ease",
+                                                                    width: "32px",
+                                                                    height: "32px",
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    e.target.style.background = "rgba(139, 92, 246, 0.2)";
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    e.target.style.background = "rgba(139, 92, 246, 0.1)";
+                                                                }}
+                                                            >
+                                                                <FiEdit2 size={16} color="#8b5cf6" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => handleDeleteDataProduct(e, file.id)}
                                                                 style={{
                                                                     background: "rgba(239, 68, 68, 0.1)",
                                                                     border: "none",

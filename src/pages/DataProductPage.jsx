@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2 } from "react-icons/fi";
+import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiChevronsRight, FiChevronsLeft } from "react-icons/fi";
 import ReactFlow, {
     MiniMap,
     Controls,
@@ -13,7 +13,7 @@ import ReactFlow, {
     Position,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { getFile } from "../utils/fileStorage";
+import { getFile, saveDataProduct } from "../utils/fileStorage";
 
 // Custom Table Node Component
 const TableNode = memo(({ data, id }) => {
@@ -145,16 +145,6 @@ const TableNode = memo(({ data, id }) => {
                                 }}
                             />
                             <span style={{ fontWeight: 500, flex: 1 }}>{field.name}</span>
-                            <span style={{
-                                fontSize: '10px',
-                                color: '#9ca3af',
-                                fontStyle: 'italic',
-                                background: '#f3f4f6',
-                                padding: '2px 6px',
-                                borderRadius: '4px'
-                            }}>
-                                {field.type}
-                            </span>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -203,7 +193,7 @@ const nodeTypes = {
 const DataProductPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { distinctTables = [], selectedFileIds = [] } = location.state || {};
+    const { distinctTables = [], selectedFileIds = [], dataProductData = null, dataProductId = null, dataProductName = null } = location.state || {};
     
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -228,9 +218,21 @@ const DataProductPage = () => {
     const [selectedEdgeDetails, setSelectedEdgeDetails] = useState(null);
     const [showCalculationDialog, setShowCalculationDialog] = useState(false);
     const [calculationExpression, setCalculationExpression] = useState("");
+    const [currentDataProductId, setCurrentDataProductId] = useState(dataProductId);
+    const [currentDataProductName, setCurrentDataProductName] = useState(dataProductName);
 
+    // Load data product only once on mount if provided
     useEffect(() => {
-        loadTableMetadata();
+        if (dataProductData) {
+            loadDataProduct(dataProductData);
+        }
+    }, []); // Run only once on mount
+
+    // Load table metadata when creating new data product
+    useEffect(() => {
+        if (!dataProductData && selectedFileIds.length > 0) {
+            loadTableMetadata();
+        }
     }, [selectedFileIds]);
 
     const loadTableMetadata = async () => {
@@ -302,6 +304,109 @@ const DataProductPage = () => {
         setTableMetadata(metadata);
         setFileBaseTables(Array.from(baseTables).sort());
         setFileViewTables(Array.from(viewTables).sort());
+    };
+
+    const loadDataProduct = (dataProduct) => {
+        try {
+            const loadedNodes = [];
+            const loadedEdges = [];
+            const nodeMap = new Map(); // To track entity to node ID mapping
+            
+            // First pass: Create nodes from entities
+            if (dataProduct.entities) {
+                let nodeIndex = 0;
+                for (const entityKey in dataProduct.entities) {
+                    const entity = dataProduct.entities[entityKey];
+                    
+                    // Parse entity key (e.g., "BASE_users" -> type="BASE", name="users")
+                    const parts = entityKey.split('_');
+                    const tableType = parts[0];
+                    const tableName = parts.slice(1).join('_');
+                    
+                    // Extract fields
+                    const fields = [];
+                    if (entity.fields) {
+                        for (const fieldName in entity.fields) {
+                            fields.push({
+                                name: fieldName,
+                                type: entity.fields[fieldName].type || 'unknown'
+                            });
+                        }
+                    }
+                    
+                    // Create node
+                    const nodeId = `node-${nodeIndex++}`;
+                    nodeMap.set(entityKey, nodeId);
+                    
+                    loadedNodes.push({
+                        id: nodeId,
+                        type: 'tableNode',
+                        position: { x: 100 + (nodeIndex * 320), y: 100 + ((nodeIndex % 3) * 250) },
+                        data: {
+                            tableName,
+                            tableType,
+                            fields,
+                            onAddField: handleAddField,
+                            onRemoveField: handleRemoveField,
+                            onDeleteTable: handleDeleteTable
+                        }
+                    });
+                }
+            }
+            
+            // Second pass: Create edges from relationships
+            if (dataProduct.relationships) {
+                dataProduct.relationships.forEach((rel, idx) => {
+                    const sourceNodeId = nodeMap.get(rel.from.entity);
+                    const targetNodeId = nodeMap.get(rel.to.entity);
+                    
+                    if (sourceNodeId && targetNodeId) {
+                        const edge = {
+                            id: `edge-${idx}`,
+                            source: sourceNodeId,
+                            target: targetNodeId,
+                            sourceHandle: `${rel.from.field}-source`,
+                            targetHandle: `${rel.to.field}-target`,
+                            type: 'default',
+                            animated: false,
+                            style: {
+                                stroke: rel.type === 'calculation' ? '#8b5cf6' : '#3b82f6',
+                                strokeWidth: 2
+                            },
+                            markerEnd: {
+                                type: MarkerType.ArrowClosed,
+                                color: rel.type === 'calculation' ? '#8b5cf6' : '#3b82f6'
+                            },
+                            data: {
+                                connectionType: rel.type || 'ref',
+                                calculation: rel.calculation || null
+                            }
+                        };
+                        
+                        loadedEdges.push(edge);
+                    }
+                });
+            }
+            
+            // Set the loaded nodes and edges
+            setNodes(loadedNodes);
+            setEdges(loadedEdges);
+            
+            // Restore available tables if saved
+            if (dataProduct.availableTables) {
+                setTableMetadata(dataProduct.availableTables.tableMetadata || {});
+                setFileBaseTables(dataProduct.availableTables.fileBaseTables || []);
+                setFileViewTables(dataProduct.availableTables.fileViewTables || []);
+                setCustomTables(dataProduct.availableTables.customTables || { BASE: [], CTE: [], VIEW: [] });
+            }
+            
+            // Keep sidebar open to show available tables
+            setSidebarOpen(true);
+            
+        } catch (error) {
+            console.error('Error loading data product:', error);
+            alert('Error loading data product: ' + error.message);
+        }
     };
 
     const onConnect = useCallback(
@@ -558,6 +663,19 @@ const DataProductPage = () => {
 
     const handleSave = async () => {
         try {
+            let finalFileName;
+            
+            // If already saved, use existing filename; otherwise prompt for new name
+            if (currentDataProductName) {
+                finalFileName = currentDataProductName;
+            } else {
+                const fileName = window.prompt('Enter data product name:', 'data_product.json');
+                if (!fileName) return; // User cancelled
+                
+                // Ensure .json extension
+                finalFileName = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
+            }
+            
             // Build entities object in the same format as input JSON
             const entities = {};
             
@@ -572,11 +690,9 @@ const DataProductPage = () => {
                     fields: {}
                 };
                 
-                // Add each field
+                // Add each field (just field name, no type)
                 node.data.fields.forEach(field => {
-                    entities[entityKey].fields[field.name] = {
-                        type: field.type
-                    };
+                    entities[entityKey].fields[field.name] = {};
                 });
             });
             
@@ -613,40 +729,48 @@ const DataProductPage = () => {
                 }
             });
             
+            // Clean tableMetadata to remove type field from fields
+            const cleanedTableMetadata = {};
+            for (const tableName in tableMetadata) {
+                const table = tableMetadata[tableName];
+                cleanedTableMetadata[tableName] = {
+                    name: table.name,
+                    type: table.type,
+                    fields: table.fields.map(field => ({ name: field.name }))
+                };
+            }
+            
             // Create final data product structure
             const dataProduct = {
                 entities,
                 relationships,
                 metadata: {
-                    name: "Data Product",
+                    name: finalFileName.replace('.json', ''),
                     created: new Date().toISOString(),
                     tableCount: nodes.length,
                     connectionCount: edges.length
+                },
+                availableTables: {
+                    tableMetadata: cleanedTableMetadata,
+                    fileBaseTables,
+                    fileViewTables,
+                    customTables
                 }
             };
             
-            // Convert to JSON string
-            const jsonString = JSON.stringify(dataProduct, null, 2);
+            // Save to data_products folder using fileStorage utility
+            const savedProduct = await saveDataProduct(finalFileName, dataProduct, currentDataProductId);
             
-            // Use File System Access API to save file
-            const fileHandle = await window.showSaveFilePicker({
-                suggestedName: 'data_product.json',
-                types: [{
-                    description: 'JSON Files',
-                    accept: { 'application/json': ['.json'] }
-                }]
-            });
-            
-            const writable = await fileHandle.createWritable();
-            await writable.write(jsonString);
-            await writable.close();
+            // Update current data product name and ID after successful save
+            setCurrentDataProductName(finalFileName);
+            if (!currentDataProductId) {
+                setCurrentDataProductId(savedProduct.id);
+            }
             
             alert('Data product saved successfully!');
         } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.error('Error saving data product:', error);
-                alert('Error saving data product: ' + error.message);
-            }
+            console.error('Error saving data product:', error);
+            alert('Error saving data product: ' + error.message);
         }
     };
 
@@ -666,101 +790,98 @@ const DataProductPage = () => {
                 style={{
                     background: "white",
                     borderBottom: "1px solid #e5e7eb",
-                    padding: "20px 40px",
-                    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                    padding: "16px 32px",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
             >
                 <div
                     style={{
-                        maxWidth: "1400px",
-                        margin: "0 auto",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
+                        gap: "24px",
                     }}
                 >
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
-                        <button
-                            onClick={() => navigate("/")}
+                    <button
+                        onClick={() => navigate("/")}
+                        style={{
+                            background: "transparent",
+                            border: "1px solid #e5e7eb",
+                            borderRadius: "6px",
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            color: "#6b7280",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#f9fafb";
+                            e.currentTarget.style.borderColor = "#d1d5db";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent";
+                            e.currentTarget.style.borderColor = "#e5e7eb";
+                        }}
+                    >
+                        <FiArrowLeft size={14} />
+                        Back
+                    </button>
+                    
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "12px" }}>
+                        <FiPackage size={20} color="#10b981" />
+                        <h1
                             style={{
-                                background: "transparent",
-                                border: "1px solid #e5e7eb",
-                                borderRadius: "8px",
-                                padding: "10px 16px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                                fontSize: "14px",
-                                fontWeight: 500,
-                                color: "#6b7280",
-                                transition: "all 200ms ease",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.target.style.background = "#f3f4f6";
-                                e.target.style.borderColor = "#3b82f6";
-                                e.target.style.color = "#3b82f6";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.background = "transparent";
-                                e.target.style.borderColor = "#e5e7eb";
-                                e.target.style.color = "#6b7280";
-                            }}
-                        >
-                            <FiArrowLeft size={16} />
-                            Back to Files
-                        </button>
-                        <div style={{ flex: 1 }}>
-                            <h1
-                                style={{
-                                    fontSize: "24px",
-                                    fontWeight: 700,
-                                    color: "#1f2937",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "12px",
-                                }}
-                            >
-                                <FiPackage size={24} color="#10b981" />
-                                New Data Product
-                            </h1>
-                            <p
-                                style={{
-                                    fontSize: "14px",
-                                    color: "#6b7280",
-                                    marginTop: "4px",
-                                }}
-                            >
-                                {fileBaseTables.length + fileViewTables.length + customTables.BASE.length + customTables.VIEW.length + customTables.CTE.length} table(s) available | {nodes.length} table(s) on canvas | {edges.length} connection(s)
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleSave}
-                            style={{
-                                background: "#10b981",
-                                border: "none",
-                                borderRadius: "8px",
-                                padding: "10px 20px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                                fontSize: "14px",
+                                fontSize: "18px",
                                 fontWeight: 600,
-                                color: "white",
-                                transition: "all 200ms ease",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.target.style.background = "#059669";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.background = "#10b981";
+                                color: "#1f2937",
+                                margin: 0,
                             }}
                         >
-                            <FiSave size={16} />
-                            Save Data Product
-                        </button>
+                            {currentDataProductName ? currentDataProductName.replace('.json', '') : 'New Data Product'}
+                        </h1>
+                        <div style={{ 
+                            fontSize: "12px", 
+                            color: "#9ca3af",
+                            display: "flex",
+                            gap: "12px",
+                            marginLeft: "auto"
+                        }}>
+                            <span>{nodes.length} tables</span>
+                            <span>•</span>
+                            <span>{edges.length} connections</span>
+                        </div>
                     </div>
+                    
+                    <button
+                        onClick={handleSave}
+                        style={{
+                            background: "#10b981",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "8px 16px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "white",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#059669";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#10b981";
+                        }}
+                    >
+                        <FiSave size={14} />
+                        Save
+                    </button>
                 </div>
             </div>
 
@@ -1072,22 +1193,28 @@ const DataProductPage = () => {
                             background: "white",
                             border: "1px solid #e5e7eb",
                             borderRadius: "8px",
-                            padding: "8px 16px",
+                            padding: "10px",
                             cursor: "pointer",
-                            fontSize: "13px",
-                            fontWeight: 500,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             color: "#1f2937",
                             boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                             transition: "all 200ms ease",
                         }}
                         onMouseEnter={(e) => {
-                            e.target.style.background = "#f3f4f6";
+                            e.currentTarget.style.background = "#f3f4f6";
+                            e.currentTarget.style.borderColor = "#3b82f6";
+                            e.currentTarget.style.color = "#3b82f6";
                         }}
                         onMouseLeave={(e) => {
-                            e.target.style.background = "white";
+                            e.currentTarget.style.background = "white";
+                            e.currentTarget.style.borderColor = "#e5e7eb";
+                            e.currentTarget.style.color = "#1f2937";
                         }}
+                        title={sidebarOpen ? "Hide Tables" : "Show Tables"}
                     >
-                        {sidebarOpen ? "Hide" : "Show"} Tables
+                        {sidebarOpen ? <FiChevronsLeft size={20} /> : <FiChevronsRight size={20} />}
                     </button>
                     
                     {nodes.length === 0 ? (

@@ -1,7 +1,8 @@
 const DB_NAME = 'sql_data_model_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_FILES = 'files';
 const STORE_MERGED = 'merged_files';
+const STORE_DATA_PRODUCTS = 'data_products';
 const STORE_META = 'metadata';
 const CURRENT_FILE_KEY = 'current_file';
 const DIRECTORY_HANDLE_KEY = 'directory_handle';
@@ -32,6 +33,9 @@ function openDB() {
             }
             if (!database.objectStoreNames.contains(STORE_MERGED)) {
                 database.createObjectStore(STORE_MERGED, { keyPath: 'id' });
+            }
+            if (!database.objectStoreNames.contains(STORE_DATA_PRODUCTS)) {
+                database.createObjectStore(STORE_DATA_PRODUCTS, { keyPath: 'id' });
             }
             if (!database.objectStoreNames.contains(STORE_META)) {
                 database.createObjectStore(STORE_META);
@@ -96,6 +100,7 @@ export async function selectStorageDirectory() {
 
         await syncFilesFromDirectory(handle);
         await syncMergedFilesFromDirectory(handle);
+        await syncDataProductsFromDirectory(handle);
 
         return handle;
     } catch (error) {
@@ -239,6 +244,79 @@ async function syncMergedFilesFromDirectory(directoryHandle) {
         }
     } catch (error) {
         console.error('Error syncing merged files from directory:', error);
+    }
+}
+
+async function syncDataProductsFromDirectory(directoryHandle) {
+    try {
+        const database = await openDB();
+        
+        let dataProductsFolderHandle;
+        try {
+            dataProductsFolderHandle = await directoryHandle.getDirectoryHandle('data_products');
+        } catch (error) {
+            console.log('Data products folder does not exist, skipping sync');
+            return;
+        }
+
+        await new Promise((resolve, reject) => {
+            const transaction = database.transaction([STORE_DATA_PRODUCTS], 'readwrite');
+            const store = transaction.objectStore(STORE_DATA_PRODUCTS);
+            const clearRequest = store.clear();
+            clearRequest.onsuccess = () => resolve();
+            clearRequest.onerror = () => reject(clearRequest.error);
+        });
+
+        const fileEntries = [];
+        for await (const entry of dataProductsFolderHandle.values()) {
+            if (entry.kind === 'file' && entry.name.endsWith('.json')) {
+                try {
+                    const fileHandle = await dataProductsFolderHandle.getFileHandle(entry.name);
+                    const fileObj = await fileHandle.getFile();
+                    const text = await fileObj.text();
+                    const fileData = JSON.parse(text);
+                    
+                    const fileEntry = {
+                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${fileEntries.length}`,
+                        name: entry.name,
+                        createdAt: fileObj.lastModified ? new Date(fileObj.lastModified).toISOString() : new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        data: fileData,
+                    };
+                    
+                    fileEntries.push(fileEntry);
+                } catch (error) {
+                    console.error(`Error reading data product file ${entry.name}:`, error);
+                }
+            }
+        }
+
+        if (fileEntries.length > 0) {
+            await new Promise((resolve, reject) => {
+                const transaction = database.transaction([STORE_DATA_PRODUCTS], 'readwrite');
+                const store = transaction.objectStore(STORE_DATA_PRODUCTS);
+                let completed = 0;
+                let hasError = false;
+
+                for (const fileEntry of fileEntries) {
+                    const addRequest = store.add(fileEntry);
+                    addRequest.onsuccess = () => {
+                        completed++;
+                        if (completed === fileEntries.length && !hasError) {
+                            resolve();
+                        }
+                    };
+                    addRequest.onerror = () => {
+                        if (!hasError) {
+                            hasError = true;
+                            reject(addRequest.error);
+                        }
+                    };
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error syncing data products from directory:', error);
     }
 }
 
@@ -652,6 +730,214 @@ export async function deleteMergedFile(fileId) {
         return true;
     } catch (error) {
         console.error('Error deleting merged file from storage:', error);
+        return false;
+    }
+}
+
+// Data Products functions
+export async function getAllDataProducts() {
+    try {
+        const database = await openDB();
+        const transaction = database.transaction([STORE_DATA_PRODUCTS], 'readonly');
+        const store = transaction.objectStore(STORE_DATA_PRODUCTS);
+        const request = store.getAll();
+
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (error) {
+        console.error('Error getting all data products from storage:', error);
+        return [];
+    }
+}
+
+export async function saveDataProduct(fileName, fileData, existingFileId = null) {
+    try {
+        let handle = await getDirectoryHandle();
+        if (!handle) {
+            handle = await selectStorageDirectory();
+            if (!handle) {
+                throw new Error('No storage directory selected');
+            }
+        }
+
+        const dataProductsFolderHandle = await handle.getDirectoryHandle('data_products', { create: true });
+
+        // Get all products and existing product BEFORE creating transaction
+        const allProducts = await getAllDataProducts();
+        
+        // Check for duplicate names when creating new file
+        if (!existingFileId) {
+            const duplicate = allProducts.find(p => p.name === fileName);
+            if (duplicate) {
+                throw new Error(`A data product with the name "${fileName}" already exists`);
+            }
+        }
+
+        // Find existing product if updating
+        let existingProduct = null;
+        if (existingFileId) {
+            existingProduct = allProducts.find(p => p.id === existingFileId);
+        }
+
+        const fileHandle = await dataProductsFolderHandle.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(fileData, null, 2));
+        await writable.close();
+
+        // Now create transaction and perform IndexedDB operations
+        const database = await openDB();
+        const transaction = database.transaction([STORE_DATA_PRODUCTS], 'readwrite');
+        const store = transaction.objectStore(STORE_DATA_PRODUCTS);
+
+        if (existingFileId && existingProduct) {
+            // Update existing file
+            const updatedEntry = {
+                ...existingProduct,
+                name: fileName,
+                updatedAt: new Date().toISOString(),
+                data: fileData,
+            };
+            store.put(updatedEntry);
+            
+            await new Promise((resolve, reject) => {
+                transaction.oncomplete = () => resolve();
+                transaction.onerror = () => reject(transaction.error);
+            });
+            
+            return updatedEntry;
+        } else {
+            // Create new file
+            const fileId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+            const fileEntry = {
+                id: fileId,
+                name: fileName,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                data: fileData,
+            };
+            store.add(fileEntry);
+            
+            await new Promise((resolve, reject) => {
+                transaction.oncomplete = () => resolve();
+                transaction.onerror = () => reject(transaction.error);
+            });
+            
+            return fileEntry;
+        }
+    } catch (error) {
+        console.error('Error saving data product to storage:', error);
+        throw error;
+    }
+}
+
+export async function getDataProduct(fileId) {
+    try {
+        const dataProducts = await getAllDataProducts();
+        const dataProduct = dataProducts.find(f => f.id === fileId);
+        if (!dataProduct) return null;
+
+        const handle = await getDirectoryHandle();
+        if (!handle) {
+            if (dataProduct.data) {
+                return dataProduct;
+            }
+            throw new Error('No storage directory available');
+        }
+
+        try {
+            const dataProductsFolderHandle = await handle.getDirectoryHandle('data_products');
+            const fileHandle = await dataProductsFolderHandle.getFileHandle(dataProduct.name);
+            const fileObj = await fileHandle.getFile();
+            const text = await fileObj.text();
+            const data = JSON.parse(text);
+
+            return {
+                ...dataProduct,
+                data: data
+            };
+        } catch (error) {
+            if (dataProduct.data) {
+                return dataProduct;
+            }
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error getting data product from storage:', error);
+        return null;
+    }
+}
+
+export async function renameDataProduct(fileId, newFileName) {
+    try {
+        const dataProduct = await getDataProduct(fileId);
+        if (!dataProduct) return false;
+
+        if (dataProduct.name === newFileName) return true;
+
+        const handle = await getDirectoryHandle();
+        if (!handle) {
+            throw new Error('No storage directory available');
+        }
+
+        const dataProductsFolderHandle = await handle.getDirectoryHandle('data_products');
+        const oldFileHandle = await dataProductsFolderHandle.getFileHandle(dataProduct.name);
+        const fileObj = await oldFileHandle.getFile();
+        const text = await fileObj.text();
+
+        const newFileHandle = await dataProductsFolderHandle.getFileHandle(newFileName, { create: true });
+        const writable = await newFileHandle.createWritable();
+        await writable.write(text);
+        await writable.close();
+
+        try {
+            await dataProductsFolderHandle.removeEntry(dataProduct.name);
+        } catch (error) {
+            console.warn('Error removing old data product file:', error);
+        }
+
+        const updatedFileEntry = {
+            ...dataProduct,
+            name: newFileName,
+            updatedAt: new Date().toISOString(),
+        };
+
+        const database = await openDB();
+        const transaction = database.transaction([STORE_DATA_PRODUCTS], 'readwrite');
+        const store = transaction.objectStore(STORE_DATA_PRODUCTS);
+        store.put(updatedFileEntry);
+
+        return true;
+    } catch (error) {
+        console.error('Error renaming data product:', error);
+        return false;
+    }
+}
+
+export async function deleteDataProduct(fileId) {
+    try {
+        const dataProduct = await getDataProduct(fileId);
+        if (dataProduct) {
+            const handle = await getDirectoryHandle();
+            if (handle) {
+                try {
+                    const dataProductsFolderHandle = await handle.getDirectoryHandle('data_products');
+                    await dataProductsFolderHandle.removeEntry(dataProduct.name);
+                } catch (error) {
+                    console.warn('Error deleting data product file from directory:', error);
+                }
+            }
+        }
+
+        const database = await openDB();
+        const transaction = database.transaction([STORE_DATA_PRODUCTS], 'readwrite');
+        const store = transaction.objectStore(STORE_DATA_PRODUCTS);
+        store.delete(fileId);
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting data product from storage:', error);
         return false;
     }
 }
