@@ -165,7 +165,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_CashDiscountUtilization": {
       "fields": {
         "Client_MANDT": {
           "ref": [
@@ -276,5 +276,75 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_AccountingDocumentsKPI": [
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_AccountingDocuments.Client_MANDT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.CompanyCode_BUKRS"
+        },
+        "to": {
+          "field": "BASE_AccountingDocuments.CompanyCode_BUKRS"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.AccountingDocumentNumber_BELNR"
+        },
+        "to": {
+          "field": "BASE_AccountingDocuments.DocumentNumberOfTheClearingDocument_AUGBL"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountingDocuments.AccountType_KOART"
+        },
+        "to": {
+          "calculation": "'K'"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountingDocuments.PostingKey_BSCHL"
+        },
+        "to": {
+          "calculation": "'31'"
+        },
+        "type": "INNER"
+      }
+    ],
+    "CTE_Vendors": [],
+    "VIEW_CashDiscountUtilization": [
+      {
+        "from": {
+          "field": "CTE_AccountingDocumentsKPI.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_Vendors.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingDocumentsKPI.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "to": {
+          "field": "CTE_Vendors.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "type": "LEFT"
+      }
+    ]
   }
 }

@@ -217,7 +217,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_AccountsPayableTurnover": {
       "fields": {
         "Client_MANDT": {
           "ref": [
@@ -383,5 +383,9 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_AccountsPayable": [],
+    "VIEW_AccountsPayableTurnover": []
   }
 }

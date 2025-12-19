@@ -383,7 +383,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_VendorPerformanceOverview": {
       "fields": {
         "Client_MANDT": {
           "ref": [
@@ -655,5 +655,200 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_VendorPerformance": [
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.Client_MANDT"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingDocumentDate_BEDAT"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.PurchasingDocumentDate_BEDAT"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.InvoiceDate"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.InvoiceDate"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.Company_BUKRS"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.Company_BUKRS"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingOrganization_EKORG"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.PurchasingOrganization_EKORG"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingGroup_EKGRP"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.PurchasingGroup_EKGRP"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.VendorAccountNumber_LIFNR"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.VendorAccountNumber_LIFNR"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.NAME1"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.NAME1"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.CountryKey_LAND1"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.CountryKey_LAND1"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.FiscalyearVariant_PERIV"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.FiscalyearVariant_PERIV"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.MaterialNumber_MATNR"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.MaterialNumber_MATNR"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.Plant_WERKS"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.Plant_WERKS"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.MaterialType_MTART"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.MaterialType_MTART"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.TargetCurrency_TCURR"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.TargetCurrency_TCURR"
+        },
+        "type": "IMPLICIT"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.LanguageKey_SPRAS"
+        },
+        "to": {
+          "field": "CTE_VendorPerformance.LanguageKey_SPRAS"
+        },
+        "type": "IMPLICIT"
+      }
+    ],
+    "VIEW_VendorPerformanceOverview": [
+      {
+        "from": {
+          "field": "CTE_VendorPerformance.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_MaterialLedger.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_VendorPerformance.Plant_WERKS"
+        },
+        "to": {
+          "field": "BASE_MaterialLedger.ValuationArea_BWKEY"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_VendorPerformance.MaterialNumber_MATNR"
+        },
+        "to": {
+          "field": "BASE_MaterialLedger.MaterialNumber_MATNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_VendorPerformance.FiscalYear"
+        },
+        "to": {
+          "field": "BASE_MaterialLedger.FiscalYear"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_VendorPerformance.FiscalPeriod"
+        },
+        "to": {
+          "field": "BASE_MaterialLedger.PostingPeriod"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "calculation": "''"
+        },
+        "to": {
+          "field": "BASE_MaterialLedger.ValuationType_BWTAR"
+        },
+        "type": "LEFT"
+      }
+    ]
   }
 }

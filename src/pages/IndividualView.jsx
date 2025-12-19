@@ -4,70 +4,27 @@ import ReactFlow, {
     MiniMap,
     Controls,
     Background,
-    useReactFlow,
 } from "reactflow";
-import TableNode from "../components/TableNode/TableNode";
-import EdgeConfigDialog from "../components/EdgeConfigDialog";
-import FlowHeader from "../components/FlowHeader";
-import EdgeContextMenu from "../components/EdgeContextMenu";
-import FieldDrawer from "../components/FieldDrawer";
+import TableNode from "../components/IndividualView/TableNode/TableNode";
+import EdgeConfigDialog from "../components/IndividualView/EdgeConfigDialog";
+import FlowHeader from "../components/IndividualView/FlowHeader";
+import EdgeContextMenu from "../components/IndividualView/EdgeContextMenu";
+import FieldDrawer from "../components/IndividualView/FieldDrawer";
+import FitViewHelper from "../components/IndividualView/FitViewHelper";
 import { useFlowState } from "../hooks/useFlowState";
 import { useNodeHandlers } from "../hooks/useNodeHandlers";
 import { useEdgeHandlers } from "../hooks/useEdgeHandlers";
 import { useEdgeFiltering } from "../hooks/useEdgeFiltering";
 import { useFieldHighlighting } from "../hooks/useFieldHighlighting";
 import { useNodeDecoration } from "../hooks/useNodeDecoration";
-import { applyLayout } from "../utils/layout";
-import { flowToModel } from "../utils/flowToModel";
-import { modelToFlow } from "../utils/dataTransform";
-import { getFile, setCurrentFile, clearCurrentFile } from "../utils/fileStorage";
+import { applyLayout } from "../utils/IndividualView/layout";
+import { flowToModel } from "../utils/IndividualView/flowToModel";
+import { modelToFlow } from "../utils/IndividualView/dataTransform";
+import { getFile, setCurrentFile, clearCurrentFile } from "../utils/ControlPage/fileStorage";
 
 const nodeTypes = { tableNode: TableNode };
 
-function FitViewHelper({ onFitView, onCenterNode }) {
-    const { fitView, getNode, setCenter, getZoom } = useReactFlow();
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            fitView({ padding: 0.1, duration: 0 });
-        }, 100);
-        return () => clearTimeout(timer);
-    }, [fitView]);
-
-    useEffect(() => {
-        if (onFitView) {
-            onFitView(() => {
-                fitView({ padding: 0.1, duration: 300 });
-            });
-        }
-    }, [fitView]);
-
-    useEffect(() => {
-        if (onCenterNode) {
-            onCenterNode((nodeId, position) => {
-                const node = getNode(nodeId);
-                if (node) {
-                    const zoom = getZoom();
-                    const nodeWidth = 380;
-                    const nodeHeight = 200;
-                    const centerX = node.position.x + nodeWidth / 2;
-                    const centerY = node.position.y + nodeHeight / 2;
-                    setCenter(centerX, centerY, { duration: 400, zoom });
-                } else if (position) {
-                    const nodeWidth = 380;
-                    const nodeHeight = 200;
-                    const centerX = position.x + nodeWidth / 2;
-                    const centerY = position.y + nodeHeight / 2;
-                    setCenter(centerX, centerY, { duration: 400 });
-                }
-            });
-        }
-    }, [getNode, setCenter, getZoom]);
-
-    return null;
-}
-
-const FlowEditor = () => {
+const IndividualView = () => {
     const { fileId } = useParams();
     const navigate = useNavigate();
     const { nodes, edges, setNodes, setEdges, onNodesChange, onEdgesChange } =
@@ -532,5 +489,5 @@ const FlowEditor = () => {
     );
 };
 
-export default FlowEditor;
+export default IndividualView;
 

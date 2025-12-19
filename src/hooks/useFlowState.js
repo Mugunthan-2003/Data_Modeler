@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNodesState, useEdgesState } from "reactflow";
-import { modelToFlow } from "../utils/dataTransform";
+import { modelToFlow } from "../utils/IndividualView/dataTransform";
 
 /**
  * Custom hook for managing flow state (nodes and edges)

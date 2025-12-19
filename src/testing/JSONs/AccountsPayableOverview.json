@@ -91,7 +91,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_AccountsPayableOverview": {
       "fields": {
         "Client_MANDT": {
           "ref": [
@@ -403,5 +403,91 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_CashDiscountUtilization": [],
+    "VIEW_AccountsPayableOverview": [
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_AccountsPayableTurnover.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.CompanyCode_BUKRS"
+        },
+        "to": {
+          "field": "CTE_AccountsPayableTurnover.CompanyCode_BUKRS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "to": {
+          "field": "CTE_AccountsPayableTurnover.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.AccountingDocumentNumber_BELNR"
+        },
+        "to": {
+          "field": "CTE_AccountsPayableTurnover.AccountingDocumentNumber_BELNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.TargetCurrency_TCURR"
+        },
+        "to": {
+          "field": "CTE_AccountsPayableTurnover.TargetCurrency_TCURR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.DocFiscPeriod"
+        },
+        "to": {
+          "field": "CTE_AccountsPayableTurnover.DocFiscPeriod"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_CashDiscountUtilization.Client_MANDT"
+        },
+        "type": "LEFT OUTER"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.CompanyCode_BUKRS"
+        },
+        "to": {
+          "field": "CTE_CashDiscountUtilization.CompanyCode_BUKRS"
+        },
+        "type": "LEFT OUTER"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountsPayable.DocumentNumberOfTheClearingDocument_AUGBL"
+        },
+        "to": {
+          "field": "CTE_CashDiscountUtilization.AccountingDocumentNumber_BELNR"
+        },
+        "type": "LEFT OUTER"
+      }
+    ]
   }
 }

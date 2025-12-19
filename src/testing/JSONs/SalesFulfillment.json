@@ -81,7 +81,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_SalesFulfillment": {
       "fields": {
         "Client_MANDT": {
           "ref": ["CTE_SO.Client_MANDT"]
@@ -130,5 +130,37 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_SO": [],
+    "VIEW_SalesFulfillment": [
+      {
+        "from": {
+          "field": "BASE_SalesOrders.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_SO.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_SalesOrders.MaterialNumber_MATNR"
+        },
+        "to": {
+          "field": "CTE_SO.MaterialNumber_MATNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_SalesOrders.Currency_WAERK"
+        },
+        "to": {
+          "field": "CTE_SO.InvoiceCurrency_WAERS"
+        },
+        "type": "LEFT"
+      }
+    ]
   }
 }

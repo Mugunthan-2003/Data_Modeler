@@ -4,9 +4,9 @@ import {
     updateFieldInFields,
     generateUniqueTableName,
     calculateCenterPosition,
-} from "../utils/nodeUtils";
-import { addTablePrefix } from "../utils/dataTransform";
-import { getHandleId } from "../utils/edgeUtils";
+} from "../utils/IndividualView/nodeUtils";
+import { addTablePrefix } from "../utils/IndividualView/dataTransform";
+import { getHandleId } from "../utils/IndividualView/edgeUtils";
 
 /**
  * Custom hook for node-related handlers

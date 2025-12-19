@@ -430,7 +430,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_InventoryKeyMetrics": {
       "alias": "",
       "fields": {
         "Client_MANDT": {
@@ -639,5 +639,233 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_ValueAndCost": [
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_MaterialLedger.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.MaterialNumber_MATNR"
+        },
+        "to": {
+          "field": "CTE_MaterialLedger.MaterialNumber_MATNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.Plant_WERKS"
+        },
+        "to": {
+          "field": "CTE_MaterialLedger.ValuationArea_BWKEY"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.FiscalYear"
+        },
+        "to": {
+          "field": "CTE_MaterialLedger.FiscalYear"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.FiscalPeriod"
+        },
+        "to": {
+          "field": "CTE_MaterialLedger.PostingPeriod"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "calculation": "MaterialLedger.ValuationType_BWTAR = ''"
+        },
+        "to": {
+          "field": "CTE_MaterialLedger.ValuationType_BWTAR"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "CTE_CurrentStock": [
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_ValueAndCost.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.MaterialNumber_MATNR"
+        },
+        "to": {
+          "field": "CTE_ValueAndCost.MaterialNumber_MATNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.Plant_WERKS"
+        },
+        "to": {
+          "field": "CTE_ValueAndCost.Plant_WERKS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.MonthEndDate"
+        },
+        "to": {
+          "field": "CTE_ValueAndCost.MonthEndDate"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.FiscalPeriod"
+        },
+        "to": {
+          "field": "CTE_ValueAndCost.FiscalPeriod"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.FiscalYear"
+        },
+        "to": {
+          "field": "CTE_ValueAndCost.FiscalYear"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_SlowMovingThreshold.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_StockMonthlySnapshots.MaterialType_MTART"
+        },
+        "to": {
+          "field": "BASE_SlowMovingThreshold.MaterialType_MTART"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "CTE_CalculatedMetrics": [],
+    "CTE_CurrencyConversion": [],
+    "CTE_Inventory": [
+      {
+        "from": {
+          "field": "CTE_CurrentStock.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_CalculatedMetrics.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_CurrentStock.MaterialNumber_MATNR"
+        },
+        "to": {
+          "field": "CTE_CalculatedMetrics.MaterialNumber_MATNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_CurrentStock.Plant_WERKS"
+        },
+        "to": {
+          "field": "CTE_CalculatedMetrics.Plant_WERKS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_CurrentStock.LanguageKey_SPRAS"
+        },
+        "to": {
+          "field": "CTE_CalculatedMetrics.LanguageKey_SPRAS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_CurrentStock.MonthEndDate"
+        },
+        "to": {
+          "field": "CTE_CalculatedMetrics.MonthEndDate"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_CurrentStock.FiscalPeriod"
+        },
+        "to": {
+          "field": "CTE_CalculatedMetrics.FiscalPeriod"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_CurrentStock.FiscalYear"
+        },
+        "to": {
+          "field": "CTE_CalculatedMetrics.FiscalYear"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "VIEW_InventoryKeyMetrics": [
+      {
+        "from": {
+          "field": "CTE_Inventory.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_CurrencyConversion.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_Inventory.CurrencyKey_WAERS"
+        },
+        "to": {
+          "field": "BASE_CurrencyConversion.FromCurrency_FCURR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_Inventory.MonthEndDate"
+        },
+        "to": {
+          "field": "BASE_CurrencyConversion.ConvDate"
+        },
+        "type": "LEFT"
+      }
+    ]
   }
 }

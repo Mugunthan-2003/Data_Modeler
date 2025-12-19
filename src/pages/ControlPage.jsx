@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiUpload, FiFile, FiTrash2, FiFolder, FiSearch, FiX, FiEdit2 } from "react-icons/fi";
-import { getAllFiles, saveFile, deleteFile, selectStorageDirectory, getStorageDirectory, getStorageDirectoryPath, getAllMergedFiles, saveMergedFile, deleteMergedFile, getFile, renameFile, renameMergedFile } from "../utils/fileStorage";
+import { getAllFiles, saveFile, deleteFile, selectStorageDirectory, getStorageDirectory, getStorageDirectoryPath, getAllMergedFiles, saveMergedFile, deleteMergedFile, getFile, renameFile, renameMergedFile } from "../utils/ControlPage/fileStorage";
 
-const FileListPage = () => {
+const ControlPage = () => {
     const [files, setFiles] = useState([]);
     const [mergedFiles, setMergedFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -1072,5 +1072,5 @@ const FileListPage = () => {
     );
 };
 
-export default FileListPage;
+export default ControlPage;
 

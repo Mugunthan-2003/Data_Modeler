@@ -1,16 +1,16 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import FileListPage from "./pages/FileListPage";
-import FlowEditor from "./pages/FlowEditor";
-import LineageViewer from "./pages/LineageViewer";
+import ControlPage from "./pages/ControlPage";
+import IndividualView from "./pages/IndividualView";
+import ConsolidatedView from "./pages/ConsolidatedView";
 import "reactflow/dist/style.css";
 import "./index.css";
 
 export default function App() {
     return (
         <Routes>
-            <Route path="/" element={<FileListPage />} />
-            <Route path="/editor/:fileId" element={<FlowEditor />} />
-            <Route path="/editor/merged/:fileId" element={<LineageViewer />} />
+            <Route path="/" element={<ControlPage />} />
+            <Route path="/editor/:fileId" element={<IndividualView />} />
+            <Route path="/editor/merged/:fileId" element={<ConsolidatedView />} />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );

@@ -1,0 +1,239 @@
+{
+  "entities": {
+    "BASE_VendorPerformance": {
+      "alias": "",
+      "fields": {
+        "VendorAccountNumber_LIFNR": {},
+        "NAME1": {},
+        "CountryKey_LAND1": {},
+        "Company_BUKRS": {},
+        "CompanyText_BUTXT": {},
+        "PurchasingGroup_EKGRP": {},
+        "PurchasingGroupText_EKNAM": {},
+        "PurchasingOrganization_EKORG": {},
+        "PurchasingOrganizationText_EKOTX": {},
+        "PurchasingDocumentDate_BEDAT": {},
+        "YearOfPurchasingDocumentDate_BEDAT": {},
+        "MonthOfPurchasingDocumentDate_BEDAT": {},
+        "WeekOfPurchasingDocumentDate_BEDAT": {},
+        "TargetCurrency_TCURR": {},
+        "LanguageKey_SPRAS": {},
+        "VendorCycleTimeInDays": {},
+        "Client_MANDT": {}
+      }
+    },
+    "VIEW_VendorLeadTimeOverview": {
+      "alias": "",
+      "fields": {
+        "VendorAccountNumber_LIFNR": {
+          "ref": ["BASE_VendorPerformance.VendorAccountNumber_LIFNR"]
+        },
+        "VendorName": {
+          "ref": ["BASE_VendorPerformance.NAME1"]
+        },
+        "VendorCountry": {
+          "ref": ["BASE_VendorPerformance.CountryKey_LAND1"]
+        },
+        "Company_BUKRS": {
+          "ref": ["BASE_VendorPerformance.Company_BUKRS"]
+        },
+        "Company": {
+          "ref": ["BASE_VendorPerformance.CompanyText_BUTXT"]
+        },
+        "PurchasingGroup_EKGRP": {
+          "ref": ["BASE_VendorPerformance.PurchasingGroup_EKGRP"]
+        },
+        "PurchasingGroup": {
+          "ref": ["BASE_VendorPerformance.PurchasingGroupText_EKNAM"]
+        },
+        "PurchasingOrganization_EKORG": {
+          "ref": ["BASE_VendorPerformance.PurchasingOrganization_EKORG"]
+        },
+        "PurchasingOrganization": {
+          "ref": ["BASE_VendorPerformance.PurchasingOrganizationText_EKOTX"]
+        },
+        "PurchasingDocumentDate_BEDAT": {
+          "ref": ["BASE_VendorPerformance.PurchasingDocumentDate_BEDAT"]
+        },
+        "YearOfPurchasingDocumentDate_BEDAT": {
+          "ref": ["BASE_VendorPerformance.YearOfPurchasingDocumentDate_BEDAT"]
+        },
+        "MonthOfPurchasingDocumentDate_BEDAT": {
+          "ref": ["BASE_VendorPerformance.MonthOfPurchasingDocumentDate_BEDAT"]
+        },
+        "WeekOfPurchasingDocumentDate_BEDAT": {
+          "ref": ["BASE_VendorPerformance.WeekOfPurchasingDocumentDate_BEDAT"]
+        },
+        "TargetCurrency_TCURR": {
+          "ref": ["BASE_VendorPerformance.TargetCurrency_TCURR"]
+        },
+        "LanguageKey_SPRAS": {
+          "ref": ["BASE_VendorPerformance.LanguageKey_SPRAS"]
+        },
+        "AverageLeadTimeInDays": {
+          "calculation": {
+            "expression": "ROUND(AVG(VendorCycleTimeInDays) OVER (PARTITION BY VendorAccountNumber_LIFNR), 1)",
+            "ref": ["BASE_VendorPerformance.VendorCycleTimeInDays", "BASE_VendorPerformance.VendorAccountNumber_LIFNR"]
+          }
+        }
+      }
+    }
+  },
+  "join": {
+    "VIEW_VendorLeadTimeOverview": [
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.VendorAccountNumber_LIFNR"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.VendorAccountNumber_LIFNR"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.NAME1"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.VendorName"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.CountryKey_LAND1"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.VendorCountry"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.Company_BUKRS"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.Company"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.CompanyText_BUTXT"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.Company"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingGroup_EKGRP"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.PurchasingGroup"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingGroupText_EKNAM"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.PurchasingGroup"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingOrganization_EKORG"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.PurchasingOrganization"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingOrganizationText_EKOTX"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.PurchasingOrganization"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.PurchasingDocumentDate_BEDAT"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.PurchasingDocumentDate_BEDAT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.YearOfPurchasingDocumentDate_BEDAT"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.YearOfPurchasingDocumentDate_BEDAT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.MonthOfPurchasingDocumentDate_BEDAT"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.MonthOfPurchasingDocumentDate_BEDAT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.WeekOfPurchasingDocumentDate_BEDAT"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.WeekOfPurchasingDocumentDate_BEDAT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.TargetCurrency_TCURR"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.TargetCurrency_TCURR"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.LanguageKey_SPRAS"
+        },
+        "to": {
+          "field": "VIEW_VendorLeadTimeOverview.LanguageKey_SPRAS"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.VendorCycleTimeInDays"
+        },
+        "to": {
+          "calculation": "ROUND(AVG(VendorCycleTimeInDays) OVER (PARTITION BY VendorAccountNumber_LIFNR), 1)"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_VendorPerformance.Client_MANDT"
+        },
+        "to": {
+          "calculation": "{{ mandt }}"
+        },
+        "type": "INNER"
+      }
+    ]
+  }
+}

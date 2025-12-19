@@ -7,11 +7,11 @@ import {
     createReference,
     parseReference,
     getHandleId,
-} from "../utils/edgeUtils";
+} from "../utils/IndividualView/edgeUtils";
 import {
     updateNodeInNodes,
     updateFieldInFields,
-} from "../utils/nodeUtils";
+} from "../utils/IndividualView/nodeUtils";
 
 /**
  * Custom hook for edge-related handlers

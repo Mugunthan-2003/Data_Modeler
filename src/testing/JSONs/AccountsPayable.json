@@ -826,7 +826,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_AccountsPayable": {
       "alias": "",
       "fields": {
         "Client_MANDT": {
@@ -1304,5 +1304,234 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_AccountingInvoices": [
+      {
+        "from": {
+          "field": "BASE_AccountingDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_InvoiceDocuments_Flow.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountingDocuments.CompanyCode_BUKRS"
+        },
+        "to": {
+          "field": "BASE_InvoiceDocuments_Flow.CompanyCode_BUKRS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountingDocuments.ObjectKey_AWKEY",
+          "calculation": "LEFT(AccountingDocuments.ObjectKey_AWKEY, 10)"
+        },
+        "to": {
+          "field": "BASE_InvoiceDocuments_Flow.InvoiceDocNum_BELNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountingDocuments.FiscalYear_GJAHR"
+        },
+        "to": {
+          "field": "BASE_InvoiceDocuments_Flow.FiscalYear_GJAHR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_AccountingDocuments.NumberOfLineItemWithinAccountingDocument_BUZEI",
+          "calculation": "LTRIM(AccountingDocuments.NumberOfLineItemWithinAccountingDocument_BUZEI, '0')"
+        },
+        "to": {
+          "field": "BASE_InvoiceDocuments_Flow.InvoiceDocLineNum_BUZEI",
+          "calculation": "LTRIM(InvoiceDocuments.InvoiceDocLineNum_BUZEI, '0')"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "CTE_AccountingInvoicesKPI": [
+      {
+        "from": {
+          "field": "CTE_AccountingInvoices.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_CompaniesMD.Client_MANDT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoices.CompanyCode_BUKRS"
+        },
+        "to": {
+          "field": "BASE_CompaniesMD.CompanyCode_BUKRS"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoices.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_fiscal_date_dim.MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_CompaniesMD.FiscalyearVariant_PERIV"
+        },
+        "to": {
+          "field": "BASE_fiscal_date_dim.PERIV"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoices.PostingDateInTheDocument_BUDAT"
+        },
+        "to": {
+          "field": "BASE_fiscal_date_dim.DATE"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoices.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_fiscal_date_dim.MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_CompaniesMD.FiscalyearVariant_PERIV"
+        },
+        "to": {
+          "field": "BASE_fiscal_date_dim.PERIV"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "calculation": "DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 DAY)"
+        },
+        "to": {
+          "field": "BASE_fiscal_date_dim.DATE"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "VIEW_AccountsPayable": [
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_Vendors.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "to": {
+          "field": "CTE_Vendors.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_Vendors.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "to": {
+          "calculation": "ARRAY_REVERSE(SPLIT(VendorConfig.NameOfVariantVariable_NAME, '_'))[SAFE_OFFSET(0)]"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.Client_MANDT"
+        },
+        "to": {
+          "field": "BASE_PurchaseDocumentsHistory.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.PurchasingDocumentNumber_EBELN"
+        },
+        "to": {
+          "field": "BASE_PurchaseDocumentsHistory.PurchasingDocumentNumber_EBELN"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.ItemNumberOfPurchasingDocument_EBELP"
+        },
+        "to": {
+          "field": "BASE_PurchaseDocumentsHistory.ItemNumberOfPurchasingDocument_EBELP"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.FiscalYear_GJAHR"
+        },
+        "to": {
+          "field": "BASE_PurchaseDocumentsHistory.MaterialDocumentYear_GJAHR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.ObjectKey_AWKEY"
+        },
+        "to": {
+          "calculation": "CONCAT(POOrderHistory.NumberOfMaterialDocument_BELNR, POOrderHistory.MaterialDocumentYear_GJAHR)"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.Client_MANDT"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.CurrencyKey_WAERS"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.FromCurrency_FCURR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CTE_AccountingInvoicesKPI.PostingDateInTheDocument_BUDAT"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.ConvDate"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "CTE_CurrencyConversion": [],
+    "CTE_Vendors": []
   }
 }

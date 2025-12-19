@@ -1075,7 +1075,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_VendorPerformance": {
       "fields": {
         "Client_MANDT": {
           "ref": [
@@ -1439,5 +1439,290 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_LanguageKey": [],
+    "CTE_CurrencyConversion": [],
+    "CTE_POScheduleLine": [],
+    "CTE_POOrderHistory": [],
+    "CTE_PurchaseOrderScheduleLine": [
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "POScheduleLine.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.DocumentNumber_EBELN"
+        },
+        "to": {
+          "field": "POScheduleLine.PurchasingDocumentNumber_EBELN"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Item_EBELP"
+        },
+        "to": {
+          "field": "POScheduleLine.ItemNumberOfPurchasingDocument_EBELP"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "CTE_PurchaseOrdersGoodsReceipt": [
+      {
+        "from": {
+          "field": "PurchaseOrderScheduleLine.Client_MANDT"
+        },
+        "to": {
+          "field": "POOrderHistory.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseOrderScheduleLine.DocumentNumber_EBELN"
+        },
+        "to": {
+          "field": "POOrderHistory.PurchasingDocumentNumber_EBELN"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseOrderScheduleLine.Item_EBELP"
+        },
+        "to": {
+          "field": "POOrderHistory.ItemNumberOfPurchasingDocument_EBELP"
+        },
+        "type": "LEFT"
+      }
+    ],
+    "CTE_PurchaseDocuments": [],
+    "CTE_Vendors": [],
+    "CTE_PurchaseOrdersInvoiceReceipt": [],
+    "VIEW_Final": [
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "PurchaseOrdersInvoiceReceipt.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.DocumentNumber_EBELN"
+        },
+        "to": {
+          "field": "PurchaseOrdersInvoiceReceipt.PurchasingDocumentNumber_EBELN"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Item_EBELP"
+        },
+        "to": {
+          "field": "PurchaseOrdersInvoiceReceipt.ItemNumberOfPurchasingDocument_EBELP"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "CurrencyConversion.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.CurrencyKey_WAERS"
+        },
+        "to": {
+          "field": "CurrencyConversion.FromCurrency_FCURR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.PurchasingDocumentDate_BEDAT"
+        },
+        "to": {
+          "field": "CurrencyConversion.ConvDate"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "PurchasingOrganizationsMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.PurchasingOrganization_EKORG"
+        },
+        "to": {
+          "field": "PurchasingOrganizationsMD.PurchasingOrganization_EKORG"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "PurchasingGroupsMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.PurchasingGroup_EKGRP"
+        },
+        "to": {
+          "field": "PurchasingGroupsMD.PurchasingGroup_EKGRP"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "VendorsMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.VendorAccountNumber_LIFNR"
+        },
+        "to": {
+          "field": "VendorsMD.AccountNumberOfVendorOrCreditor_LIFNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Language_SPRAS"
+        },
+        "to": {
+          "field": "VendorsMD.Language_LANGU"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "CompaniesMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Company_BUKRS"
+        },
+        "to": {
+          "field": "CompaniesMD.CompanyCode_BUKRS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "fiscal_date_dim.MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "CompaniesMD.FiscalyearVariant_PERIV"
+        },
+        "to": {
+          "field": "fiscal_date_dim.PERIV"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.PurchasingDocumentDate_BEDAT"
+        },
+        "to": {
+          "field": "fiscal_date_dim.DATE"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "MaterialsMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.MaterialNumber_MATNR"
+        },
+        "to": {
+          "field": "MaterialsMD.MaterialNumber_MATNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "MaterialsMD.Language_SPRAS"
+        },
+        "to": {
+          "field": "LanguageKey.LanguageKey_SPRAS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.Client_MANDT"
+        },
+        "to": {
+          "field": "MaterialTypesMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "PurchaseDocuments.MaterialType_MTART"
+        },
+        "to": {
+          "field": "MaterialTypesMD.MaterialType_MTART"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "MaterialTypesMD.LanguageKey_SPRAS"
+        },
+        "to": {
+          "field": "LanguageKey.LanguageKey_SPRAS"
+        },
+        "type": "LEFT"
+      }
+    ]
   }
 }

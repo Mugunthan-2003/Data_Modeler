@@ -273,7 +273,7 @@
         }
       }
     },
-    "VIEW_Final": {
+    "VIEW_BalanceSheet": {
       "fields": {
         "Client": {
           "ref": [
@@ -473,5 +473,300 @@
         }
       }
     }
+  },
+  "join": {
+    "CTE_LanguageKey": [],
+    "CTE_CurrencyConversion": [
+      {
+        "from": {
+          "field": "BASE_fiscal_date_dim.MANDT"
+        },
+        "to": {
+          "field": "BASE_CompaniesMD.Client_MANDT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_fiscal_date_dim.periv"
+        },
+        "to": {
+          "field": "BASE_CompaniesMD.FiscalYearVariant_PERIV"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_fiscal_date_dim.Date",
+          "calculation": "FiscalDateDimension.Date <= CURRENT_DATE()"
+        },
+        "to": {},
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_fiscal_date_dim.MANDT"
+        },
+        "to": {
+          "field": "BASE_CurrencyConversion.Client_MANDT"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_fiscal_date_dim.Date"
+        },
+        "to": {
+          "field": "BASE_CurrencyConversion.ConvDate"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_CompaniesMD.CurrencyCode_WAERS"
+        },
+        "to": {
+          "field": "BASE_CurrencyConversion.FromCurrency_FCURR"
+        },
+        "type": "INNER"
+      }
+    ],
+    "CTE_ParentId": [
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Client"
+        },
+        "to": {
+          "field": "BASE_FinancialStatement.Client"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Parent"
+        },
+        "to": {
+          "field": "BASE_FinancialStatement.Node"
+        },
+        "type": "INNER"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.CompanyCode"
+        },
+        "to": {
+          "field": "BASE_FinancialStatement.CompanyCode"
+        },
+        "type": "INNER"
+      }
+    ],
+    "CTE_FSV": [],
+    "VIEW_BalanceSheet": [
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Client"
+        },
+        "to": {
+          "field": "CTE_ParentId.Client"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Parent"
+        },
+        "to": {
+          "field": "CTE_ParentId.Parent"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.CompanyCode"
+        },
+        "to": {
+          "field": "CTE_ParentId.CompanyCode"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Client"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.CompanyCode"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.CompanyCode_BUKRS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.CurrencyKey"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.FromCurrency_FCURR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.FiscalYear"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.FiscalYear"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.FiscalPeriod"
+        },
+        "to": {
+          "field": "CTE_CurrencyConversion.FiscalPeriod"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {},
+        "to": {
+          "field": "CTE_LanguageKey"
+        },
+        "type": "CROSS"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Client"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.HierarchyName"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.HierarchyID_HRYID"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.HierarchyVersion"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.HierarchyVersion_HRYVER"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Node"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.HierarchyNode_HRYNODE"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FSVTextsMD.LanguageKey_SPRAS"
+        },
+        "to": {
+          "field": "CTE_LanguageKey.LanguageKey_SPRAS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Client"
+        },
+        "to": {
+          "field": "BASE_GLAccountsMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.ChartOfAccounts"
+        },
+        "to": {
+          "field": "BASE_GLAccountsMD.ChartOfAccounts_KTOPL"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.FinancialStatementItem"
+        },
+        "to": {
+          "field": "BASE_GLAccountsMD.GlAccountNumber_SAKNR"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_GLAccountsMD.Language_SPRAS"
+        },
+        "to": {
+          "field": "CTE_LanguageKey.LanguageKey_SPRAS"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Client"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.Client_MANDT"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.HierarchyName"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.HierarchyID_HRYID"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.HierarchyVersion"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.HierarchyVersion_HRYVER"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FinancialStatement.Parent"
+        },
+        "to": {
+          "field": "BASE_FSVTextsMD.HierarchyNode_HRYNODE"
+        },
+        "type": "LEFT"
+      },
+      {
+        "from": {
+          "field": "BASE_FSVTextsMD.LanguageKey_SPRAS"
+        },
+        "to": {
+          "field": "CTE_LanguageKey.LanguageKey_SPRAS"
+        },
+        "type": "LEFT"
+      }
+    ]
   }
 }
