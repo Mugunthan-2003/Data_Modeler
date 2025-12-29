@@ -1,0 +1,204 @@
+{
+  "source_entities": {
+    "product_mv": {
+      "alias": "bronze_product",
+      "source_path": "dev.01_bronze.product_mv",
+      "fields": {
+        "product_id": {},
+        "product_name": {},
+        "brand": {},
+        "manufacturer": {},
+        "category": {},
+        "department": {},
+        "description": {},
+        "sku_id": {},
+        "upc": {},
+        "gtin": {},
+        "unit_price": {},
+        "retail_price": {},
+        "unit_of_measurement": {},
+        "expiration_days": {},
+        "product_status": {},
+        "release_date": {}
+      }
+    }
+  },
+  "target_entities": {
+    "product_mv": {
+      "alias": "silver_product",
+      "source_path": "dev.02_silver.product_mv",
+      "fields": {
+        "product_id": {
+          "ref": [
+            "product_mv.product_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_product', 'product_id IS NOT NULL')",
+            "ref": [
+              "product_mv.product_id"
+            ]
+          }
+        },
+        "product_name": {
+          "ref": [
+            "product_mv.product_name"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.product_name)",
+            "ref": [
+              "product_mv.product_name"
+            ]
+          }
+        },
+        "brand": {
+          "ref": [
+            "product_mv.brand"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.brand)",
+            "ref": [
+              "product_mv.brand"
+            ]
+          }
+        },
+        "manufacturer": {
+          "ref": [
+            "product_mv.manufacturer"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.manufacturer)",
+            "ref": [
+              "product_mv.manufacturer"
+            ]
+          }
+        },
+        "category": {
+          "ref": [
+            "product_mv.category"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.category)",
+            "ref": [
+              "product_mv.category"
+            ]
+          }
+        },
+        "department": {
+          "ref": [
+            "product_mv.department"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.department)",
+            "ref": [
+              "product_mv.department"
+            ]
+          }
+        },
+        "description": {
+          "ref": [
+            "product_mv.description"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.description)",
+            "ref": [
+              "product_mv.description"
+            ]
+          }
+        },
+        "sku_id": {
+          "ref": [
+            "product_mv.sku_id"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.sku_id)",
+            "ref": [
+              "product_mv.sku_id"
+            ]
+          }
+        },
+        "upc": {
+          "ref": [
+            "product_mv.upc"
+          ],
+          "calculation": {
+            "expression": "when(length(regexp_replace(product_mv.upc, r'[^\\d]', '')) >= 8, regexp_replace(product_mv.upc, r'[^\\d]', ''), null)",
+            "ref": [
+              "product_mv.upc"
+            ]
+          }
+        },
+        "gtin": {
+          "ref": [
+            "product_mv.gtin"
+          ],
+          "calculation": {
+            "expression": "when(length(regexp_replace(product_mv.gtin, r'[^\\d]', '')) >= 8, regexp_replace(product_mv.gtin, r'[^\\d]', ''), null)",
+            "ref": [
+              "product_mv.gtin"
+            ]
+          }
+        },
+        "unit_price": {
+          "ref": [
+            "product_mv.unit_price"
+          ],
+          "calculation": {
+            "expression": "when(cast(product_mv.unit_price as double) >= 0, cast(product_mv.unit_price as double), null)",
+            "ref": [
+              "product_mv.unit_price"
+            ]
+          }
+        },
+        "retail_price": {
+          "ref": [
+            "product_mv.retail_price"
+          ],
+          "calculation": {
+            "expression": "when(cast(product_mv.retail_price as double) >= 0, cast(product_mv.retail_price as double), null)",
+            "ref": [
+              "product_mv.retail_price"
+            ]
+          }
+        },
+        "unit_of_measurement": {
+          "ref": [
+            "product_mv.unit_of_measurement"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.unit_of_measurement)",
+            "ref": [
+              "product_mv.unit_of_measurement"
+            ]
+          }
+        },
+        "expiration_days": {
+          "ref": [
+            "product_mv.expiration_days"
+          ]
+        },
+        "product_status": {
+          "ref": [
+            "product_mv.product_status"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.product_status)",
+            "ref": [
+              "product_mv.product_status"
+            ]
+          }
+        },
+        "release_date": {
+          "ref": [
+            "product_mv.release_date"
+          ],
+          "calculation": {
+            "expression": "to_date(product_mv.release_date, 'yyyy-MM-dd')",
+            "ref": [
+              "product_mv.release_date"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

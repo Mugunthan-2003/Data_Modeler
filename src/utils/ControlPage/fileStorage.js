@@ -1,11 +1,17 @@
 const DB_NAME = 'sql_data_model_db';
-const DB_VERSION = 2;
-const STORE_FILES = 'files';
-const STORE_MERGED = 'merged_files';
+const DB_VERSION = 3;
 const STORE_META = 'metadata';
 const CURRENT_FILE_KEY = 'current_file';
 const DIRECTORY_HANDLE_KEY = 'directory_handle';
 const DIRECTORY_PATH_KEY = 'directory_path';
+
+function getStoreName(modelerType, fileType) {
+    return `${modelerType}_${fileType}`;
+}
+
+function getFolderName(modelerType, fileType) {
+    return `${fileType}_${modelerType}`;
+}
 
 let db = null;
 let directoryHandle = null;
@@ -27,23 +33,42 @@ function openDB() {
 
         request.onupgradeneeded = (event) => {
             const database = event.target.result;
-            if (!database.objectStoreNames.contains(STORE_FILES)) {
-                database.createObjectStore(STORE_FILES, { keyPath: 'id' });
-            }
-            if (!database.objectStoreNames.contains(STORE_MERGED)) {
-                database.createObjectStore(STORE_MERGED, { keyPath: 'id' });
-            }
             if (!database.objectStoreNames.contains(STORE_META)) {
                 database.createObjectStore(STORE_META);
+            }
+            
+            const modelerTypes = ['sql', 'pipeline'];
+            const fileTypes = ['individual', 'consolidated'];
+            
+            modelerTypes.forEach(modelerType => {
+                fileTypes.forEach(fileType => {
+                    const storeName = getStoreName(modelerType, fileType);
+                    if (!database.objectStoreNames.contains(storeName)) {
+                        database.createObjectStore(storeName, { keyPath: 'id' });
+                    }
+                });
+            });
+            
+            if (event.oldVersion < 3) {
+                const oldStores = ['files', 'merged_files'];
+                oldStores.forEach(storeName => {
+                    if (database.objectStoreNames.contains(storeName)) {
+                        database.deleteObjectStore(storeName);
+                    }
+                });
             }
         };
     });
 }
 
-async function getDirectoryHandle() {
+async function getDirectoryHandle(shouldSync = false) {
     if (directoryHandle) {
         try {
             await directoryHandle.requestPermission({ mode: 'readwrite' });
+            await createRequiredFolders(directoryHandle);
+            if (shouldSync) {
+                await syncAllFilesFromDirectory(directoryHandle);
+            }
             return directoryHandle;
         } catch (error) {
             console.error('Permission error:', error);
@@ -63,6 +88,10 @@ async function getDirectoryHandle() {
                 try {
                     await handle.requestPermission({ mode: 'readwrite' });
                     directoryHandle = handle;
+                    await createRequiredFolders(handle);
+                    if (shouldSync) {
+                        await syncAllFilesFromDirectory(handle);
+                    }
                     resolve(handle);
                 } catch (error) {
                     console.error('Permission error:', error);
@@ -88,14 +117,15 @@ export async function selectStorageDirectory() {
         directoryHandle = handle;
         const directoryPath = handle.name;
 
+        await createRequiredFolders(handle);
+
         const database = await openDB();
         const transaction = database.transaction([STORE_META], 'readwrite');
         const store = transaction.objectStore(STORE_META);
         store.put(handle, DIRECTORY_HANDLE_KEY);
         store.put(directoryPath, DIRECTORY_PATH_KEY);
 
-        await syncFilesFromDirectory(handle);
-        await syncMergedFilesFromDirectory(handle);
+        await syncAllFilesFromDirectory(handle);
 
         return handle;
     } catch (error) {
@@ -106,139 +136,181 @@ export async function selectStorageDirectory() {
     }
 }
 
-async function syncFilesFromDirectory(directoryHandle) {
+async function createRequiredFolders(directoryHandle) {
+    const modelerTypes = ['sql', 'pipeline'];
+    const fileTypes = ['individual', 'consolidated'];
+    
+    for (const modelerType of modelerTypes) {
+        for (const fileType of fileTypes) {
+            const folderName = getFolderName(modelerType, fileType);
+            try {
+                await directoryHandle.getDirectoryHandle(folderName, { create: true });
+            } catch (error) {
+                console.error(`Error creating folder ${folderName}:`, error);
+            }
+        }
+    }
+}
+
+async function syncAllFilesFromDirectory(directoryHandle) {
+    const modelerTypes = ['sql', 'pipeline'];
+    const fileTypes = ['individual', 'consolidated'];
+    
+    for (const modelerType of modelerTypes) {
+        for (const fileType of fileTypes) {
+            await syncFilesFromFolder(directoryHandle, modelerType, fileType);
+        }
+    }
+}
+
+async function syncFilesFromFolder(directoryHandle, modelerType, fileType) {
     try {
         const database = await openDB();
+        const storeName = getStoreName(modelerType, fileType);
+        const folderName = getFolderName(modelerType, fileType);
         
-        await new Promise((resolve, reject) => {
-            const transaction = database.transaction([STORE_FILES], 'readwrite');
-            const store = transaction.objectStore(STORE_FILES);
-            const clearRequest = store.clear();
-            clearRequest.onsuccess = () => resolve();
-            clearRequest.onerror = () => reject(clearRequest.error);
+        const existingFiles = await new Promise((resolve, reject) => {
+            const transaction = database.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
         });
 
-        const fileEntries = [];
-        for await (const entry of directoryHandle.values()) {
+        const existingFilesMap = new Map(existingFiles.map(f => [f.name, f]));
+
+        let folderHandle;
+        try {
+            folderHandle = await directoryHandle.getDirectoryHandle(folderName);
+        } catch (error) {
+            return;
+        }
+
+        const currentFileNames = new Set();
+        const filesToAdd = [];
+        const filesToUpdate = [];
+        
+        for await (const entry of folderHandle.values()) {
             if (entry.kind === 'file' && entry.name.endsWith('.json')) {
+                currentFileNames.add(entry.name);
                 try {
-                    const fileHandle = await directoryHandle.getFileHandle(entry.name);
+                    const fileHandle = await folderHandle.getFileHandle(entry.name);
                     const fileObj = await fileHandle.getFile();
+                    const text = await fileObj.text();
+                    let fileData = null;
+                    try {
+                        fileData = JSON.parse(text);
+                    } catch (e) {
+                        console.warn(`Failed to parse JSON for ${entry.name}`);
+                    }
                     
-                    const fileEntry = {
-                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${fileEntries.length}`,
-                        name: entry.name,
-                        createdAt: fileObj.lastModified ? new Date(fileObj.lastModified).toISOString() : new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                    };
+                    const existingFile = existingFilesMap.get(entry.name);
+                    const fileModifiedTime = fileObj.lastModified ? new Date(fileObj.lastModified).toISOString() : new Date().toISOString();
                     
-                    fileEntries.push(fileEntry);
+                    if (existingFile) {
+                        const fileEntry = {
+                            ...existingFile,
+                            updatedAt: fileModifiedTime,
+                        };
+                        
+                        if (fileData) {
+                            fileEntry.data = fileData;
+                        }
+                        
+                        filesToUpdate.push(fileEntry);
+                    } else {
+                        const fileEntry = {
+                            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${filesToAdd.length}`,
+                            name: entry.name,
+                            createdAt: fileModifiedTime,
+                            updatedAt: fileModifiedTime,
+                            sourceFileIds: [],
+                        };
+                        
+                        if (fileData) {
+                            fileEntry.data = fileData;
+                        }
+                        
+                        filesToAdd.push(fileEntry);
+                    }
                 } catch (error) {
                     console.error(`Error reading file ${entry.name}:`, error);
                 }
             }
         }
 
-        if (fileEntries.length > 0) {
-            await new Promise((resolve, reject) => {
-                const transaction = database.transaction([STORE_FILES], 'readwrite');
-                const store = transaction.objectStore(STORE_FILES);
-                let completed = 0;
-                let hasError = false;
-
-                for (const fileEntry of fileEntries) {
-                    const addRequest = store.add(fileEntry);
-                    addRequest.onsuccess = () => {
-                        completed++;
-                        if (completed === fileEntries.length && !hasError) {
-                            resolve();
-                        }
-                    };
-                    addRequest.onerror = () => {
-                        if (!hasError) {
-                            hasError = true;
-                            reject(addRequest.error);
-                        }
-                    };
-                }
-            });
-        }
-    } catch (error) {
-        console.error('Error syncing files from directory:', error);
-    }
-}
-
-async function syncMergedFilesFromDirectory(directoryHandle) {
-    try {
-        const database = await openDB();
-        
-        let mergedFolderHandle;
-        try {
-            mergedFolderHandle = await directoryHandle.getDirectoryHandle('merged');
-        } catch (error) {
-            console.log('Merged folder does not exist, skipping sync');
-            return;
-        }
-
         await new Promise((resolve, reject) => {
-            const transaction = database.transaction([STORE_MERGED], 'readwrite');
-            const store = transaction.objectStore(STORE_MERGED);
-            const clearRequest = store.clear();
-            clearRequest.onsuccess = () => resolve();
-            clearRequest.onerror = () => reject(clearRequest.error);
+            const transaction = database.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            let completed = 0;
+            let totalOps = filesToAdd.length + filesToUpdate.length;
+            let hasError = false;
+
+            if (totalOps === 0) {
+                resolve();
+                return;
+            }
+
+            for (const fileEntry of filesToAdd) {
+                const addRequest = store.add(fileEntry);
+                addRequest.onsuccess = () => {
+                    completed++;
+                    if (completed === totalOps && !hasError) {
+                        resolve();
+                    }
+                };
+                addRequest.onerror = () => {
+                    if (!hasError) {
+                        hasError = true;
+                        reject(addRequest.error);
+                    }
+                };
+            }
+
+            for (const fileEntry of filesToUpdate) {
+                const putRequest = store.put(fileEntry);
+                putRequest.onsuccess = () => {
+                    completed++;
+                    if (completed === totalOps && !hasError) {
+                        resolve();
+                    }
+                };
+                putRequest.onerror = () => {
+                    if (!hasError) {
+                        hasError = true;
+                        reject(putRequest.error);
+                    }
+                };
+            }
         });
 
-        const fileEntries = [];
-        for await (const entry of mergedFolderHandle.values()) {
-            if (entry.kind === 'file' && entry.name.endsWith('.json')) {
-                try {
-                    const fileHandle = await mergedFolderHandle.getFileHandle(entry.name);
-                    const fileObj = await fileHandle.getFile();
-                    const text = await fileObj.text();
-                    const fileData = JSON.parse(text);
-                    
-                    const fileEntry = {
-                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${fileEntries.length}`,
-                        name: entry.name,
-                        sourceFileIds: [],
-                        createdAt: fileObj.lastModified ? new Date(fileObj.lastModified).toISOString() : new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        data: fileData,
-                    };
-                    
-                    fileEntries.push(fileEntry);
-                } catch (error) {
-                    console.error(`Error reading merged file ${entry.name}:`, error);
-                }
-            }
-        }
-
-        if (fileEntries.length > 0) {
+        const filesToDelete = existingFiles.filter(f => !currentFileNames.has(f.name));
+        if (filesToDelete.length > 0) {
             await new Promise((resolve, reject) => {
-                const transaction = database.transaction([STORE_MERGED], 'readwrite');
-                const store = transaction.objectStore(STORE_MERGED);
+                const transaction = database.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
                 let completed = 0;
                 let hasError = false;
 
-                for (const fileEntry of fileEntries) {
-                    const addRequest = store.add(fileEntry);
-                    addRequest.onsuccess = () => {
+                for (const file of filesToDelete) {
+                    const deleteRequest = store.delete(file.id);
+                    deleteRequest.onsuccess = () => {
                         completed++;
-                        if (completed === fileEntries.length && !hasError) {
+                        if (completed === filesToDelete.length && !hasError) {
                             resolve();
                         }
                     };
-                    addRequest.onerror = () => {
+                    deleteRequest.onerror = () => {
                         if (!hasError) {
                             hasError = true;
-                            reject(addRequest.error);
+                            reject(deleteRequest.error);
                         }
                     };
                 }
             });
         }
     } catch (error) {
-        console.error('Error syncing merged files from directory:', error);
+        console.error(`Error syncing files from ${folderName}:`, error);
     }
 }
 
@@ -288,11 +360,12 @@ export async function getStorageDirectoryPath() {
     }
 }
 
-export async function getAllFiles() {
+export async function getAllFiles(modelerType = 'sql', fileType = 'individual') {
     try {
         const database = await openDB();
-        const transaction = database.transaction([STORE_FILES], 'readonly');
-        const store = transaction.objectStore(STORE_FILES);
+        const storeName = getStoreName(modelerType, fileType);
+        const transaction = database.transaction([storeName], 'readonly');
+        const store = transaction.objectStore(storeName);
         const request = store.getAll();
 
         return new Promise((resolve, reject) => {
@@ -305,7 +378,7 @@ export async function getAllFiles() {
     }
 }
 
-export async function saveFile(fileName, fileData) {
+export async function saveFile(fileName, fileData, modelerType = 'sql', fileType = 'individual') {
     try {
         let handle = await getDirectoryHandle();
         if (!handle) {
@@ -315,7 +388,10 @@ export async function saveFile(fileName, fileData) {
             }
         }
 
-        const files = await getAllFiles();
+        const folderName = getFolderName(modelerType, fileType);
+        const folderHandle = await handle.getDirectoryHandle(folderName, { create: true });
+        
+        const files = await getAllFiles(modelerType, fileType);
         const fileId = Date.now().toString();
         const fileEntry = {
             id: fileId,
@@ -330,14 +406,15 @@ export async function saveFile(fileName, fileData) {
             fileEntry.createdAt = files[existingIndex].createdAt;
         }
 
-        const fileHandle = await handle.getFileHandle(fileName, { create: true });
+        const fileHandle = await folderHandle.getFileHandle(fileName, { create: true });
         const writable = await fileHandle.createWritable();
         await writable.write(JSON.stringify(fileData, null, 2));
         await writable.close();
 
         const database = await openDB();
-        const transaction = database.transaction([STORE_FILES], 'readwrite');
-        const store = transaction.objectStore(STORE_FILES);
+        const storeName = getStoreName(modelerType, fileType);
+        const transaction = database.transaction([storeName], 'readwrite');
+        const store = transaction.objectStore(storeName);
         
         if (existingIndex >= 0) {
             store.put(fileEntry);
@@ -352,35 +429,47 @@ export async function saveFile(fileName, fileData) {
     }
 }
 
-export async function getFile(fileId) {
+export async function getFile(fileId, modelerType = 'sql', fileType = 'individual') {
     try {
-        const files = await getAllFiles();
+        const files = await getAllFiles(modelerType, fileType);
         const file = files.find(f => f.id === fileId);
         if (!file) return null;
 
         const handle = await getDirectoryHandle();
         if (!handle) {
+            if (file.data) {
+                return file;
+            }
             throw new Error('No storage directory available');
         }
 
-        const fileHandle = await handle.getFileHandle(file.name);
-        const fileObj = await fileHandle.getFile();
-        const text = await fileObj.text();
-        const data = JSON.parse(text);
+        const folderName = getFolderName(modelerType, fileType);
+        try {
+            const folderHandle = await handle.getDirectoryHandle(folderName);
+            const fileHandle = await folderHandle.getFileHandle(file.name);
+            const fileObj = await fileHandle.getFile();
+            const text = await fileObj.text();
+            const data = JSON.parse(text);
 
-        return {
-            ...file,
-            data: data
-        };
+            return {
+                ...file,
+                data: data
+            };
+        } catch (error) {
+            if (file.data) {
+                return file;
+            }
+            throw error;
+        }
     } catch (error) {
         console.error('Error getting file from storage:', error);
         return null;
     }
 }
 
-export async function renameFile(fileId, newFileName) {
+export async function renameFile(fileId, newFileName, modelerType = 'sql', fileType = 'individual') {
     try {
-        const files = await getAllFiles();
+        const files = await getAllFiles(modelerType, fileType);
         const file = files.find(f => f.id === fileId);
         if (!file) return false;
 
@@ -391,18 +480,19 @@ export async function renameFile(fileId, newFileName) {
             throw new Error('No storage directory available');
         }
 
-        const oldFileHandle = await handle.getFileHandle(file.name);
+        const folderName = getFolderName(modelerType, fileType);
+        const folderHandle = await handle.getDirectoryHandle(folderName);
+        const oldFileHandle = await folderHandle.getFileHandle(file.name);
         const fileObj = await oldFileHandle.getFile();
         const text = await fileObj.text();
-        const data = JSON.parse(text);
 
-        const newFileHandle = await handle.getFileHandle(newFileName, { create: true });
+        const newFileHandle = await folderHandle.getFileHandle(newFileName, { create: true });
         const writable = await newFileHandle.createWritable();
         await writable.write(text);
         await writable.close();
 
         try {
-            await handle.removeEntry(file.name);
+            await folderHandle.removeEntry(file.name);
         } catch (error) {
             console.warn('Error removing old file:', error);
         }
@@ -414,8 +504,9 @@ export async function renameFile(fileId, newFileName) {
         };
 
         const database = await openDB();
-        const transaction = database.transaction([STORE_FILES], 'readwrite');
-        const store = transaction.objectStore(STORE_FILES);
+        const storeName = getStoreName(modelerType, fileType);
+        const transaction = database.transaction([storeName], 'readwrite');
+        const store = transaction.objectStore(storeName);
         store.put(updatedFileEntry);
 
         return true;
@@ -425,24 +516,27 @@ export async function renameFile(fileId, newFileName) {
     }
 }
 
-export async function deleteFile(fileId) {
+export async function deleteFile(fileId, modelerType = 'sql', fileType = 'individual') {
     try {
-        const files = await getAllFiles();
+        const files = await getAllFiles(modelerType, fileType);
         const file = files.find(f => f.id === fileId);
         if (!file) return false;
 
         const handle = await getDirectoryHandle();
         if (handle) {
             try {
-                await handle.removeEntry(file.name);
+                const folderName = getFolderName(modelerType, fileType);
+                const folderHandle = await handle.getDirectoryHandle(folderName);
+                await folderHandle.removeEntry(file.name);
             } catch (error) {
                 console.warn('Error deleting file from directory:', error);
             }
         }
 
         const database = await openDB();
-        const transaction = database.transaction([STORE_FILES], 'readwrite');
-        const store = transaction.objectStore(STORE_FILES);
+        const storeName = getStoreName(modelerType, fileType);
+        const transaction = database.transaction([storeName], 'readwrite');
+        const store = transaction.objectStore(storeName);
         store.delete(fileId);
 
         return true;
@@ -491,167 +585,83 @@ export function clearCurrentFile() {
     return setCurrentFile(null);
 }
 
-export async function getAllMergedFiles() {
-    try {
-        const database = await openDB();
-        const transaction = database.transaction([STORE_MERGED], 'readonly');
-        const store = transaction.objectStore(STORE_MERGED);
-        const request = store.getAll();
-
-        return new Promise((resolve, reject) => {
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
-    } catch (error) {
-        console.error('Error reading merged files from storage:', error);
-        return [];
-    }
+export async function getAllMergedFiles(modelerType = 'sql') {
+    return getAllFiles(modelerType, 'consolidated');
 }
 
-export async function saveMergedFile(fileName, fileData, sourceFileIds) {
-    try {
-        let handle = await getDirectoryHandle();
-        if (!handle) {
-            handle = await selectStorageDirectory();
-            if (!handle) {
-                throw new Error('No storage directory selected');
-            }
-        }
-
-        const mergedFolderHandle = await handle.getDirectoryHandle('merged', { create: true });
-        const fileHandle = await mergedFolderHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(fileData, null, 2));
-        await writable.close();
-
-        const fileId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-        const fileEntry = {
-            id: fileId,
-            name: fileName,
-            sourceFileIds: sourceFileIds || [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            data: fileData,
-        };
-
-        const database = await openDB();
-        const transaction = database.transaction([STORE_MERGED], 'readwrite');
-        const store = transaction.objectStore(STORE_MERGED);
-        store.add(fileEntry);
-
-        return fileEntry;
-    } catch (error) {
-        console.error('Error saving merged file to storage:', error);
-        throw error;
-    }
+export async function saveMergedFile(fileName, fileData, sourceFileIds, modelerType = 'sql') {
+    return saveFile(fileName, fileData, modelerType, 'consolidated');
 }
 
-export async function getMergedFile(fileId) {
-    try {
-        const mergedFiles = await getAllMergedFiles();
-        const mergedFile = mergedFiles.find(f => f.id === fileId);
-        if (!mergedFile) return null;
-
-        const handle = await getDirectoryHandle();
-        if (!handle) {
-            if (mergedFile.data) {
-                return mergedFile;
-            }
-            throw new Error('No storage directory available');
-        }
-
-        try {
-            const mergedFolderHandle = await handle.getDirectoryHandle('merged');
-            const fileHandle = await mergedFolderHandle.getFileHandle(mergedFile.name);
-            const fileObj = await fileHandle.getFile();
-            const text = await fileObj.text();
-            const data = JSON.parse(text);
-
-            return {
-                ...mergedFile,
-                data: data
-            };
-        } catch (error) {
-            if (mergedFile.data) {
-                return mergedFile;
-            }
-            throw error;
-        }
-    } catch (error) {
-        console.error('Error getting merged file from storage:', error);
-        return null;
-    }
+export async function getMergedFile(fileId, modelerType = 'sql') {
+    return getFile(fileId, modelerType, 'consolidated');
 }
 
-export async function renameMergedFile(fileId, newFileName) {
+export async function renameMergedFile(fileId, newFileName, modelerType = 'sql') {
+    return renameFile(fileId, newFileName, modelerType, 'consolidated');
+}
+
+export async function deleteMergedFile(fileId, modelerType = 'sql') {
+    return deleteFile(fileId, modelerType, 'consolidated');
+}
+
+export async function clearOldDataStores() {
     try {
-        const mergedFile = await getMergedFile(fileId);
-        if (!mergedFile) return false;
-
-        if (mergedFile.name === newFileName) return true;
-
-        const handle = await getDirectoryHandle();
-        if (!handle) {
-            throw new Error('No storage directory available');
-        }
-
-        const mergedFolderHandle = await handle.getDirectoryHandle('merged');
-        const oldFileHandle = await mergedFolderHandle.getFileHandle(mergedFile.name);
-        const fileObj = await oldFileHandle.getFile();
-        const text = await fileObj.text();
-
-        const newFileHandle = await mergedFolderHandle.getFileHandle(newFileName, { create: true });
-        const writable = await newFileHandle.createWritable();
-        await writable.write(text);
-        await writable.close();
-
-        try {
-            await mergedFolderHandle.removeEntry(mergedFile.name);
-        } catch (error) {
-            console.warn('Error removing old merged file:', error);
-        }
-
-        const updatedFileEntry = {
-            ...mergedFile,
-            name: newFileName,
-            updatedAt: new Date().toISOString(),
-        };
-
         const database = await openDB();
-        const transaction = database.transaction([STORE_MERGED], 'readwrite');
-        const store = transaction.objectStore(STORE_MERGED);
-        store.put(updatedFileEntry);
-
+        const oldStores = ['files', 'merged_files'];
+        
+        for (const storeName of oldStores) {
+            if (database.objectStoreNames.contains(storeName)) {
+                const transaction = database.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                await new Promise((resolve, reject) => {
+                    const clearRequest = store.clear();
+                    clearRequest.onsuccess = () => {
+                        console.log(`Cleared old store: ${storeName}`);
+                        resolve();
+                    };
+                    clearRequest.onerror = () => reject(clearRequest.error);
+                });
+            }
+        }
+        console.log('Old data stores cleared successfully');
         return true;
     } catch (error) {
-        console.error('Error renaming merged file:', error);
+        console.error('Error clearing old data stores:', error);
         return false;
     }
 }
 
-export async function deleteMergedFile(fileId) {
+export async function deleteDatabase() {
+    return new Promise((resolve, reject) => {
+        const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+        deleteRequest.onsuccess = () => {
+            console.log('Database deleted successfully');
+            db = null;
+            resolve();
+        };
+        deleteRequest.onerror = () => reject(deleteRequest.error);
+        deleteRequest.onblocked = () => {
+            console.warn('Database deletion blocked. Close all tabs and try again.');
+            reject(new Error('Database deletion blocked'));
+        };
+    });
+}
+
+export async function syncFilesFromDirectory() {
     try {
-        const mergedFile = await getMergedFile(fileId);
-        if (mergedFile) {
-            const handle = await getDirectoryHandle();
-            if (handle) {
-                try {
-                    const mergedFolderHandle = await handle.getDirectoryHandle('merged');
-                    await mergedFolderHandle.removeEntry(mergedFile.name);
-                } catch (error) {
-                    console.warn('Error deleting merged file from directory:', error);
-                }
-            }
+        const handle = await getDirectoryHandle();
+        if (!handle) {
+            throw new Error('No storage directory available');
         }
-
-        const database = await openDB();
-        const transaction = database.transaction([STORE_MERGED], 'readwrite');
-        const store = transaction.objectStore(STORE_MERGED);
-        store.delete(fileId);
-
+        await syncAllFilesFromDirectory(handle);
         return true;
     } catch (error) {
-        console.error('Error deleting merged file from storage:', error);
+        console.error('Error syncing files from directory:', error);
         return false;
     }
+}
+
+export async function getStorageDirectoryWithSync() {
+    return await getDirectoryHandle(true);
 }

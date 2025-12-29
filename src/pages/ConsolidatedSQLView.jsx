@@ -2,13 +2,13 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Network } from "vis-network";
 import "vis-network/styles/vis-network.min.css";
-import { mergedJsonToVisNetwork } from "../utils/ConsolidatedView/mergedToVisNetwork";
+import { mergedJsonToVisNetwork } from "../utils/ConsolidatedSQLView/mergedToVisNetwork";
 import { getMergedFile } from "../utils/ControlPage/fileStorage";
-import Header from "../components/ConsolidatedView/Header";
-import Minimap from "../components/ConsolidatedView/Minimap";
-import ZoomControls from "../components/ConsolidatedView/ZoomControls";
+import Header from "../components/ConsolidatedSQLView/Header";
+import Minimap from "../components/ConsolidatedSQLView/Minimap";
+import ZoomControls from "../components/ConsolidatedSQLView/ZoomControls";
 
-function ConsolidatedView() {
+function ConsolidatedSQLView() {
     const { fileId } = useParams();
     const navigate = useNavigate();
     const networkRef = useRef(null);
@@ -17,7 +17,7 @@ function ConsolidatedView() {
     const [currentEdges, setCurrentEdges] = useState([]);
 
     const handleBack = useCallback(() => {
-        navigate("/");
+        navigate("/?modeler=sql");
     }, [navigate]);
 
     const handleZoomIn = useCallback(() => {
@@ -65,7 +65,7 @@ function ConsolidatedView() {
             let edges = [];
 
             if (fileId) {
-                const mergedFile = await getMergedFile(fileId);
+                const mergedFile = await getMergedFile(fileId, 'sql');
                 if (mergedFile && mergedFile.data) {
                     try {
                         const { nodes: visNodes, edges: visEdges } =
@@ -74,11 +74,11 @@ function ConsolidatedView() {
                         edges = visEdges;
                     } catch (error) {
                         console.error("Error loading merged file data:", error);
-                        navigate("/");
+                        navigate("/?modeler=sql");
                         return;
                     }
                 } else {
-                    navigate("/");
+                    navigate("/?modeler=sql");
                     return;
                 }
             }
@@ -320,4 +320,4 @@ function ConsolidatedView() {
     );
 }
 
-export default ConsolidatedView;
+export default ConsolidatedSQLView;

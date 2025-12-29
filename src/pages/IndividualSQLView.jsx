@@ -1,34 +1,34 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactFlow, {
     MiniMap,
     Controls,
     Background,
 } from "reactflow";
-import TableNode from "../components/IndividualView/TableNode/TableNode";
-import EdgeConfigDialog from "../components/IndividualView/EdgeConfigDialog";
-import FlowHeader from "../components/IndividualView/FlowHeader";
-import EdgeContextMenu from "../components/IndividualView/EdgeContextMenu";
-import FieldDrawer from "../components/IndividualView/FieldDrawer";
-import FitViewHelper from "../components/IndividualView/FitViewHelper";
+import TableNode from "../components/IndividualSQLView/TableNode/TableNode";
+import EdgeConfigDialog from "../components/IndividualSQLView/EdgeConfigDialog";
+import FlowHeader from "../components/IndividualSQLView/FlowHeader";
+import EdgeContextMenu from "../components/IndividualSQLView/EdgeContextMenu";
+import FieldDrawer from "../components/IndividualSQLView/FieldDrawer";
+import FitViewHelper from "../components/IndividualSQLView/FitViewHelper";
 import { useFlowState } from "../hooks/useFlowState";
 import { useNodeHandlers } from "../hooks/useNodeHandlers";
 import { useEdgeHandlers } from "../hooks/useEdgeHandlers";
 import { useEdgeFiltering } from "../hooks/useEdgeFiltering";
 import { useFieldHighlighting } from "../hooks/useFieldHighlighting";
 import { useNodeDecoration } from "../hooks/useNodeDecoration";
-import { applyLayout } from "../utils/IndividualView/layout";
-import { flowToModel } from "../utils/IndividualView/flowToModel";
-import { modelToFlow } from "../utils/IndividualView/dataTransform";
+import { applyLayout } from "../utils/IndividualSQLView/layout";
+import { flowToModel } from "../utils/IndividualSQLView/flowToModel";
+import { modelToFlow } from "../utils/IndividualSQLView/dataTransform";
 import { getFile, setCurrentFile, clearCurrentFile } from "../utils/ControlPage/fileStorage";
 
-const nodeTypes = { tableNode: TableNode };
-
-const IndividualView = () => {
+const IndividualSQLView = () => {
     const { fileId } = useParams();
     const navigate = useNavigate();
     const { nodes, edges, setNodes, setEdges, onNodesChange, onEdgesChange } =
         useFlowState();
+
+    const nodeTypes = useMemo(() => ({ tableNode: TableNode }), []);
 
     const [editingNode, setEditingNode] = useState(null);
     const [editingLabels, setEditingLabels] = useState({});
@@ -222,7 +222,7 @@ const IndividualView = () => {
             }
             loadedFileIdRef.current = null;
             const loadFile = async () => {
-                const file = await getFile(fileId);
+                const file = await getFile(fileId, 'sql', 'individual');
                 if (file && file.data) {
                     await setCurrentFile(fileId);
                     try {
@@ -249,10 +249,10 @@ const IndividualView = () => {
                     } catch (error) {
                         console.error("Error loading file data:", error);
                         alert("Error loading file. Please try again.");
-                        navigate("/");
+                        navigate("/?modeler=sql");
                     }
                 } else {
-                    navigate("/");
+                    navigate("/?modeler=sql");
                 }
             };
             loadFile();
@@ -264,7 +264,7 @@ const IndividualView = () => {
 
     const handleBack = async () => {
         await clearCurrentFile();
-        navigate("/");
+        navigate("/?modeler=sql");
     };
 
     const onConnect = useCallback((params) => {
@@ -402,7 +402,6 @@ const IndividualView = () => {
                     zoomOnPinch={true}
                     panOnScroll={false}
                     panOnDrag={true}
-                    wheelDelta={0.01}
                     connectionLineType="step"
                     defaultEdgeOptions={{
                         type: "step",
@@ -489,5 +488,5 @@ const IndividualView = () => {
     );
 };
 
-export default IndividualView;
+export default IndividualSQLView;
 

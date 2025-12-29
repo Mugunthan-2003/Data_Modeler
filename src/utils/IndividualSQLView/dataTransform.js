@@ -1,5 +1,5 @@
 // src/utils/dataTransform.js
-import rawModel from "../../testing/JSONs/AccountsPayable.json";
+import rawModel from "../../testing/SQL_JSONs/AccountsPayable.json";
 
 /**
  * Extract table type (prefix) from table name

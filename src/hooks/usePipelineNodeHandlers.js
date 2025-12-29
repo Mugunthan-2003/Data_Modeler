@@ -4,22 +4,11 @@ import {
     updateFieldInFields,
     generateUniqueTableName,
     calculateCenterPosition,
-} from "../utils/IndividualSQLView/nodeUtils";
-import { addTablePrefix } from "../utils/IndividualSQLView/dataTransform";
-import { getHandleId } from "../utils/IndividualSQLView/edgeUtils";
+} from "../utils/IndividualPipelineView/nodeUtils";
+import { addTablePrefix } from "../utils/IndividualPipelineView/dataTransform";
+import { getHandleId } from "../utils/IndividualPipelineView/edgeUtils";
 
-/**
- * Custom hook for node-related handlers
- * @param {Array} nodes - Current nodes array
- * @param {Array} edges - Current edges array
- * @param {Function} setNodes - Function to update nodes
- * @param {Function} setEdges - Function to update edges
- * @param {Function} setEditingNode - Function to set editing node
- * @param {Function} setEditingLabels - Function to set editing labels
- * @param {Function} setEditingAliases - Function to set editing aliases
- * @returns {Object} Object containing all node handlers
- */
-export const useNodeHandlers = (
+export const usePipelineNodeHandlers = (
     nodes,
     edges,
     setNodes,
@@ -68,7 +57,6 @@ export const useNodeHandlers = (
                         data: { ...node.data, label: newLabel.trim() },
                     };
 
-                    // Update all edges that reference this node
                     setEdges((eds) =>
                         eds.map((edge) => {
                             const updatedEdge = { ...edge };
@@ -114,6 +102,21 @@ export const useNodeHandlers = (
         [setNodes]
     );
 
+    const handleUpdateSourcePath = useCallback(
+        (nodeId, newSourcePath) => {
+            setNodes((nds) =>
+                updateNodeInNodes(nds, nodeId, (node) => ({
+                    ...node,
+                    data: {
+                        ...node.data,
+                        source_path: newSourcePath.trim(),
+                    },
+                }))
+            );
+        },
+        [setNodes]
+    );
+
     const handleUpdateFieldName = useCallback(
         (nodeId, oldFieldName, newFieldName) => {
             if (
@@ -127,7 +130,6 @@ export const useNodeHandlers = (
             const oldHandle = getHandleId(nodeId, oldFieldName);
             const newHandle = getHandleId(nodeId, newFieldName.trim());
 
-            // Update field name in node
             setNodes((nds) =>
                 updateNodeInNodes(nds, nodeId, (node) => {
                     const field = node.data.fields.find((f) => f.name === oldFieldName);
@@ -145,7 +147,6 @@ export const useNodeHandlers = (
                 })
             );
 
-            // Update all edges that reference this field
             setEdges((eds) =>
                 eds.map((edge) => {
                     const updatedEdge = { ...edge };
@@ -174,7 +175,6 @@ export const useNodeHandlers = (
         (nodeId, fieldName) => {
             const handleId = getHandleId(nodeId, fieldName);
 
-            // Delete field from node
             setNodes((nds) =>
                 updateNodeInNodes(nds, nodeId, (node) => ({
                     ...node,
@@ -187,7 +187,6 @@ export const useNodeHandlers = (
                 }))
             );
 
-            // Delete all edges connected to this field
             setEdges((eds) =>
                 eds.filter(
                     (edge) =>
@@ -224,12 +223,9 @@ export const useNodeHandlers = (
         [setNodes]
     );
 
-    const handleAddNewTable = useCallback((tableType = "BASE") => {
+    const handleAddNewTable = useCallback((tableType = "SOURCE") => {
         const tableName = generateUniqueTableName(nodes);
         const position = calculateCenterPosition();
-
-        // Use prefixed entity name as the node id so newly created tables
-        // are consistent with imported nodes which include prefixes.
         const prefixedId = addTablePrefix(tableName, tableType);
 
         const newNode = {
@@ -237,9 +233,9 @@ export const useNodeHandlers = (
             type: "tableNode",
             position,
             data: {
-                // user-facing label (without prefix)
                 label: tableName,
                 alias: "",
+                source_path: "",
                 fields: [],
                 tableType: tableType,
             },
@@ -247,7 +243,6 @@ export const useNodeHandlers = (
 
         setNodes((nds) => [...nds, newNode]);
 
-        // Automatically enter edit mode for the new table
         setEditingNode(prefixedId);
         setEditingLabels((prev) => ({
             ...prev,
@@ -258,13 +253,11 @@ export const useNodeHandlers = (
             [prefixedId]: "",
         }));
 
-        // Return the new node info for navigation
         return { nodeId: prefixedId, position };
     }, [nodes, setNodes, setEditingNode, setEditingLabels, setEditingAliases]);
 
     const handleDeleteTable = useCallback(
         (nodeId) => {
-            // Delete all edges connected to this node
             setEdges((eds) =>
                 eds.filter(
                     (edge) =>
@@ -273,7 +266,6 @@ export const useNodeHandlers = (
                 )
             );
 
-            // Delete the node
             setNodes((nds) =>
                 nds.filter((node) => node.id !== nodeId)
             );
@@ -285,6 +277,7 @@ export const useNodeHandlers = (
         handleAddField,
         handleUpdateNodeLabel,
         handleUpdateNodeAlias,
+        handleUpdateSourcePath,
         handleUpdateFieldName,
         handleDeleteField,
         handleUpdateFieldCalculation,
@@ -292,4 +285,3 @@ export const useNodeHandlers = (
         handleDeleteTable,
     };
 };
-

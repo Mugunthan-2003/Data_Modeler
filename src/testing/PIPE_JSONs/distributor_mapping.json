@@ -1,0 +1,102 @@
+{
+  "source_entities": {
+    "distributor_mv": {
+      "alias": "bronze_distributor",
+      "source_path": "dev.01_bronze.distributor_mv",
+      "fields": {
+        "distributor_id": {},
+        "distributor_name": {},
+        "phone_number": {},
+        "street_address": {},
+        "postal_code": {},
+        "city": {},
+        "state": {},
+        "country": {}
+      }
+    }
+  },
+  "target_entities": {
+    "distributor_mv": {
+      "alias": "silver_distributor",
+      "source_path": "dev.02_silver.distributor_mv",
+      "fields": {
+        "distributor_id": {
+          "ref": [
+            "distributor_mv.distributor_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_distributor', 'distributor_id IS NOT NULL')",
+            "ref": [
+              "distributor_mv.distributor_id"
+            ]
+          }
+        },
+        "distributor_name": {
+          "ref": [
+            "distributor_mv.distributor_name"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.distributor_name)",
+            "ref": [
+              "distributor_mv.distributor_name"
+            ]
+          }
+        },
+        "phone_number": {
+          "ref": [
+            "distributor_mv.phone_number"
+          ]
+        },
+        "street_address": {
+          "ref": [
+            "distributor_mv.street_address"
+          ]
+        },
+        "postal_code": {
+          "ref": [
+            "distributor_mv.postal_code"
+          ],
+          "calculation": {
+            "expression": "when(length(regexp_replace(distributor_mv.postal_code, r'\\s+', '')) == 6, regexp_replace(distributor_mv.postal_code, r'\\s+', ''), 'Invalid')",
+            "ref": [
+              "distributor_mv.postal_code"
+            ]
+          }
+        },
+        "city": {
+          "ref": [
+            "distributor_mv.city"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.city)",
+            "ref": [
+              "distributor_mv.city"
+            ]
+          }
+        },
+        "state": {
+          "ref": [
+            "distributor_mv.state"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.state)",
+            "ref": [
+              "distributor_mv.state"
+            ]
+          }
+        },
+        "country": {
+          "ref": [
+            "distributor_mv.country"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.country)",
+            "ref": [
+              "distributor_mv.country"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

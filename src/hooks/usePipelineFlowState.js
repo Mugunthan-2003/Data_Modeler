@@ -1,12 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNodesState, useEdgesState } from "reactflow";
-import { modelToFlow } from "../utils/IndividualSQLView/dataTransform";
+import { modelToFlow } from "../utils/IndividualPipelineView/dataTransform";
 
-/**
- * Custom hook for managing flow state (nodes and edges)
- * @returns {Object} Object containing nodes, edges, and their setters
- */
-export const useFlowState = () => {
+export const usePipelineFlowState = () => {
     const { nodes: initialNodes, edges: initialEdges } = useMemo(
         () => modelToFlow(),
         []
@@ -23,4 +19,3 @@ export const useFlowState = () => {
         onEdgesChange,
     };
 };
-

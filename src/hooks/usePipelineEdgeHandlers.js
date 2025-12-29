@@ -7,21 +7,13 @@ import {
     createReference,
     parseReference,
     getHandleId,
-} from "../utils/IndividualSQLView/edgeUtils";
+} from "../utils/IndividualPipelineView/edgeUtils";
 import {
     updateNodeInNodes,
     updateFieldInFields,
-} from "../utils/IndividualSQLView/nodeUtils";
+} from "../utils/IndividualPipelineView/nodeUtils";
 
-/**
- * Custom hook for edge-related handlers
- * @param {Array} nodes - Current nodes array
- * @param {Array} edges - Current edges array
- * @param {Function} setNodes - Function to update nodes
- * @param {Function} setEdges - Function to update edges
- * @returns {Object} Object containing all edge handlers
- */
-export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
+export const usePipelineEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
     const handleEdgeConfigConfirm = useCallback(
         (
             edgeType,
@@ -45,7 +37,6 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
 
             const { source, target, sourceHandle, targetHandle } = edgeConfig;
 
-            // Determine edge ID and style based on type
             const isCalcEdge = edgeType === "calculation";
             const edgeId = generateEdgeId(edgeType, sourceHandle, targetHandle);
 
@@ -58,16 +49,13 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
                 targetHandle,
             });
 
-            // Extract field names from handles
             const sourceFieldName = extractFieldName(sourceHandle, source);
             const targetFieldName = extractFieldName(targetHandle, target);
             const sourceRef = createReference(source, sourceFieldName);
 
-            // If editing an existing edge, delete it first
             if (isEdit && existingEdgeId) {
                 setEdges((eds) => eds.filter((e) => e.id !== existingEdgeId));
 
-                // Remove the reference from the field data
                 const existingEdge = edges.find((e) => e.id === existingEdgeId);
                 if (existingEdge) {
                     const existingTargetFieldName = extractFieldName(
@@ -116,7 +104,6 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
                 }
             }
 
-            // If it's a calculation ref, update the target field to include calculation
             if (isCalcEdge && calculationExpression) {
                 setNodes((nds) =>
                     updateNodeInNodes(nds, target, (node) => ({
@@ -138,7 +125,6 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
                     }))
                 );
             } else if (!isCalcEdge) {
-                // For normal refs, update the field's ref array
                 setNodes((nds) =>
                     updateNodeInNodes(nds, target, (node) => ({
                         ...node,
@@ -174,7 +160,6 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
             const edge = edges.find((e) => e.id === edgeId);
             if (!edge) return;
 
-            // Remove the reference from the target field
             const targetFieldName = extractFieldName(
                 edge.targetHandle,
                 edge.target
@@ -210,7 +195,6 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
                 }))
             );
 
-            // Delete the edge
             setEdges((eds) => eds.filter((e) => e.id !== edgeId));
             return { shouldCloseMenu: true };
         },
@@ -221,7 +205,6 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
         (nodeId, fieldName, refToDelete, isCalcRef = false) => {
             const handleId = getHandleId(nodeId, fieldName);
 
-            // Update field to remove the reference
             setNodes((nds) =>
                 updateNodeInNodes(nds, nodeId, (node) => ({
                     ...node,
@@ -254,7 +237,6 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
                 }))
             );
 
-            // Find and delete the corresponding edge
             const { entity: sourceEntity, field: sourceField } =
                 parseReference(refToDelete);
             const sourceHandle = getHandleId(sourceEntity, sourceField);
@@ -278,4 +260,3 @@ export const useEdgeHandlers = (nodes, edges, setNodes, setEdges) => {
         handleDeleteFieldRef,
     };
 };
-

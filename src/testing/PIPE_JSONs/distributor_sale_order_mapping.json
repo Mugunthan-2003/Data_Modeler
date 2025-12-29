@@ -1,0 +1,143 @@
+{
+  "source_entities": {
+    "distributor_sale_order_mv": {
+      "alias": "bronze_sale_order",
+      "source_path": "dev.01_bronze.distributor_sale_order_mv",
+      "fields": {
+        "sales_order_id": {},
+        "distributor_id": {},
+        "order_date": {},
+        "expected_delivery_date": {},
+        "order_total_amount": {},
+        "currency": {}
+      }
+    },
+    "distributor_sale_order_item_mv": {
+      "alias": "bronze_sale_order_item",
+      "source_path": "dev.01_bronze.distributor_sale_order_item_mv",
+      "fields": {
+        "sales_order_id": {},
+        "sales_order_item_no": {},
+        "product_id": {},
+        "order_quantity": {},
+        "order_quantity_uom": {},
+        "unit_price": {},
+        "item_total_amount": {}
+      }
+    }
+  },
+  "target_entities": {
+    "distributor_sale_order_mv": {
+      "alias": "silver_sale_order",
+      "source_path": "dev.02_silver.distributor_sale_order_mv",
+      "fields": {
+        "order_id": {
+          "ref": [
+            "distributor_sale_order_mv.sales_order_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_order', 'sales_order_id IS NOT NULL')",
+            "ref": [
+              "distributor_sale_order_mv.sales_order_id"
+            ]
+          }
+        },
+        "distributor_id": {
+          "ref": [
+            "distributor_sale_order_mv.distributor_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_distributor', 'distributor_id IS NOT NULL')",
+            "ref": [
+              "distributor_sale_order_mv.distributor_id"
+            ]
+          }
+        },
+        "order_date": {
+          "ref": [
+            "distributor_sale_order_mv.order_date"
+          ],
+          "calculation": {
+            "expression": "to_date(distributor_sale_order_mv.order_date, 'yyyy-MM-dd')",
+            "ref": [
+              "distributor_sale_order_mv.order_date"
+            ]
+          }
+        },
+        "expected_delivery_date": {
+          "ref": [
+            "distributor_sale_order_mv.expected_delivery_date"
+          ],
+          "calculation": {
+            "expression": "to_date(distributor_sale_order_mv.expected_delivery_date, 'yyyy-MM-dd')",
+            "ref": [
+              "distributor_sale_order_mv.expected_delivery_date"
+            ]
+          }
+        },
+        "currency": {
+          "ref": [
+            "distributor_sale_order_mv.currency"
+          ]
+        },
+        "item_no": {
+          "ref": [
+            "distributor_sale_order_item_mv.sales_order_item_no"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_item_no', 'distributor_sale_order_item_mv.sales_order_item_no IS NOT NULL')",
+            "ref": [
+              "distributor_sale_order_item_mv.sales_order_item_no"
+            ]
+          }
+        },
+        "product_id": {
+          "ref": [
+            "distributor_sale_order_item_mv.product_id"
+          ]
+        },
+        "order_quantity": {
+          "ref": [
+            "distributor_sale_order_item_mv.order_quantity"
+          ]
+        },
+        "unit_measure": {
+          "ref": [
+            "distributor_sale_order_item_mv.order_quantity_uom"
+          ],
+          "calculation": {
+            "expression": "trim(when(distributor_sale_order_item_mv.order_quantity_uom IS NULL, 'NA', distributor_sale_order_item_mv.order_quantity_uom))",
+            "ref": [
+              "distributor_sale_order_item_mv.order_quantity_uom"
+            ]
+          }
+        },
+        "unit_price": {
+          "ref": [
+            "distributor_sale_order_item_mv.unit_price"
+          ]
+        },
+        "item_total_amount": {
+          "ref": [
+            "distributor_sale_order_item_mv.item_total_amount"
+          ],
+          "calculation": {
+            "expression": "when(distributor_sale_order_item_mv.order_quantity * distributor_sale_order_item_mv.unit_price == distributor_sale_order_item_mv.item_total_amount, distributor_sale_order_item_mv.item_total_amount, distributor_sale_order_item_mv.order_quantity * distributor_sale_order_item_mv.unit_price)",
+            "ref": [
+              "distributor_sale_order_item_mv.order_quantity",
+              "distributor_sale_order_item_mv.unit_price",
+              "distributor_sale_order_item_mv.item_total_amount"
+            ]
+          }
+        }
+      },
+      "joins": [
+        {
+          "from": "distributor_sale_order_mv.sales_order_id",
+          "to": "distributor_sale_order_item_mv.sales_order_id",
+          "type": "left"
+        }
+      ]
+    }
+  }
+}

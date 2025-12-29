@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { FiUpload, FiFile, FiTrash2, FiFolder, FiSearch, FiX, FiEdit2 } from "react-icons/fi";
-import { getAllFiles, saveFile, deleteFile, selectStorageDirectory, getStorageDirectory, getStorageDirectoryPath, getAllMergedFiles, saveMergedFile, deleteMergedFile, getFile, renameFile, renameMergedFile } from "../utils/ControlPage/fileStorage";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { FiUpload, FiFile, FiTrash2, FiFolder, FiSearch, FiX, FiEdit2, FiRefreshCw } from "react-icons/fi";
+import { getAllFiles, saveFile, deleteFile, selectStorageDirectory, getStorageDirectory, getStorageDirectoryPath, getAllMergedFiles, saveMergedFile, deleteMergedFile, getFile, renameFile, renameMergedFile, syncFilesFromDirectory } from "../utils/ControlPage/fileStorage";
 
 const ControlPage = () => {
     const [files, setFiles] = useState([]);
@@ -12,14 +12,30 @@ const ControlPage = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedFiles, setSelectedFiles] = useState(new Set());
     const [activeTab, setActiveTab] = useState("individual");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [modelerType, setModelerType] = useState(() => {
+        const modelerParam = searchParams.get("modeler");
+        return modelerParam === "pipeline" ? "pipeline" : "sql";
+    });
     const fileInputRef = useRef(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const modelerParam = searchParams.get("modeler");
+        if (modelerParam === "pipeline" && modelerType !== "pipeline") {
+            setModelerType("pipeline");
+        } else if (modelerParam === "sql" && modelerType !== "sql") {
+            setModelerType("sql");
+        } else if (!modelerParam && modelerType !== "sql") {
+            setModelerType("sql");
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         checkDirectory();
         loadFiles();
         loadMergedFiles();
-    }, []);
+    }, [modelerType]);
 
     const checkDirectory = async () => {
         const handle = await getStorageDirectory();
@@ -27,16 +43,19 @@ const ControlPage = () => {
         if (handle) {
             const path = await getStorageDirectoryPath();
             setDirectoryPath(path || "");
+            await syncFilesFromDirectory();
+            await loadFiles();
+            await loadMergedFiles();
         }
     };
 
     const loadFiles = async () => {
-        const storedFiles = await getAllFiles();
+        const storedFiles = await getAllFiles(modelerType, 'individual');
         setFiles(storedFiles);
     };
 
     const loadMergedFiles = async () => {
-        const storedMergedFiles = await getAllMergedFiles();
+        const storedMergedFiles = await getAllMergedFiles(modelerType);
         setMergedFiles(storedMergedFiles);
     };
 
@@ -54,6 +73,14 @@ const ControlPage = () => {
             } else if (error.name !== 'AbortError') {
                 alert('Error selecting directory: ' + error.message);
             }
+        }
+    };
+
+    const handleRefresh = async () => {
+        if (directorySelected) {
+            await syncFilesFromDirectory();
+            await loadFiles();
+            await loadMergedFiles();
         }
     };
 
@@ -82,7 +109,7 @@ const ControlPage = () => {
                     reader.onload = async (event) => {
                         try {
                             const jsonData = JSON.parse(event.target.result);
-                            await saveFile(file.name, jsonData);
+                            await saveFile(file.name, jsonData, modelerType, 'individual');
                             successCount++;
                         } catch (error) {
                             console.error(`Error processing ${file.name}:`, error);
@@ -120,7 +147,7 @@ const ControlPage = () => {
     const handleDelete = async (e, fileId) => {
         e.stopPropagation();
         if (window.confirm("Are you sure you want to delete this file?")) {
-            await deleteFile(fileId);
+            await deleteFile(fileId, modelerType, 'individual');
             await loadFiles();
             setSelectedFiles(new Set());
         }
@@ -129,17 +156,25 @@ const ControlPage = () => {
     const handleDeleteMerged = async (e, fileId) => {
         e.stopPropagation();
         if (window.confirm("Are you sure you want to delete this merged file?")) {
-            await deleteMergedFile(fileId);
+            await deleteMergedFile(fileId, modelerType);
             await loadMergedFiles();
         }
     };
 
     const handleFileClick = (file) => {
-        navigate(`/editor/${file.id}`);
+        if (modelerType === "pipeline") {
+            navigate(`/pipeline/editor/${file.id}`);
+        } else {
+            navigate(`/editor/${file.id}`);
+        }
     };
 
     const handleMergedFileClick = (mergedFile) => {
-        navigate(`/editor/merged/${mergedFile.id}`);
+        if (modelerType === "pipeline") {
+            navigate(`/pipeline/editor/merged/${mergedFile.id}`);
+        } else {
+            navigate(`/editor/merged/${mergedFile.id}`);
+        }
     };
 
     const handleRenameFile = async (e, fileId) => {
@@ -155,7 +190,7 @@ const ControlPage = () => {
             return;
         }
 
-        const success = await renameFile(fileId, newName);
+        const success = await renameFile(fileId, newName, modelerType, 'individual');
         if (success) {
             await loadFiles();
         } else {
@@ -176,7 +211,7 @@ const ControlPage = () => {
             return;
         }
 
-        const success = await renameMergedFile(fileId, newName);
+        const success = await renameMergedFile(fileId, newName, modelerType);
         if (success) {
             await loadMergedFiles();
         } else {
@@ -206,7 +241,7 @@ const ControlPage = () => {
         if (selectedFiles.size === 0) return;
         if (window.confirm(`Are you sure you want to delete ${selectedFiles.size} selected file(s)?`)) {
             for (const fileId of selectedFiles) {
-                await deleteFile(fileId);
+                await deleteFile(fileId, modelerType, 'individual');
             }
             await loadFiles();
             setSelectedFiles(new Set());
@@ -262,13 +297,45 @@ const ControlPage = () => {
         const selectedFileList = files.filter(f => selectedFiles.has(f.id));
         const mergedFileName = `merged_${Date.now()}.json`;
         
+        if (modelerType === 'pipeline') {
+            const allSourceEntities = {};
+            const allTargetEntities = {};
+
+            for (const file of selectedFileList) {
+                try {
+                    const fileData = await getFile(file.id, modelerType, 'individual');
+                    if (fileData && fileData.data) {
+                        if (fileData.data.source_entities) {
+                            Object.assign(allSourceEntities, fileData.data.source_entities);
+                        }
+                        if (fileData.data.target_entities) {
+                            Object.assign(allTargetEntities, fileData.data.target_entities);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error reading file ${file.name}:`, error);
+                }
+            }
+
+            const mergedData = {
+                source_entities: allSourceEntities,
+                target_entities: allTargetEntities
+            };
+            
+            await saveMergedFile(mergedFileName, mergedData, Array.from(selectedFiles), modelerType);
+            await loadMergedFiles();
+            setSelectedFiles(new Set());
+            setActiveTab("merged");
+            return;
+        }
+
         const allEntities = {};
         const allBaseEntities = new Set();
         const targetEntities = {};
 
         for (const file of selectedFileList) {
             try {
-                const fileData = await getFile(file.id);
+                const fileData = await getFile(file.id, modelerType, 'individual');
                 if (fileData && fileData.data && fileData.data.entities) {
                     Object.assign(allEntities, fileData.data.entities);
                 }
@@ -297,7 +364,7 @@ const ControlPage = () => {
             TARGET_entities: targetEntities
         };
         
-        await saveMergedFile(mergedFileName, mergedData, Array.from(selectedFiles));
+        await saveMergedFile(mergedFileName, mergedData, Array.from(selectedFiles), modelerType);
         await loadMergedFiles();
         setSelectedFiles(new Set());
         setActiveTab("merged");
@@ -333,25 +400,54 @@ const ControlPage = () => {
                     margin: "0 auto",
                 }}
             >
-                <h1
-                    style={{
-                        fontSize: "32px",
-                        fontWeight: 700,
-                        color: "#1f2937",
-                        marginBottom: "8px",
-                    }}
-                >
-                    SQL Data Model Manager
-                </h1>
-                <p
-                    style={{
-                        fontSize: "16px",
-                        color: "#6b7280",
-                        marginBottom: "32px",
-                    }}
-                >
-                    Upload and manage your data model JSON files
-                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
+                    <div>
+                        <h1
+                            style={{
+                                fontSize: "32px",
+                                fontWeight: 700,
+                                color: "#1f2937",
+                                marginBottom: "8px",
+                            }}
+                        >
+                            Data Model Manager
+                        </h1>
+                        <p
+                            style={{
+                                fontSize: "16px",
+                                color: "#6b7280",
+                            }}
+                        >
+                            Upload and manage your data model JSON files
+                        </p>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <label style={{ fontSize: "14px", fontWeight: 600, color: "#1f2937" }}>
+                            Modeler Type
+                        </label>
+                        <select
+                            value={modelerType}
+                            onChange={(e) => {
+                                const newModelerType = e.target.value;
+                                setModelerType(newModelerType);
+                                setSearchParams({ modeler: newModelerType });
+                            }}
+                            style={{
+                                padding: "8px 12px",
+                                fontSize: "14px",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: "8px",
+                                background: "white",
+                                color: "#1f2937",
+                                cursor: "pointer",
+                                minWidth: "180px",
+                            }}
+                        >
+                            <option value="sql">SQL Modeler</option>
+                            <option value="pipeline">Pipeline Modeler</option>
+                        </select>
+                    </div>
+                </div>
 
                 <div
                     style={{
@@ -464,7 +560,7 @@ const ControlPage = () => {
                                         fontWeight: 500,
                                         fontSize: "13px",
                                         transition: "all 200ms ease",
-                                        marginBottom: "20px",
+                                        marginBottom: "12px",
                                     }}
                                     onMouseEnter={(e) => {
                                         e.target.style.background = "rgba(59, 130, 246, 0.1)";
@@ -474,6 +570,35 @@ const ControlPage = () => {
                                     }}
                                 >
                                     Change Folder
+                                </button>
+                                <button
+                                    onClick={handleRefresh}
+                                    style={{
+                                        width: "100%",
+                                        padding: "8px 16px",
+                                        background: "transparent",
+                                        color: "#10b981",
+                                        border: "1px solid #10b981",
+                                        borderRadius: "8px",
+                                        cursor: "pointer",
+                                        fontWeight: 500,
+                                        fontSize: "13px",
+                                        transition: "all 200ms ease",
+                                        marginBottom: "20px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "8px",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.background = "rgba(16, 185, 129, 0.1)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.background = "transparent";
+                                    }}
+                                >
+                                    <FiRefreshCw size={16} />
+                                    Refresh Files
                                 </button>
                                 <div
                                     style={{
@@ -641,7 +766,7 @@ const ControlPage = () => {
                                             transition: "all 200ms ease",
                                         }}
                                     >
-                                        Individual ({filteredFiles.length})
+                                        {modelerType === "sql" ? "Individual SQL" : "Individual Pipelines"} ({filteredFiles.length})
                                     </button>
                                     <button
                                         onClick={() => setActiveTab("merged")}
@@ -658,7 +783,7 @@ const ControlPage = () => {
                                             transition: "all 200ms ease",
                                         }}
                                     >
-                                        Merged ({filteredMergedFiles.length})
+                                        {modelerType === "sql" ? "Consolidated SQL" : "Consolidated Pipelines"} ({filteredMergedFiles.length})
                                     </button>
                                 </div>
 

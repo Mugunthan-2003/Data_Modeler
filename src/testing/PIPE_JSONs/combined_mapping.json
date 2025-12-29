@@ -1,0 +1,437 @@
+{
+  "source_entities": {
+    "distributor_mv": {
+      "alias": "bronze_distributor",
+      "source_path": "dev.01_bronze.distributor_mv",
+      "fields": {
+        "distributor_id": {},
+        "distributor_name": {},
+        "phone_number": {},
+        "street_address": {},
+        "postal_code": {},
+        "city": {},
+        "state": {},
+        "country": {}
+      }
+    },
+    "product_mv": {
+      "alias": "bronze_product",
+      "source_path": "dev.01_bronze.product_mv",
+      "fields": {
+        "product_id": {},
+        "product_name": {},
+        "brand": {},
+        "manufacturer": {},
+        "category": {},
+        "department": {},
+        "description": {},
+        "sku_id": {},
+        "upc": {},
+        "gtin": {},
+        "unit_price": {},
+        "retail_price": {},
+        "unit_of_measurement": {},
+        "expiration_days": {},
+        "product_status": {},
+        "release_date": {}
+      }
+    },
+    "distributor_sale_order_mv": {
+      "alias": "bronze_sale_order",
+      "source_path": "dev.01_bronze.distributor_sale_order_mv",
+      "fields": {
+        "sales_order_id": {},
+        "distributor_id": {},
+        "order_date": {},
+        "expected_delivery_date": {},
+        "order_total_amount": {},
+        "currency": {}
+      }
+    },
+    "distributor_sale_order_item_mv": {
+      "alias": "bronze_sale_order_item",
+      "source_path": "dev.01_bronze.distributor_sale_order_item_mv",
+      "fields": {
+        "sales_order_id": {},
+        "sales_order_item_no": {},
+        "product_id": {},
+        "order_quantity": {},
+        "order_quantity_uom": {},
+        "unit_price": {},
+        "item_total_amount": {}
+      }
+    }
+  },
+  "target_entities": {
+    "distributor_mv": {
+      "alias": "silver_distributor",
+      "source_path": "dev.02_silver.distributor_mv",
+      "fields": {
+        "distributor_id": {
+          "ref": [
+            "distributor_mv.distributor_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_distributor', 'distributor_id IS NOT NULL')",
+            "ref": [
+              "distributor_mv.distributor_id"
+            ]
+          }
+        },
+        "distributor_name": {
+          "ref": [
+            "distributor_mv.distributor_name"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.distributor_name)",
+            "ref": [
+              "distributor_mv.distributor_name"
+            ]
+          }
+        },
+        "phone_number": {
+          "ref": [
+            "distributor_mv.phone_number"
+          ]
+        },
+        "street_address": {
+          "ref": [
+            "distributor_mv.street_address"
+          ]
+        },
+        "postal_code": {
+          "ref": [
+            "distributor_mv.postal_code"
+          ],
+          "calculation": {
+            "expression": "when(length(regexp_replace(distributor_mv.postal_code, r'\\s+', '')) == 6, regexp_replace(distributor_mv.postal_code, r'\\s+', ''), 'Invalid')",
+            "ref": [
+              "distributor_mv.postal_code"
+            ]
+          }
+        },
+        "city": {
+          "ref": [
+            "distributor_mv.city"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.city)",
+            "ref": [
+              "distributor_mv.city"
+            ]
+          }
+        },
+        "state": {
+          "ref": [
+            "distributor_mv.state"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.state)",
+            "ref": [
+              "distributor_mv.state"
+            ]
+          }
+        },
+        "country": {
+          "ref": [
+            "distributor_mv.country"
+          ],
+          "calculation": {
+            "expression": "trim(distributor_mv.country)",
+            "ref": [
+              "distributor_mv.country"
+            ]
+          }
+        }
+      }
+    },
+    "product_mv": {
+      "alias": "silver_product",
+      "source_path": "dev.02_silver.product_mv",
+      "fields": {
+        "product_id": {
+          "ref": [
+            "product_mv.product_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_product', 'product_id IS NOT NULL')",
+            "ref": [
+              "product_mv.product_id"
+            ]
+          }
+        },
+        "product_name": {
+          "ref": [
+            "product_mv.product_name"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.product_name)",
+            "ref": [
+              "product_mv.product_name"
+            ]
+          }
+        },
+        "brand": {
+          "ref": [
+            "product_mv.brand"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.brand)",
+            "ref": [
+              "product_mv.brand"
+            ]
+          }
+        },
+        "manufacturer": {
+          "ref": [
+            "product_mv.manufacturer"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.manufacturer)",
+            "ref": [
+              "product_mv.manufacturer"
+            ]
+          }
+        },
+        "category": {
+          "ref": [
+            "product_mv.category"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.category)",
+            "ref": [
+              "product_mv.category"
+            ]
+          }
+        },
+        "department": {
+          "ref": [
+            "product_mv.department"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.department)",
+            "ref": [
+              "product_mv.department"
+            ]
+          }
+        },
+        "description": {
+          "ref": [
+            "product_mv.description"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.description)",
+            "ref": [
+              "product_mv.description"
+            ]
+          }
+        },
+        "sku_id": {
+          "ref": [
+            "product_mv.sku_id"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.sku_id)",
+            "ref": [
+              "product_mv.sku_id"
+            ]
+          }
+        },
+        "upc": {
+          "ref": [
+            "product_mv.upc"
+          ],
+          "calculation": {
+            "expression": "when(length(regexp_replace(product_mv.upc, r'[^\\d]', '')) >= 8, regexp_replace(product_mv.upc, r'[^\\d]', ''), null)",
+            "ref": [
+              "product_mv.upc"
+            ]
+          }
+        },
+        "gtin": {
+          "ref": [
+            "product_mv.gtin"
+          ],
+          "calculation": {
+            "expression": "when(length(regexp_replace(product_mv.gtin, r'[^\\d]', '')) >= 8, regexp_replace(product_mv.gtin, r'[^\\d]', ''), null)",
+            "ref": [
+              "product_mv.gtin"
+            ]
+          }
+        },
+        "unit_price": {
+          "ref": [
+            "product_mv.unit_price"
+          ],
+          "calculation": {
+            "expression": "when(cast(product_mv.unit_price as double) >= 0, cast(product_mv.unit_price as double), null)",
+            "ref": [
+              "product_mv.unit_price"
+            ]
+          }
+        },
+        "retail_price": {
+          "ref": [
+            "product_mv.retail_price"
+          ],
+          "calculation": {
+            "expression": "when(cast(product_mv.retail_price as double) >= 0, cast(product_mv.retail_price as double), null)",
+            "ref": [
+              "product_mv.retail_price"
+            ]
+          }
+        },
+        "unit_of_measurement": {
+          "ref": [
+            "product_mv.unit_of_measurement"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.unit_of_measurement)",
+            "ref": [
+              "product_mv.unit_of_measurement"
+            ]
+          }
+        },
+        "expiration_days": {
+          "ref": [
+            "product_mv.expiration_days"
+          ]
+        },
+        "product_status": {
+          "ref": [
+            "product_mv.product_status"
+          ],
+          "calculation": {
+            "expression": "trim(product_mv.product_status)",
+            "ref": [
+              "product_mv.product_status"
+            ]
+          }
+        },
+        "release_date": {
+          "ref": [
+            "product_mv.release_date"
+          ],
+          "calculation": {
+            "expression": "to_date(product_mv.release_date, 'yyyy-MM-dd')",
+            "ref": [
+              "product_mv.release_date"
+            ]
+          }
+        }
+      }
+    },
+    "distributor_sale_order_mv": {
+      "alias": "silver_sale_order",
+      "source_path": "dev.02_silver.distributor_sale_order_mv",
+      "fields": {
+        "order_id": {
+          "ref": [
+            "distributor_sale_order_mv.sales_order_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_order', 'sales_order_id IS NOT NULL')",
+            "ref": [
+              "distributor_sale_order_mv.sales_order_id"
+            ]
+          }
+        },
+        "distributor_id": {
+          "ref": [
+            "distributor_sale_order_mv.distributor_id"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_distributor', 'distributor_id IS NOT NULL')",
+            "ref": [
+              "distributor_sale_order_mv.distributor_id"
+            ]
+          }
+        },
+        "order_date": {
+          "ref": [
+            "distributor_sale_order_mv.order_date"
+          ],
+          "calculation": {
+            "expression": "to_date(distributor_sale_order_mv.order_date, 'yyyy-MM-dd')",
+            "ref": [
+              "distributor_sale_order_mv.order_date"
+            ]
+          }
+        },
+        "expected_delivery_date": {
+          "ref": [
+            "distributor_sale_order_mv.expected_delivery_date"
+          ],
+          "calculation": {
+            "expression": "to_date(distributor_sale_order_mv.expected_delivery_date, 'yyyy-MM-dd')",
+            "ref": [
+              "distributor_sale_order_mv.expected_delivery_date"
+            ]
+          }
+        },
+        "currency": {
+          "ref": [
+            "distributor_sale_order_mv.currency"
+          ]
+        },
+        "item_no": {
+          "ref": [
+            "distributor_sale_order_item_mv.sales_order_item_no"
+          ],
+          "calculation": {
+            "expression": "expect_or_drop('valid_item_no', 'distributor_sale_order_item_mv.sales_order_item_no IS NOT NULL')",
+            "ref": [
+              "distributor_sale_order_item_mv.sales_order_item_no"
+            ]
+          }
+        },
+        "product_id": {
+          "ref": [
+            "distributor_sale_order_item_mv.product_id"
+          ]
+        },
+        "order_quantity": {
+          "ref": [
+            "distributor_sale_order_item_mv.order_quantity"
+          ]
+        },
+        "unit_measure": {
+          "ref": [
+            "distributor_sale_order_item_mv.order_quantity_uom"
+          ],
+          "calculation": {
+            "expression": "trim(when(distributor_sale_order_item_mv.order_quantity_uom IS NULL, 'NA', distributor_sale_order_item_mv.order_quantity_uom))",
+            "ref": [
+              "distributor_sale_order_item_mv.order_quantity_uom"
+            ]
+          }
+        },
+        "unit_price": {
+          "ref": [
+            "distributor_sale_order_item_mv.unit_price"
+          ]
+        },
+        "item_total_amount": {
+          "ref": [
+            "distributor_sale_order_item_mv.item_total_amount"
+          ],
+          "calculation": {
+            "expression": "when(distributor_sale_order_item_mv.order_quantity * distributor_sale_order_item_mv.unit_price == distributor_sale_order_item_mv.item_total_amount, distributor_sale_order_item_mv.item_total_amount, distributor_sale_order_item_mv.order_quantity * distributor_sale_order_item_mv.unit_price)",
+            "ref": [
+              "distributor_sale_order_item_mv.order_quantity",
+              "distributor_sale_order_item_mv.unit_price",
+              "distributor_sale_order_item_mv.item_total_amount"
+            ]
+          }
+        }
+      },
+      "joins": [
+        {
+          "from": "distributor_sale_order_mv.sales_order_id",
+          "to": "distributor_sale_order_item_mv.sales_order_id",
+          "type": "left"
+        }
+      ]
+    }
+  }
+}
