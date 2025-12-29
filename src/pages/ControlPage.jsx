@@ -32,9 +32,10 @@ const ControlPage = () => {
     }, [searchParams]);
 
     useEffect(() => {
-        checkDirectory();
-        loadFiles();
-        loadMergedFiles();
+        const init = async () => {
+            await checkDirectory();
+        };
+        init();
     }, [modelerType]);
 
     const checkDirectory = async () => {

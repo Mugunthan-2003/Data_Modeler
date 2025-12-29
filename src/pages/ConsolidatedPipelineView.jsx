@@ -8,20 +8,24 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import TableNode from "../components/IndividualPipelineView/TableNode/TableNode";
 import AvailableEntitiesSidebar from "../components/ConsolidatedPipelineView/AvailableEntitiesSidebar";
+import ConnectionSuggestionModal from "../components/ConsolidatedPipelineView/ConnectionSuggestionModal";
 import ConsolidatedFlowHeader from "../components/ConsolidatedPipelineView/ConsolidatedFlowHeader";
 import FitViewHelper from "../components/IndividualPipelineView/FitViewHelper";
 import EdgeConfigDialog from "../components/IndividualPipelineView/EdgeConfigDialog";
 import EdgeContextMenu from "../components/IndividualPipelineView/EdgeContextMenu";
+import FieldDrawer from "../components/IndividualPipelineView/FieldDrawer";
 import { usePipelineFlowState } from "../hooks/usePipelineFlowState";
 import { usePipelineNodeHandlers } from "../hooks/usePipelineNodeHandlers";
 import { usePipelineEdgeHandlers } from "../hooks/usePipelineEdgeHandlers";
+import { useEdgeFiltering } from "../hooks/useEdgeFiltering";
+import { useFieldHighlighting } from "../hooks/useFieldHighlighting";
 import { useNodeDecoration } from "../hooks/useNodeDecoration";
 import { applyLayout } from "../utils/IndividualPipelineView/layout";
 import { modelToFlow } from "../utils/IndividualPipelineView/dataTransform";
 import { flowToModel } from "../utils/IndividualPipelineView/flowToModel";
 import { addTablePrefix } from "../utils/IndividualPipelineView/dataTransform";
 import { generateUniqueTableName, calculateCenterPosition } from "../utils/IndividualPipelineView/nodeUtils";
-import { getMergedFile } from "../utils/ControlPage/fileStorage";
+import { getMergedFile, saveMergedFile } from "../utils/ControlPage/fileStorage";
 
 const ConsolidatedPipelineView = () => {
     const { fileId } = useParams();
@@ -40,6 +44,78 @@ const ConsolidatedPipelineView = () => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [edgeConfigDialog, setEdgeConfigDialog] = useState(null);
     const [edgeContextMenu, setEdgeContextMenu] = useState(null);
+    const [connectionSuggestions, setConnectionSuggestions] = useState(null);
+    const [showNormalRefs, setShowNormalRefs] = useState(true);
+    const [showCalcRefs, setShowCalcRefs] = useState(true);
+    const [showOnlyHighlighted, setShowOnlyHighlighted] = useState(false);
+    const [linkDirection, setLinkDirection] = useState("upstream");
+
+    const {
+        highlightedEdges,
+        selectedField,
+        handleFieldClick,
+        setSelectedField,
+        setHighlightedEdges,
+        clearHighlighting,
+    } = useFieldHighlighting(edges, linkDirection);
+
+    useEffect(() => {
+        clearHighlighting();
+    }, [linkDirection, clearHighlighting]);
+
+    const currentSourceEntities = useMemo(() => {
+        const entities = {};
+        nodes.forEach((node) => {
+            if (node.data.tableType === "SOURCE") {
+                const entityName = node.data.label;
+                const fields = {};
+                (node.data.fields || []).forEach((field) => {
+                    fields[field.name] = {
+                        ...(field.ref && { ref: field.ref }),
+                        ...(field.calculation && { calculation: field.calculation }),
+                    };
+                });
+                entities[entityName] = {
+                    alias: node.data.alias || "",
+                    source_path: node.data.source_path || "",
+                    fields,
+                };
+            }
+        });
+        Object.keys(sourceEntities).forEach((key) => {
+            if (!entities[key]) {
+                entities[key] = sourceEntities[key];
+            }
+        });
+        return entities;
+    }, [nodes, sourceEntities]);
+
+    const currentTargetEntities = useMemo(() => {
+        const entities = {};
+        nodes.forEach((node) => {
+            if (node.data.tableType === "TARGET") {
+                const entityName = node.data.label;
+                const fields = {};
+                (node.data.fields || []).forEach((field) => {
+                    fields[field.name] = {
+                        ...(field.ref && { ref: field.ref }),
+                        ...(field.calculation && { calculation: field.calculation }),
+                    };
+                });
+                entities[entityName] = {
+                    alias: node.data.alias || "",
+                    source_path: node.data.source_path || "",
+                    fields,
+                };
+            }
+        });
+        Object.keys(targetEntities).forEach((key) => {
+            if (!entities[key]) {
+                entities[key] = targetEntities[key];
+            }
+        });
+        return entities;
+    }, [nodes, targetEntities]);
 
     const {
         handleAddField,
@@ -115,11 +191,11 @@ const ConsolidatedPipelineView = () => {
     const decoratedNodes = useNodeDecoration(
         nodes,
         edges,
-        null,
+        selectedField,
         editingNode,
         editingLabels,
         editingAliases,
-        () => {},
+        handleFieldClick,
         handleAddField,
         handleUpdateNodeLabel,
         handleUpdateNodeAlias,
@@ -143,6 +219,8 @@ const ConsolidatedPipelineView = () => {
 
     const fitViewRef = useRef(null);
     const centerNodeRef = useRef(null);
+    const reactFlowWrapper = useRef(null);
+    const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
     const setFitViewRef = useCallback((fn) => {
         fitViewRef.current = fn;
@@ -168,39 +246,347 @@ const ConsolidatedPipelineView = () => {
         }, 100);
     }, [nodes, edges, setNodes, setEdges]);
 
-    const handleAddEntityFromSidebar = useCallback((entity) => {
-        const tableType = entity.type || "SOURCE";
-        const baseName = entity.name || generateUniqueTableName(nodes);
-        const uniqueName = generateUniqueTableName(nodes, baseName);
-        const nodeId = addTablePrefix(uniqueName, tableType);
-        
-        const position = calculateCenterPosition(56, 300);
-        
-        const newNode = {
+    const parseReference = useCallback((refValue) => {
+        if (!refValue) return { entity: "", field: "" };
+        const lastDot = refValue.lastIndexOf(".");
+        if (lastDot === -1) return { entity: "", field: "" };
+        return {
+            entity: refValue.substring(0, lastDot),
+            field: refValue.substring(lastDot + 1),
+        };
+    }, []);
+
+    const getRequiredSourcesForTarget = useCallback(
+        (targetName) => {
+            const target = currentTargetEntities[targetName];
+            if (!target) return [];
+            const required = new Set();
+
+            Object.values(target.fields || {}).forEach((field) => {
+                (field.ref || []).forEach((ref) => {
+                    const { entity } = parseReference(ref);
+                    if (entity) required.add(entity);
+                });
+                (field.calculation?.ref || []).forEach((ref) => {
+                    const { entity } = parseReference(ref);
+                    if (entity) required.add(entity);
+                });
+            });
+
+            return Array.from(required);
+        },
+        [currentTargetEntities, parseReference]
+    );
+
+    const findTargetsForSource = useCallback(
+        (sourceName) => {
+            const matches = [];
+            Object.entries(currentTargetEntities || {}).forEach(([targetName, target]) => {
+                const usesSource = Object.values(target.fields || {}).some((field) => {
+                    const refs = [
+                        ...(field.ref || []),
+                        ...(field.calculation?.ref || []),
+                    ];
+                    return refs.some((ref) => ref.startsWith(`${sourceName}.`));
+                });
+                if (usesSource) {
+                    matches.push(targetName);
+                }
+            });
+            return matches;
+        },
+        [currentTargetEntities]
+    );
+
+    const createEdgeForRef = useCallback((sourceEntity, sourceField, targetEntity, targetField, refType = "normal") => {
+        const sourceNodeId = addTablePrefix(sourceEntity, "SOURCE");
+        const targetNodeId = addTablePrefix(targetEntity, "TARGET");
+        const prefix = refType === "calculation" ? "calc" : "ref";
+        return {
+            id: `${prefix}-${sourceNodeId}.${sourceField}->${targetNodeId}.${targetField}`,
+            ref_type: refType === "calculation" ? "calculation" : "normal",
+            type: "smoothstep",
+            source: sourceNodeId,
+            target: targetNodeId,
+            sourceHandle: `${sourceNodeId}-${sourceField}`,
+            targetHandle: `${targetNodeId}-${targetField}`,
+            animated: refType !== "calculation",
+            style:
+                refType === "calculation"
+                    ? { stroke: "#0066ff", strokeDasharray: "5,5" }
+                    : { stroke: "#fd5d5dff" },
+        };
+    }, []);
+
+    const buildEdgesForTarget = useCallback(
+        (targetName) => {
+            const target = currentTargetEntities[targetName];
+            if (!target) return [];
+            const edgesList = [];
+
+            Object.entries(target.fields || {}).forEach(([fieldName, field]) => {
+                (field.ref || []).forEach((ref) => {
+                    const { entity, field: sourceField } = parseReference(ref);
+                    if (!entity || !currentSourceEntities[entity]) return;
+                    edgesList.push(
+                        createEdgeForRef(entity, sourceField, targetName, fieldName, "normal")
+                    );
+                });
+
+                (field.calculation?.ref || []).forEach((ref) => {
+                    const { entity, field: sourceField } = parseReference(ref);
+                    if (!entity || !currentSourceEntities[entity]) return;
+                    edgesList.push(
+                        createEdgeForRef(
+                            entity,
+                            sourceField,
+                            targetName,
+                            fieldName,
+                            "calculation"
+                        )
+                    );
+                });
+            });
+
+            return edgesList;
+        },
+        [currentTargetEntities, currentSourceEntities, parseReference, createEdgeForRef]
+    );
+
+    const createNodeFromDefinition = useCallback((entityName, entityData, tableType, position) => {
+        const nodeId = addTablePrefix(entityName, tableType);
+        return {
             id: nodeId,
             type: "tableNode",
             position,
             data: {
-                label: uniqueName,
-                alias: entity.alias || "",
-                source_path: entity.source_path || "",
-                fields: Object.entries(entity.fields || {}).map(([fname, fdata]) => ({
+                label: entityName,
+                alias: entityData?.alias || "",
+                source_path: entityData?.source_path || "",
+                fields: Object.entries(entityData?.fields || {}).map(([fname, fdata]) => ({
                     name: fname,
                     ...fdata,
                 })),
-                tableType: tableType,
-                nodeId: nodeId,
+                tableType,
+                nodeId,
             },
         };
+    }, []);
 
-        setNodes((nds) => [...nds, newNode]);
-        
-        setTimeout(() => {
-            if (centerNodeRef.current) {
-                centerNodeRef.current(nodeId, position);
+    const applyConnectionsForTarget = useCallback(
+        (targetName) => {
+            const targetDef = currentTargetEntities[targetName];
+            if (!targetDef) return;
+            const requiredSources = getRequiredSourcesForTarget(targetName);
+            const basePosition = calculateCenterPosition(56, 300);
+
+            setNodes((nds) => {
+                const existingIds = new Set(nds.map((n) => n.id));
+                const next = [...nds];
+                const targetId = addTablePrefix(targetName, "TARGET");
+
+                if (!existingIds.has(targetId)) {
+                    next.push(
+                        createNodeFromDefinition(
+                            targetName,
+                            targetDef,
+                            "TARGET",
+                            basePosition
+                        )
+                    );
+                    existingIds.add(targetId);
+                }
+
+                requiredSources.forEach((srcName, index) => {
+                    const srcDef = currentSourceEntities[srcName];
+                    if (!srcDef) return;
+                    const srcId = addTablePrefix(srcName, "SOURCE");
+                    if (existingIds.has(srcId)) return;
+                    const pos = {
+                        x: basePosition.x - 240 + index * 140,
+                        y: basePosition.y - 180 + index * 60,
+                    };
+                    next.push(
+                        createNodeFromDefinition(
+                            srcName,
+                            srcDef,
+                            "SOURCE",
+                            pos
+                        )
+                    );
+                    existingIds.add(srcId);
+                });
+
+                return next;
+            });
+
+            setEdges((eds) => {
+                const existingIds = new Set(eds.map((e) => e.id));
+                const newEdges = buildEdgesForTarget(targetName);
+                const filtered = newEdges.filter((e) => !existingIds.has(e.id));
+                return [...eds, ...filtered];
+            });
+
+            setConnectionSuggestions(null);
+        },
+        [
+            currentTargetEntities,
+            currentSourceEntities,
+            getRequiredSourcesForTarget,
+            buildEdgesForTarget,
+            createNodeFromDefinition,
+            setNodes,
+            setEdges,
+        ]
+    );
+
+    const decoratedEdges = useEdgeFiltering(
+        edges,
+        highlightedEdges,
+        showNormalRefs,
+        showCalcRefs,
+        showOnlyHighlighted
+    );
+
+    const handleAddEntityFromSidebar = useCallback((entity) => {
+        const tableType = entity.type || "SOURCE";
+        const baseName = entity.name || generateUniqueTableName(nodes);
+        const nodeId = addTablePrefix(baseName, tableType);
+        const nodeExists = nodes.some((n) => n.id === nodeId);
+        const position = calculateCenterPosition(56, 300);
+
+        if (!nodeExists) {
+            const newNode = {
+                id: nodeId,
+                type: "tableNode",
+                position,
+                data: {
+                    label: baseName,
+                    alias: entity.alias || "",
+                    source_path: entity.source_path || "",
+                    fields: Object.entries(entity.fields || {}).map(([fname, fdata]) => ({
+                        name: fname,
+                        ...fdata,
+                    })),
+                    tableType: tableType,
+                    nodeId: nodeId,
+                },
+            };
+
+            setNodes((nds) => [...nds, newNode]);
+
+            setTimeout(() => {
+                if (centerNodeRef.current) {
+                    centerNodeRef.current(nodeId, position);
+                }
+            }, 100);
+        } else {
+            setTimeout(() => {
+                if (centerNodeRef.current) {
+                    centerNodeRef.current(nodeId, position);
+                }
+            }, 100);
+        }
+
+        if (tableType === "SOURCE") {
+            const matchingTargets = findTargetsForSource(baseName);
+            if (matchingTargets.length) {
+                setConnectionSuggestions({
+                    mode: "SOURCE",
+                    sourceName: baseName,
+                    targetOptions: matchingTargets.map((name) => ({
+                        name,
+                        requiredSources: getRequiredSourcesForTarget(name),
+                    })),
+                });
             }
-        }, 100);
-    }, [nodes, setNodes]);
+        } else {
+            const requiredSources = getRequiredSourcesForTarget(baseName);
+            if (requiredSources.length) {
+                setConnectionSuggestions({
+                    mode: "TARGET",
+                    targetName: baseName,
+                    requiredSources,
+                });
+            }
+        }
+    }, [nodes, setNodes, findTargetsForSource, getRequiredSourcesForTarget]);
+
+    const handleAddAllEntities = useCallback(() => {
+        const basePosition = calculateCenterPosition(56, 300);
+        const nodesToAdd = [];
+        const edgesToAdd = [];
+        const existingIds = new Set(nodes.map((n) => n.id));
+
+        let sourceX = basePosition.x - 400;
+        let sourceY = basePosition.y;
+
+        Object.entries(currentSourceEntities).forEach(([entityName, entityData], index) => {
+            const nodeId = addTablePrefix(entityName, "SOURCE");
+            if (!existingIds.has(nodeId)) {
+                const position = {
+                    x: sourceX,
+                    y: sourceY + (index * 200),
+                };
+                nodesToAdd.push(
+                    createNodeFromDefinition(entityName, entityData, "SOURCE", position)
+                );
+                existingIds.add(nodeId);
+            }
+        });
+
+        let targetX = basePosition.x + 400;
+        let targetY = basePosition.y;
+
+        Object.entries(currentTargetEntities).forEach(([entityName, entityData], index) => {
+            const nodeId = addTablePrefix(entityName, "TARGET");
+            if (!existingIds.has(nodeId)) {
+                const position = {
+                    x: targetX,
+                    y: targetY + (index * 200),
+                };
+                nodesToAdd.push(
+                    createNodeFromDefinition(entityName, entityData, "TARGET", position)
+                );
+                existingIds.add(nodeId);
+            }
+
+            const targetEdges = buildEdgesForTarget(entityName);
+            edgesToAdd.push(...targetEdges);
+        });
+
+        const updatedNodes = [...nodes, ...nodesToAdd];
+        const existingEdgeIds = new Set(edges.map((e) => e.id));
+        const filteredNewEdges = edgesToAdd.filter((e) => !existingEdgeIds.has(e.id));
+        const updatedEdges = [...edges, ...filteredNewEdges];
+
+        if (nodesToAdd.length > 0 || filteredNewEdges.length > 0) {
+            const { nodes: layoutedNodes, edges: layoutedEdges } = applyLayout(
+                updatedNodes,
+                updatedEdges,
+                "dagre",
+                "LR"
+            );
+            setNodes(layoutedNodes);
+            setEdges(layoutedEdges);
+
+            setTimeout(() => {
+                if (fitViewRef.current) {
+                    fitViewRef.current();
+                }
+            }, 100);
+        }
+    }, [
+        nodes,
+        edges,
+        currentSourceEntities,
+        currentTargetEntities,
+        createNodeFromDefinition,
+        buildEdgesForTarget,
+        setNodes,
+        setEdges,
+        fitViewRef,
+    ]);
 
     useEffect(() => {
         const loadMergedFile = async () => {
@@ -326,51 +712,111 @@ const ConsolidatedPipelineView = () => {
         [handleDeleteEdge]
     );
 
+    const handleCreateEntity = useCallback((tableType) => {
+        const timestamp = Date.now();
+        const entityName = `new_${tableType.toLowerCase()}_${timestamp}`;
+        const newEntity = {
+            alias: "",
+            source_path: "",
+            fields: {},
+        };
+
+        if (tableType === "SOURCE") {
+            setSourceEntities((prev) => ({
+                ...prev,
+                [entityName]: newEntity,
+            }));
+        } else {
+            setTargetEntities((prev) => ({
+                ...prev,
+                [entityName]: newEntity,
+            }));
+        }
+
+        handleAddEntityFromSidebar({
+            name: entityName,
+            ...newEntity,
+            type: tableType,
+        });
+    }, [handleAddEntityFromSidebar]);
+
+    const onDragOver = useCallback((event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+    }, []);
+
+    const onDrop = useCallback(
+        (event) => {
+            event.preventDefault();
+
+            if (!reactFlowInstance) return;
+
+            const entityData = event.dataTransfer.getData("application/reactflow");
+            if (!entityData) return;
+
+            try {
+                const entity = JSON.parse(entityData);
+                const position = reactFlowInstance.screenToFlowPosition({
+                    x: event.clientX,
+                    y: event.clientY,
+                });
+
+                const tableType = entity.type || "SOURCE";
+                const baseName = entity.name;
+                const nodeId = addTablePrefix(baseName, tableType);
+                const nodeExists = nodes.some((n) => n.id === nodeId);
+
+                if (!nodeExists) {
+                    const newNode = {
+                        id: nodeId,
+                        type: "tableNode",
+                        position,
+                        data: {
+                            label: baseName,
+                            alias: entity.alias || "",
+                            source_path: entity.source_path || "",
+                            fields: Object.entries(entity.fields || {}).map(([fname, fdata]) => ({
+                                name: fname,
+                                ...fdata,
+                            })),
+                            tableType: tableType,
+                            nodeId: nodeId,
+                        },
+                    };
+
+                    setNodes((nds) => [...nds, newNode]);
+                }
+            } catch (error) {
+                console.error("Error dropping entity:", error);
+            }
+        },
+        [reactFlowInstance, nodes, setNodes]
+    );
+
     const handleSave = useCallback(async () => {
         try {
             const model = flowToModel(nodes, edges);
-
-            const jsonString = JSON.stringify(model, null, 2);
-            const blob = new Blob([jsonString], { type: "application/json" });
-
-            if (window.showSaveFilePicker) {
-                try {
-                    const handle = await window.showSaveFilePicker({
-                        suggestedName: "consolidated_pipeline.json",
-                        types: [
-                            {
-                                description: "JSON Files",
-                                accept: { "application/json": [".json"] },
-                            },
-                        ],
-                    });
-                    const writable = await handle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    alert("File saved successfully!");
-                } catch (error) {
-                    if (error.name !== "AbortError") {
-                        console.error("Error using File System API:", error);
-                        throw error;
-                    }
-                }
-            } else {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = "consolidated_pipeline.json";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+            
+            const fileName = prompt(
+                "Enter a filename for the consolidated pipeline:",
+                "consolidated_pipeline.json"
+            );
+            
+            if (!fileName) {
+                return;
             }
+            
+            const finalFileName = fileName.endsWith(".json") ? fileName : `${fileName}.json`;
+            
+            await saveMergedFile(finalFileName, model, [], "pipeline");
+            
+            alert("File saved successfully!");
+            navigate("/?modeler=pipeline");
         } catch (error) {
             console.error("Save error:", error);
-            if (error.name !== "AbortError") {
-                alert("Error saving file. Please try again.");
-            }
+            alert("Error saving file. Please try again.");
         }
-    }, [nodes, edges]);
+    }, [nodes, edges, navigate]);
 
     return (
         <div
@@ -384,9 +830,12 @@ const ConsolidatedPipelineView = () => {
             }}
         >
             <AvailableEntitiesSidebar
-                sourceEntities={sourceEntities}
-                targetEntities={targetEntities}
+                sourceEntities={currentSourceEntities}
+                targetEntities={currentTargetEntities}
+                addedEntityIds={new Set(nodes.map((n) => n.id))}
                 onAddEntity={handleAddEntityFromSidebar}
+                onCreateEntity={handleCreateEntity}
+                onAddAllEntities={handleAddAllEntities}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             />
@@ -398,40 +847,55 @@ const ConsolidatedPipelineView = () => {
                     onSave={handleSave}
                     tableCount={nodes.length}
                     connectionCount={edges.length}
+                    showNormalRefs={showNormalRefs}
+                    showCalcRefs={showCalcRefs}
+                    showOnlyHighlighted={showOnlyHighlighted}
+                    onToggleNormalRefs={() => setShowNormalRefs((v) => !v)}
+                    onToggleCalcRefs={() => setShowCalcRefs((v) => !v)}
+                    onToggleOnlyHighlighted={() => setShowOnlyHighlighted((v) => !v)}
+                    linkDirection={linkDirection}
+                    onLinkDirectionChange={setLinkDirection}
                 />
 
-                <ReactFlow
-                    nodes={decoratedNodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onEdgeContextMenu={onEdgeContextMenu}
-                    onPaneContextMenu={onPaneContextMenu}
-                    nodeTypes={nodeTypes}
-                    minZoom={0.05}
-                    maxZoom={4}
-                    zoomOnScroll={true}
-                    zoomOnPinch={true}
-                    panOnScroll={false}
-                    panOnDrag={true}
-                    connectionLineType="step"
-                    defaultEdgeOptions={{
-                        type: "step",
-                        animated: false,
-                        style: {
-                            strokeWidth: 3,
-                        },
-                        pathOptions: {
-                            offset: 10,
-                            borderRadius: 10,
-                        },
-                    }}
-                    snapToGrid={false}
-                    snapGrid={[20, 20]}
-                    edgeUpdaterRadius={10}
-                    connectionRadius={20}
+                <div 
+                    ref={reactFlowWrapper} 
+                    style={{ width: "100%", height: "100%" }}
+                    onDrop={onDrop}
+                    onDragOver={onDragOver}
                 >
+                    <ReactFlow
+                        nodes={decoratedNodes}
+                        edges={decoratedEdges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onEdgeContextMenu={onEdgeContextMenu}
+                        onPaneContextMenu={onPaneContextMenu}
+                        onInit={setReactFlowInstance}
+                        nodeTypes={nodeTypes}
+                        minZoom={0.05}
+                        maxZoom={4}
+                        zoomOnScroll={true}
+                        zoomOnPinch={true}
+                        panOnScroll={false}
+                        panOnDrag={true}
+                        connectionLineType="step"
+                        defaultEdgeOptions={{
+                            type: "step",
+                            animated: false,
+                            style: {
+                                strokeWidth: 3,
+                            },
+                            pathOptions: {
+                                offset: 10,
+                                borderRadius: 10,
+                            },
+                        }}
+                        snapToGrid={false}
+                        snapGrid={[20, 20]}
+                        edgeUpdaterRadius={10}
+                        connectionRadius={20}
+                    >
                     <FitViewHelper
                         onFitView={setFitViewRef}
                         onCenterNode={setCenterNodeRef}
@@ -440,6 +904,7 @@ const ConsolidatedPipelineView = () => {
                     <Controls />
                     <Background gap={16} />
                 </ReactFlow>
+                </div>
 
                 {edgeConfigDialog && (
                     <div
@@ -487,6 +952,46 @@ const ConsolidatedPipelineView = () => {
                         onClose={() => setEdgeContextMenu(null)}
                     />
                 )}
+
+                {connectionSuggestions && (
+                    <ConnectionSuggestionModal
+                        mode={connectionSuggestions.mode}
+                        sourceName={connectionSuggestions.sourceName}
+                        targetName={connectionSuggestions.targetName}
+                        targetOptions={connectionSuggestions.targetOptions}
+                        requiredSources={connectionSuggestions.requiredSources}
+                        onSelectTarget={(targetName) =>
+                            applyConnectionsForTarget(targetName)
+                        }
+                        onSkip={() => setConnectionSuggestions(null)}
+                    />
+                )}
+            </div>
+
+            <div
+                style={{
+                    position: "fixed",
+                    top: 72,
+                    right: 0,
+                    bottom: 0,
+                    width: selectedField ? 400 : 0,
+                    overflow: "hidden",
+                    transition: "width 200ms ease",
+                    background: selectedField ? "#fff" : "transparent",
+                    borderLeft: selectedField ? "2px solid #e5e7eb" : "none",
+                    boxShadow: selectedField
+                        ? "-4px 0 20px rgba(0, 0, 0, 0.15)"
+                        : "none",
+                    zIndex: 1100,
+                }}
+            >
+                <FieldDrawer
+                    selectedField={selectedField}
+                    onClose={() => {
+                        setSelectedField(null);
+                        setHighlightedEdges(new Set());
+                    }}
+                />
             </div>
         </div>
     );

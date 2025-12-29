@@ -1,5 +1,5 @@
 const DB_NAME = 'sql_data_model_db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_META = 'metadata';
 const CURRENT_FILE_KEY = 'current_file';
 const DIRECTORY_HANDLE_KEY = 'directory_handle';
@@ -44,7 +44,14 @@ function openDB() {
                 fileTypes.forEach(fileType => {
                     const storeName = getStoreName(modelerType, fileType);
                     if (!database.objectStoreNames.contains(storeName)) {
-                        database.createObjectStore(storeName, { keyPath: 'id' });
+                        const store = database.createObjectStore(storeName, { keyPath: 'id' });
+                        store.createIndex('name', 'name', { unique: true });
+                    } else if (event.oldVersion < 4) {
+                        const transaction = event.target.transaction;
+                        const store = transaction.objectStore(storeName);
+                        if (!store.indexNames.contains('name')) {
+                            store.createIndex('name', 'name', { unique: true });
+                        }
                     }
                 });
             });
@@ -242,6 +249,7 @@ async function syncFilesFromFolder(directoryHandle, modelerType, fileType) {
         await new Promise((resolve, reject) => {
             const transaction = database.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
+            const nameIndex = store.index('name');
             let completed = 0;
             let totalOps = filesToAdd.length + filesToUpdate.length;
             let hasError = false;
@@ -252,17 +260,37 @@ async function syncFilesFromFolder(directoryHandle, modelerType, fileType) {
             }
 
             for (const fileEntry of filesToAdd) {
-                const addRequest = store.add(fileEntry);
-                addRequest.onsuccess = () => {
-                    completed++;
-                    if (completed === totalOps && !hasError) {
-                        resolve();
+                const checkRequest = nameIndex.get(fileEntry.name);
+                checkRequest.onsuccess = () => {
+                    const existingEntry = checkRequest.result;
+                    let finalRequest;
+                    if (existingEntry) {
+                        const updatedEntry = {
+                            ...existingEntry,
+                            updatedAt: fileEntry.updatedAt,
+                            data: fileEntry.data
+                        };
+                        finalRequest = store.put(updatedEntry);
+                    } else {
+                        finalRequest = store.add(fileEntry);
                     }
+                    finalRequest.onsuccess = () => {
+                        completed++;
+                        if (completed === totalOps && !hasError) {
+                            resolve();
+                        }
+                    };
+                    finalRequest.onerror = () => {
+                        if (!hasError) {
+                            hasError = true;
+                            reject(finalRequest.error);
+                        }
+                    };
                 };
-                addRequest.onerror = () => {
+                checkRequest.onerror = () => {
                     if (!hasError) {
                         hasError = true;
-                        reject(addRequest.error);
+                        reject(checkRequest.error);
                     }
                 };
             }
@@ -398,6 +426,7 @@ export async function saveFile(fileName, fileData, modelerType = 'sql', fileType
             name: fileName,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            data: fileData,
         };
 
         const existingIndex = files.findIndex(f => f.name === fileName);
@@ -413,14 +442,21 @@ export async function saveFile(fileName, fileData, modelerType = 'sql', fileType
 
         const database = await openDB();
         const storeName = getStoreName(modelerType, fileType);
-        const transaction = database.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
         
-        if (existingIndex >= 0) {
-            store.put(fileEntry);
-        } else {
-            store.add(fileEntry);
-        }
+        await new Promise((resolve, reject) => {
+            const transaction = database.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            
+            let request;
+            if (existingIndex >= 0) {
+                request = store.put(fileEntry);
+            } else {
+                request = store.add(fileEntry);
+            }
+            
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
 
         return fileEntry;
     } catch (error) {

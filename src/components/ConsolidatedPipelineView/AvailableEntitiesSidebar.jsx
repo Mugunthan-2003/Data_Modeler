@@ -1,15 +1,20 @@
-import { useState } from "react";
-import { FiDatabase, FiPlus, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { useState, useRef, useEffect } from "react";
+import { FiDatabase, FiPlus, FiChevronLeft, FiChevronRight, FiChevronDown, FiCheck, FiDownload } from "react-icons/fi";
 
 const AvailableEntitiesSidebar = ({
     sourceEntities = {},
     targetEntities = {},
+    addedEntityIds = new Set(),
     onAddEntity,
+    onCreateEntity,
+    onAddAllEntities,
     isCollapsed = false,
     onToggleCollapse,
 }) => {
     const [activeTab, setActiveTab] = useState("SOURCE");
     const [searchQuery, setSearchQuery] = useState("");
+    const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false);
+    const createDropdownRef = useRef(null);
 
     const sourceEntitiesList = Object.entries(sourceEntities || {}).map(([name, entity]) => ({
         name,
@@ -35,11 +40,33 @@ const AvailableEntitiesSidebar = ({
         return Object.keys(entity.fields || {}).length;
     };
 
+    const isEntityAdded = (entity) => {
+        const type = entity.type || "SOURCE";
+        const id = `${type}_${entity.name}`;
+        return addedEntityIds.has(id);
+    };
+
     const handleAddEntity = (entity) => {
-        if (onAddEntity) {
+        if (onAddEntity && !isEntityAdded(entity)) {
             onAddEntity(entity);
         }
     };
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (createDropdownRef.current && !createDropdownRef.current.contains(event.target)) {
+                setIsCreateDropdownOpen(false);
+            }
+        };
+
+        if (isCreateDropdownOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isCreateDropdownOpen]);
 
     if (isCollapsed) {
         return (
@@ -142,46 +169,102 @@ const AvailableEntitiesSidebar = ({
                     </button>
                 </div>
 
-                <button
-                    onClick={() => {
-                        const tableType = activeTab === "SOURCE" ? "SOURCE" : "TARGET";
-                        handleAddEntity({
-                            name: `new_${tableType.toLowerCase()}_${Date.now()}`,
-                            alias: "",
-                            source_path: "",
-                            fields: {},
-                            type: tableType,
-                        });
-                    }}
-                    style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                        color: "#ffffff",
-                        border: "none",
-                        borderRadius: "8px",
-                        fontSize: "14px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
-                        boxShadow: "0 2px 4px rgba(16, 185, 129, 0.3)",
-                        transition: "all 200ms ease",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-1px)";
-                        e.currentTarget.style.boxShadow = "0 4px 8px rgba(16, 185, 129, 0.4)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 2px 4px rgba(16, 185, 129, 0.3)";
-                    }}
-                >
-                    <FiPlus size={18} />
-                    Create New Table
-                </button>
+                <div ref={createDropdownRef} style={{ position: "relative" }}>
+                    <button
+                        onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+                        style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "8px",
+                            fontSize: "14px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                            boxShadow: "0 2px 4px rgba(16, 185, 129, 0.3)",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                            e.currentTarget.style.boxShadow = "0 4px 8px rgba(16, 185, 129, 0.4)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "0 2px 4px rgba(16, 185, 129, 0.3)";
+                        }}
+                    >
+                        <FiPlus size={18} />
+                        Create New Entity
+                        <FiChevronDown 
+                            size={14} 
+                            style={{
+                                transform: isCreateDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                transition: "transform 200ms ease",
+                                marginLeft: "4px"
+                            }}
+                        />
+                    </button>
+
+                    {isCreateDropdownOpen && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: "100%",
+                                left: 0,
+                                right: 0,
+                                marginTop: "8px",
+                                background: "#ffffff",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: "8px",
+                                padding: "4px",
+                                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                                zIndex: 1000,
+                            }}
+                        >
+                            {["SOURCE", "TARGET"].map((type) => (
+                                <button
+                                    key={type}
+                                    onClick={() => {
+                                        setIsCreateDropdownOpen(false);
+                                        if (onCreateEntity) {
+                                            onCreateEntity(type);
+                                        }
+                                    }}
+                                    style={{
+                                        width: "100%",
+                                        padding: "10px 12px",
+                                        background: "transparent",
+                                        color: type === "SOURCE" ? "#3b82f6" : "#10b981",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        cursor: "pointer",
+                                        fontSize: "13px",
+                                        fontWeight: 600,
+                                        transition: "all 200ms ease",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        textAlign: "left",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = type === "SOURCE" ? "rgba(59, 130, 246, 0.1)" : "rgba(16, 185, 129, 0.1)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "transparent";
+                                    }}
+                                >
+                                    <FiPlus size={14} />
+                                    New {type} Table
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 <input
                     type="text"
@@ -252,96 +335,117 @@ const AvailableEntitiesSidebar = ({
                 }}
             >
                 {(activeTab === "SOURCE" ? filteredSourceEntities : filteredTargetEntities).map(
-                    (entity) => (
-                        <div
-                            key={entity.name}
-                            style={{
-                                padding: "12px",
-                                marginBottom: "8px",
-                                background: "#ffffff",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "8px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                                cursor: "pointer",
-                                transition: "all 200ms ease",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = activeTab === "SOURCE" ? "#3b82f6" : "#10b981";
-                                e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = "#e2e8f0";
-                                e.currentTarget.style.boxShadow = "none";
-                            }}
-                        >
+                    (entity) => {
+                        const added = isEntityAdded(entity);
+
+                        return (
                             <div
+                                key={entity.name}
+                                draggable={!added}
+                                onDragStart={(e) => {
+                                    if (!added) {
+                                        e.dataTransfer.effectAllowed = "move";
+                                        e.dataTransfer.setData("application/reactflow", JSON.stringify(entity));
+                                    }
+                                }}
                                 style={{
-                                    width: "40px",
-                                    height: "40px",
+                                    padding: "12px",
+                                    marginBottom: "8px",
+                                    background: "#ffffff",
+                                    border: "1px solid #e2e8f0",
                                     borderRadius: "8px",
-                                    background: activeTab === "SOURCE" ? "rgba(59, 130, 246, 0.1)" : "rgba(16, 185, 129, 0.1)",
                                     display: "flex",
                                     alignItems: "center",
-                                    justifyContent: "center",
-                                    color: activeTab === "SOURCE" ? "#3b82f6" : "#10b981",
-                                }}
-                            >
-                                <FiDatabase size={20} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div
-                                    style={{
-                                        fontSize: "14px",
-                                        fontWeight: 600,
-                                        color: "#1e293b",
-                                        marginBottom: "4px",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    {entity.name}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: "12px",
-                                        color: "#64748b",
-                                    }}
-                                >
-                                    {getFieldCount(entity)} field(s)
-                                </div>
-                            </div>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddEntity(entity);
-                                }}
-                                style={{
-                                    width: "32px",
-                                    height: "32px",
-                                    borderRadius: "6px",
-                                    background: activeTab === "SOURCE" ? "#3b82f6" : "#10b981",
-                                    color: "#ffffff",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
+                                    gap: "12px",
+                                    cursor: added ? "not-allowed" : "grab",
                                     transition: "all 200ms ease",
+                                    opacity: added ? 0.6 : 1,
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = "scale(1.1)";
+                                    if (added) return;
+                                    e.currentTarget.style.borderColor = activeTab === "SOURCE" ? "#3b82f6" : "#10b981";
+                                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = "scale(1)";
+                                    e.currentTarget.style.borderColor = "#e2e8f0";
+                                    e.currentTarget.style.boxShadow = "none";
                                 }}
                             >
-                                <FiPlus size={16} />
-                            </button>
-                        </div>
-                    )
+                                <div
+                                    style={{
+                                        width: "40px",
+                                        height: "40px",
+                                        borderRadius: "8px",
+                                        background: activeTab === "SOURCE" ? "rgba(59, 130, 246, 0.1)" : "rgba(16, 185, 129, 0.1)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        color: activeTab === "SOURCE" ? "#3b82f6" : "#10b981",
+                                    }}
+                                >
+                                    <FiDatabase size={20} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div
+                                        style={{
+                                            fontSize: "14px",
+                                            fontWeight: 600,
+                                            color: "#1e293b",
+                                            marginBottom: "4px",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {entity.name}
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: "12px",
+                                            color: "#64748b",
+                                        }}
+                                    >
+                                        {getFieldCount(entity)} field(s)
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddEntity(entity);
+                                    }}
+                                    style={{
+                                        width: "32px",
+                                        height: "32px",
+                                        borderRadius: "6px",
+                                        background: added
+                                            ? "#cbd5e1"
+                                            : activeTab === "SOURCE"
+                                            ? "#3b82f6"
+                                            : "#10b981",
+                                        color: added ? "#64748b" : "#ffffff",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        transition: "all 200ms ease",
+                                        opacity: added ? 0.7 : 1,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!added) {
+                                            e.currentTarget.style.transform = "scale(1.1)";
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = "scale(1)";
+                                    }}
+                                    disabled={added}
+                                >
+                                    {added ? <FiPlus size={16} /> : <FiPlus size={16} />}
+                                </button>
+                            </div>
+                        )
+                    }
                 )}
 
                 {(activeTab === "SOURCE" ? filteredSourceEntities : filteredTargetEntities).length === 0 && (
@@ -356,6 +460,49 @@ const AvailableEntitiesSidebar = ({
                         {searchQuery ? "No entities found" : `No ${activeTab} entities available`}
                     </div>
                 )}
+            </div>
+
+            <div
+                style={{
+                    padding: "16px",
+                    borderTop: "1px solid #e2e8f0",
+                }}
+            >
+                <button
+                    onClick={() => {
+                        if (onAddAllEntities) {
+                            onAddAllEntities();
+                        }
+                    }}
+                    style={{
+                        width: "100%",
+                        padding: "14px 16px",
+                        background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        boxShadow: "0 2px 4px rgba(139, 92, 246, 0.3)",
+                        transition: "all 200ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = "0 4px 8px rgba(139, 92, 246, 0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 2px 4px rgba(139, 92, 246, 0.3)";
+                    }}
+                >
+                    <FiDownload size={18} />
+                    Add All Entities
+                </button>
             </div>
         </div>
     );

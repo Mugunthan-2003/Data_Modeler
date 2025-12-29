@@ -1,6 +1,51 @@
-import { FiArrowLeft, FiLayout, FiSave } from "react-icons/fi";
+import {
+    FiArrowLeft,
+    FiLayout,
+    FiSave,
+    FiCheck,
+    FiX,
+    FiHash,
+    FiEye,
+    FiStar,
+    FiArrowUp,
+    FiArrowDown,
+    FiRepeat,
+    FiChevronDown,
+} from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
 
-const ConsolidatedFlowHeader = ({ onBack, onLayout, onSave, tableCount, connectionCount }) => {
+const ConsolidatedFlowHeader = ({
+    onBack,
+    onLayout,
+    onSave,
+    tableCount,
+    connectionCount,
+    showNormalRefs,
+    showCalcRefs,
+    showOnlyHighlighted,
+    onToggleNormalRefs,
+    onToggleCalcRefs,
+    onToggleOnlyHighlighted,
+    linkDirection,
+    onLinkDirectionChange,
+}) => {
+    const [isDirOpen, setIsDirOpen] = useState(false);
+    const dirDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dirDropdownRef.current && !dirDropdownRef.current.contains(e.target)) {
+                setIsDirOpen(false);
+            }
+        };
+        if (isDirOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isDirOpen]);
+
     return (
         <div
             style={{
@@ -54,6 +99,188 @@ const ConsolidatedFlowHeader = ({ onBack, onLayout, onSave, tableCount, connecti
                 <span>{tableCount || 0} tables</span>
                 <span>•</span>
                 <span>{connectionCount || 0} connections</span>
+            </div>
+
+            <div
+                ref={dirDropdownRef}
+                style={{ display: "flex", alignItems: "center", gap: 10, position: "relative" }}
+            >
+                <button
+                    onClick={() => setIsDirOpen((v) => !v)}
+                    style={{
+                        padding: "9px 16px",
+                        background: "rgba(148, 163, 184, 0.15)",
+                        color: "#cbd5e1",
+                        border: "1px solid rgba(148, 163, 184, 0.3)",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        minWidth: 150,
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {linkDirection === "upstream" && <FiArrowUp size={14} />}
+                        {linkDirection === "downstream" && <FiArrowDown size={14} />}
+                        {linkDirection === "both" && <FiRepeat size={14} />}
+                        <span>
+                            {linkDirection === "upstream" && "Upstream"}
+                            {linkDirection === "downstream" && "Downstream"}
+                            {linkDirection === "both" && "Both"}
+                        </span>
+                    </div>
+                    <FiChevronDown
+                        size={14}
+                        style={{
+                            transform: isDirOpen ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 200ms ease",
+                        }}
+                    />
+                </button>
+
+                {isDirOpen && (
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: "100%",
+                            right: 0,
+                            marginTop: 8,
+                            background: "rgba(30, 41, 59, 0.95)",
+                            border: "1px solid rgba(148, 163, 184, 0.3)",
+                            borderRadius: 10,
+                            padding: 4,
+                            minWidth: 180,
+                            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3)",
+                            zIndex: 1000,
+                        }}
+                    >
+                        {[
+                            { key: "upstream", label: "Upstream", icon: <FiArrowUp size={14} /> },
+                            { key: "downstream", label: "Downstream", icon: <FiArrowDown size={14} /> },
+                            { key: "both", label: "Both", icon: <FiRepeat size={14} /> },
+                        ].map((dir) => (
+                            <button
+                                key={dir.key}
+                                onClick={() => {
+                                    onLinkDirectionChange(dir.key);
+                                    setIsDirOpen(false);
+                                }}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px 12px",
+                                    background:
+                                        linkDirection === dir.key
+                                            ? "rgba(59, 130, 246, 0.2)"
+                                            : "transparent",
+                                    color:
+                                        linkDirection === dir.key ? "#93c5fd" : "#cbd5e1",
+                                    border: "none",
+                                    borderRadius: 8,
+                                    cursor: "pointer",
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    textAlign: "left",
+                                }}
+                            >
+                                {dir.icon}
+                                <span>{dir.label}</span>
+                                {linkDirection === dir.key && (
+                                    <FiCheck size={14} style={{ marginLeft: "auto" }} />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button
+                    onClick={onToggleNormalRefs}
+                    style={{
+                        padding: "9px 14px",
+                        background: showNormalRefs
+                            ? "rgba(239, 68, 68, 0.2)"
+                            : "rgba(148, 163, 184, 0.15)",
+                        color: showNormalRefs ? "#fca5a5" : "#cbd5e1",
+                        border: `1px solid ${
+                            showNormalRefs
+                                ? "rgba(239, 68, 68, 0.4)"
+                                : "rgba(148, 163, 184, 0.3)"
+                        }`,
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                    }}
+                >
+                    {showNormalRefs ? <FiCheck size={14} /> : <FiX size={14} />}
+                    Normal
+                </button>
+                <button
+                    onClick={onToggleCalcRefs}
+                    style={{
+                        padding: "9px 14px",
+                        background: showCalcRefs
+                            ? "rgba(59, 130, 246, 0.2)"
+                            : "rgba(148, 163, 184, 0.15)",
+                        color: showCalcRefs ? "#93c5fd" : "#cbd5e1",
+                        border: `1px solid ${
+                            showCalcRefs
+                                ? "rgba(59, 130, 246, 0.4)"
+                                : "rgba(148, 163, 184, 0.3)"
+                        }`,
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                    }}
+                >
+                    {showCalcRefs ? <FiCheck size={14} /> : <FiX size={14} />}
+                    <FiHash size={14} />
+                    Calc
+                </button>
+                <button
+                    onClick={onToggleOnlyHighlighted}
+                    style={{
+                        padding: "9px 14px",
+                        background: showOnlyHighlighted
+                            ? "rgba(236, 72, 153, 0.2)"
+                            : "rgba(148, 163, 184, 0.15)",
+                        color: showOnlyHighlighted ? "#f9a8d4" : "#cbd5e1",
+                        border: `1px solid ${
+                            showOnlyHighlighted
+                                ? "rgba(236, 72, 153, 0.4)"
+                                : "rgba(148, 163, 184, 0.3)"
+                        }`,
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                    }}
+                >
+                    {showOnlyHighlighted ? (
+                        <FiStar size={14} />
+                    ) : (
+                        <FiEye size={14} />
+                    )}
+                    Highlighted
+                </button>
             </div>
 
             {onLayout && (
