@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey, FiDownload, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey, FiDownload, FiX, FiSettings } from "react-icons/fi";
 import ReactFlow, {
     MiniMap,
     Controls,
@@ -90,16 +90,10 @@ const TableNode = memo(({ data, id }) => {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                const selectedFieldsForNode = data.selectedFields || [];
-                                
-                                if (selectedFieldsForNode.length > 0) {
-                                    if (data.onCreateFromSelection) {
-                                        data.onCreateFromSelection(id, selectedFieldsForNode);
-                                    } else {
-                                        alert('Error: Handler not available. Please try refreshing the page.');
-                                    }
+                                if (data.onOpenSettings) {
+                                    data.onOpenSettings(id);
                                 } else {
-                                    alert('Please select at least one field to create an entity');
+                                    alert('Error: Handler not available. Please try refreshing the page.');
                                 }
                             }}
                             style={{
@@ -112,9 +106,9 @@ const TableNode = memo(({ data, id }) => {
                                 fontSize: '11px',
                                 fontWeight: 600
                             }}
-                            title="Create entity from selected fields"
+                            title="Entity settings"
                         >
-                            {data.selectedFields && data.selectedFields.length > 0 ? `Create (${data.selectedFields.length})` : '+ Entity'}
+                            <FiSettings size={12} />
                         </button>
                     )}
                     <button
@@ -210,21 +204,49 @@ const TableNode = memo(({ data, id }) => {
                                 }}
                             />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
-                                <input
-                                    type="checkbox"
-                                    checked={data.selectedFields?.includes(field.name) || false}
-                                    onChange={(e) => {
-                                        e.stopPropagation();
-                                        data.onToggleFieldSelection(id, field.name);
-                                    }}
-                                    style={{
+                                <label style={{
+                                    position: 'relative',
+                                    display: 'inline-block',
+                                    width: '28px',
+                                    height: '16px',
+                                    flexShrink: 0,
+                                    cursor: 'pointer',
+                                }}
+                                title="Toggle to select/deselect field"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={data.selectedFields?.includes(field.name) || false}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            data.onToggleFieldSelection(id, field.name);
+                                        }}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <span style={{
+                                        position: 'absolute',
                                         cursor: 'pointer',
-                                        width: '14px',
-                                        height: '14px',
-                                        flexShrink: 0
-                                    }}
-                                    title="Select field for new entity"
-                                />
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        backgroundColor: (data.selectedFields?.includes(field.name) || false) ? '#6366f1' : '#cbd5e1',
+                                        transition: '0.3s',
+                                        borderRadius: '16px',
+                                    }}>
+                                        <span style={{
+                                            position: 'absolute',
+                                            content: '',
+                                            height: '12px',
+                                            width: '12px',
+                                            left: (data.selectedFields?.includes(field.name) || false) ? '14px' : '2px',
+                                            bottom: '2px',
+                                            backgroundColor: 'white',
+                                            transition: '0.3s',
+                                            borderRadius: '50%',
+                                        }}></span>
+                                    </span>
+                                </label>
                                 {field.isPK && (
                                     <FiKey 
                                         size={14} 
@@ -330,10 +352,15 @@ const DataProductPage = () => {
     const [showExportDialog, setShowExportDialog] = useState(false);
     const [exportJson, setExportJson] = useState('');
     const [selectedFields, setSelectedFields] = useState({});
-    const [showCreateFromSelectionDialog, setShowCreateFromSelectionDialog] = useState(false);
-    const [createFromSelectionData, setCreateFromSelectionData] = useState({ nodeId: null, fields: [] });
+    const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+    const [settingsData, setSettingsData] = useState({ nodeId: null, fields: [] });
+    const [settingsActiveTab, setSettingsActiveTab] = useState('entity'); // 'entity' or 'table'
+    const [globalAttributeMode, setGlobalAttributeMode] = useState('runtime'); // 'runtime' or 'loadtime'
+    const [tab1FilterMode, setTab1FilterMode] = useState('runtime'); // Filter for Tab 1
+    const [attributeToggles, setAttributeToggles] = useState({}); // Track toggle state per attribute
     const [newEntityName, setNewEntityName] = useState('');
     const [newEntityType, setNewEntityType] = useState('CTE');
+    const [searchQuery, setSearchQuery] = useState('');
     
     // Use suggestion hook
     const {
@@ -475,7 +502,7 @@ const DataProductPage = () => {
                             onTogglePK: handleTogglePK,
                             onShowReverseDeps: handleShowReverseDeps,
                             onToggleFieldSelection: handleToggleFieldSelection,
-                            onCreateFromSelection: handleCreateFromSelection,
+                            onOpenSettings: handleOpenSettings,
                             selectedFields: []
                         }
                     });
@@ -756,6 +783,16 @@ const DataProductPage = () => {
     }, [setNodes]);
 
     const handleToggleFieldSelection = useCallback((nodeId, fieldName) => {
+        // Update attribute toggles (for runtime/loadtime mode)
+        setAttributeToggles((prev) => {
+            const currentToggle = prev[fieldName] || false;
+            return {
+                ...prev,
+                [fieldName]: !currentToggle
+            };
+        });
+
+        // Also update selectedFields for visual feedback in canvas
         setSelectedFields((prev) => {
             const nodeSelections = prev[nodeId] || [];
             const isSelected = nodeSelections.includes(fieldName);
@@ -798,20 +835,32 @@ const DataProductPage = () => {
             
             const selectedFieldsData = node.data.fields.filter(f => selectedFieldNames.includes(f.name));
             
-            setCreateFromSelectionData({
+            // Initialize attributeToggles based on current selectedFields from the node
+            const initialToggles = {};
+            node.data.fields.forEach(field => {
+                // If field is in selectedFields, it means toggle is ON
+                initialToggles[field.name] = (node.data.selectedFields || []).includes(field.name);
+            });
+            setAttributeToggles(initialToggles);
+            
+            setSettingsData({
                 nodeId,
                 sourceEntityName: node.data.tableName,
-                fields: selectedFieldsData
+                fields: selectedFieldsData,
+                allFields: node.data.fields
             });
             setNewEntityName('');
             setNewEntityType('CTE');
-            setShowCreateFromSelectionDialog(true);
+            setSearchQuery('');
+            setSettingsActiveTab('byMode');
+            // Keep globalAttributeMode and tab1FilterMode as-is (don't reset)
+            setShowSettingsDialog(true);
             
             return currentNodes; // Return unchanged nodes
         });
     }, []);
 
-    const handleConfirmCreateFromSelection = useCallback(() => {
+    const handleConfirmCreateByMode = useCallback(() => {
         if (!newEntityName.trim()) {
             alert('Please enter an entity name');
             return;
@@ -827,6 +876,16 @@ const DataProductPage = () => {
             return;
         }
         
+        // Get all fields and apply attribute mode based on default and toggles
+        // Note: We create entity with ALL attributes, the filter in UI is just for viewing
+        const fieldsToUse = settingsData.allFields.map(f => {
+            const isToggled = attributeToggles[f.name] || false;
+            const attributeMode = isToggled 
+                ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
+                : globalAttributeMode; // Use default
+            return { ...f, attributeMode };
+        });
+        
         // Create new node with selected fields
         const newNodeId = `table-${Date.now()}`;
         const newNode = {
@@ -839,7 +898,7 @@ const DataProductPage = () => {
             data: { 
                 tableName: newEntityName,
                 tableType: newEntityType,
-                fields: createFromSelectionData.fields.map(f => ({ ...f })),
+                fields: fieldsToUse,
                 selectedFields: [],
                 onAddField: handleAddField,
                 onRemoveField: handleRemoveField,
@@ -861,7 +920,7 @@ const DataProductPage = () => {
                             ...node.data,
                             onShowReverseDeps: (nodeId, tableName, tableType) => handleShowReverseDeps(nodeId, tableName, tableType),
                             onDeleteTable: (nodeId) => handleDeleteTable(nodeId),
-                            onCreateFromSelection: (nodeId, fields) => handleCreateFromSelection(nodeId, fields)
+                            onOpenSettings: (nodeId) => handleOpenSettings(nodeId)
                         }
                     };
                 }
@@ -872,12 +931,12 @@ const DataProductPage = () => {
         // Clear selection from source node
         setSelectedFields((prev) => ({
             ...prev,
-            [createFromSelectionData.nodeId]: []
+            [settingsData.nodeId]: []
         }));
         
         setNodes((nds) =>
             nds.map((node) => {
-                if (node.id === createFromSelectionData.nodeId) {
+                if (node.id === settingsData.nodeId) {
                     return {
                         ...node,
                         data: {
@@ -906,8 +965,123 @@ const DataProductPage = () => {
             }));
         }
         
-        setShowCreateFromSelectionDialog(false);
-    }, [newEntityName, newEntityType, nodes, createFromSelectionData, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setCustomTables, setFileBaseTables, setFileViewTables]);
+        setShowSettingsDialog(false);
+    }, [newEntityName, newEntityType, nodes, settingsData, globalAttributeMode, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setCustomTables, setFileBaseTables, setFileViewTables]);
+
+    const handleConfirmCreateFromSelected = useCallback(() => {
+        if (!newEntityName.trim()) {
+            alert('Please enter an entity name');
+            return;
+        }
+        
+        // Check if entity already exists
+        const entityExists = nodes.some(n => 
+            n.data.tableName === newEntityName && n.data.tableType === newEntityType
+        );
+        
+        if (entityExists) {
+            alert(`Entity "${newEntityName}" (${newEntityType}) already exists on canvas!`);
+            return;
+        }
+        
+        // Get selected fields only (from checkboxes) and apply attribute mode
+        const fieldsToUse = settingsData.fields.map(f => {
+            const isToggled = attributeToggles[f.name] || false;
+            const attributeMode = isToggled 
+                ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
+                : globalAttributeMode; // Use default
+            return { ...f, attributeMode };
+        });
+        
+        // Create new node with all fields
+        const newNodeId = `table-${Date.now()}`;
+        const newNode = {
+            id: newNodeId,
+            type: 'tableNode',
+            position: { 
+                x: Math.random() * 300 + 100, 
+                y: Math.random() * 300 + 100 
+            },
+            data: { 
+                tableName: newEntityName,
+                tableType: newEntityType,
+                fields: fieldsToUse,
+                selectedFields: [],
+                onAddField: handleAddField,
+                onRemoveField: handleRemoveField,
+                onTogglePK: handleTogglePK,
+                onToggleFieldSelection: handleToggleFieldSelection
+            }
+        };
+        
+        setNodes((nds) => {
+            // Add the new node first
+            const updatedNodes = [...nds, newNode];
+            
+            // Then update it with the missing handlers
+            return updatedNodes.map(node => {
+                if (node.id === newNodeId) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            onShowReverseDeps: (nodeId, tableName, tableType) => handleShowReverseDeps(nodeId, tableName, tableType),
+                            onDeleteTable: (nodeId) => handleDeleteTable(nodeId),
+                            onOpenSettings: (nodeId) => handleOpenSettings(nodeId)
+                        }
+                    };
+                }
+                return node;
+            });
+        });
+        
+        // Update appropriate list based on type
+        if (newEntityType === 'BASE') {
+            if (!fileBaseTables.includes(newEntityName)) {
+                setFileBaseTables(prev => [...prev, newEntityName]);
+            }
+        } else if (newEntityType === 'VIEW') {
+            if (!fileViewTables.includes(newEntityName)) {
+                setFileViewTables(prev => [...prev, newEntityName]);
+            }
+        } else if (newEntityType === 'CTE') {
+            setCustomTables(prev => ({
+                ...prev,
+                CTE: [...prev.CTE, newEntityName]
+            }));
+        }
+        
+        setShowSettingsDialog(false);
+    }, [newEntityName, newEntityType, nodes, settingsData, globalAttributeMode, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setCustomTables, setFileBaseTables, setFileViewTables]);
+
+    const handleOpenSettings = useCallback((nodeId) => {
+        setNodes((currentNodes) => {
+            const node = currentNodes.find(n => n.id === nodeId);
+            
+            if (!node) {
+                return currentNodes;
+            }
+            
+            // Get selected fields for this node
+            const selectedFieldsForNode = node.data.selectedFields || [];
+            const selectedFieldsData = node.data.fields.filter(f => selectedFieldsForNode.includes(f.name));
+            
+            setSettingsData({
+                nodeId,
+                sourceEntityName: node.data.tableName,
+                fields: selectedFieldsData,
+                allFields: node.data.fields
+            });
+            setNewEntityName('');
+            setNewEntityType('CTE');
+            setSearchQuery('');
+            setSettingsActiveTab('byMode');
+            // Keep globalAttributeMode, tab1FilterMode, and attributeToggles as-is (don't reset)
+            setShowSettingsDialog(true);
+            
+            return currentNodes;
+        });
+    }, []);
 
     const handleConfirmRemoveField = useCallback(() => {
         const { nodeId, fieldName } = deleteFieldInfo;
@@ -994,7 +1168,7 @@ const DataProductPage = () => {
                 onTogglePK: handleTogglePK,
                 onShowReverseDeps: handleShowReverseDeps,
                 onToggleFieldSelection: handleToggleFieldSelection,
-                onCreateFromSelection: handleCreateFromSelection,
+                onOpenSettings: handleOpenSettings,
                 selectedFields: []
             }
         };
@@ -1342,7 +1516,7 @@ const DataProductPage = () => {
                                 onTogglePK: handleTogglePK,
                                 onShowReverseDeps: handleShowReverseDeps,
                                 onToggleFieldSelection: handleToggleFieldSelection,
-                                onCreateFromSelection: handleCreateFromSelection,
+                                onOpenSettings: handleOpenSettings,
                                 selectedFields: []
                             }
                         };
@@ -1396,7 +1570,7 @@ const DataProductPage = () => {
                     onTogglePK: handleTogglePK,
                     onShowReverseDeps: handleShowReverseDeps,
                     onToggleFieldSelection: handleToggleFieldSelection,
-                    onCreateFromSelection: handleCreateFromSelection,
+                    onOpenSettings: handleOpenSettings,
                     selectedFields: []
                 }
             };
@@ -1549,7 +1723,7 @@ const DataProductPage = () => {
                     onTogglePK: handleTogglePK,
                     onShowReverseDeps: handleShowReverseDeps,
                     onToggleFieldSelection: handleToggleFieldSelection,
-                    onCreateFromSelection: handleCreateFromSelection,
+                    onOpenSettings: handleOpenSettings,
                     selectedFields: []
                 }
             };
@@ -2400,8 +2574,8 @@ const DataProductPage = () => {
                 </div>
             )}
 
-            {/* Create Entity from Selection Dialog */}
-            {showCreateFromSelectionDialog && (
+            {/* Entity Settings Dialog */}
+            {showSettingsDialog && (
                 <div style={{
                     position: 'fixed',
                     top: 0,
@@ -2417,7 +2591,7 @@ const DataProductPage = () => {
                     <div style={{
                         backgroundColor: 'white',
                         borderRadius: '12px',
-                        width: '500px',
+                        width: '600px',
                         maxHeight: '80vh',
                         display: 'flex',
                         flexDirection: 'column',
@@ -2433,7 +2607,7 @@ const DataProductPage = () => {
                                 fontWeight: 'bold',
                                 color: '#1f2937',
                             }}>
-                                Create Entity from Selection
+                                Entity Settings
                             </h2>
                             <p style={{ 
                                 marginTop: '8px',
@@ -2441,101 +2615,518 @@ const DataProductPage = () => {
                                 fontSize: '14px',
                                 color: '#6b7280',
                             }}>
-                                Creating from {createFromSelectionData.sourceEntityName} with {createFromSelectionData.fields.length} field{createFromSelectionData.fields.length !== 1 ? 's' : ''}
+                                Configure attributes from {settingsData.sourceEntityName}
                             </p>
                         </div>
 
+                        {/* Default Attribute Mode Section */}
+                        <div style={{
+                            padding: '16px 24px',
+                            backgroundColor: '#f0f9ff',
+                            borderBottom: '1px solid #e5e7eb',
+                        }}>
+                            <label style={{
+                                display: 'block',
+                                marginBottom: '8px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#374151',
+                            }}>
+                                Default Attribute Mode
+                            </label>
+                            <select
+                                value={globalAttributeMode}
+                                onChange={(e) => setGlobalAttributeMode(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    border: '2px solid #3b82f6',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    boxSizing: 'border-box',
+                                    backgroundColor: 'white',
+                                }}
+                            >
+                                <option value="runtime">Runtime</option>
+                                <option value="loadtime">Loadtime</option>
+                            </select>
+                            <p style={{
+                                marginTop: '6px',
+                                marginBottom: 0,
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                fontStyle: 'italic',
+                            }}>
+                                This is the default mode for all attributes. Toggle OFF in canvas = <strong>{globalAttributeMode}</strong>, Toggle ON = <strong>{globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime'}</strong>
+                            </p>
+                        </div>
+
+                        {/* Tab Navigation */}
+                        <div style={{
+                            display: 'flex',
+                            borderBottom: '1px solid #e5e7eb',
+                            padding: '0 24px',
+                        }}>
+                            <button
+                                onClick={() => setSettingsActiveTab('byMode')}
+                                style={{
+                                    padding: '12px 16px',
+                                    backgroundColor: settingsActiveTab === 'byMode' ? 'white' : 'transparent',
+                                    border: 'none',
+                                    borderBottom: settingsActiveTab === 'byMode' ? '2px solid #6366f1' : '2px solid transparent',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: settingsActiveTab === 'byMode' ? '600' : '500',
+                                    color: settingsActiveTab === 'byMode' ? '#6366f1' : '#6b7280',
+                                }}
+                            >
+                                Based on Type
+                            </button>
+                            <button
+                                onClick={() => setSettingsActiveTab('selected')}
+                                style={{
+                                    padding: '12px 16px',
+                                    backgroundColor: settingsActiveTab === 'selected' ? 'white' : 'transparent',
+                                    border: 'none',
+                                    borderBottom: settingsActiveTab === 'selected' ? '2px solid #6366f1' : '2px solid transparent',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: settingsActiveTab === 'selected' ? '600' : '500',
+                                    color: settingsActiveTab === 'selected' ? '#6366f1' : '#6b7280',
+                                }}
+                            >
+                                Selected Attributes
+                            </button>
+                        </div>
+
+                        {/* Tab Content */}
                         <div style={{
                             padding: '24px',
                             overflowY: 'auto',
                             flex: 1,
                         }}>
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    color: '#374151',
-                                }}>
-                                    Entity Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newEntityName}
-                                    onChange={(e) => setNewEntityName(e.target.value)}
-                                    placeholder="Enter entity name"
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '6px',
-                                        fontSize: '14px',
-                                        boxSizing: 'border-box',
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    color: '#374151',
-                                }}>
-                                    Entity Type *
-                                </label>
-                                <select
-                                    value={newEntityType}
-                                    onChange={(e) => setNewEntityType(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '6px',
-                                        fontSize: '14px',
-                                        boxSizing: 'border-box',
-                                    }}
-                                >
-                                    <option value="CTE">CTE</option>
-                                    <option value="VIEW">VIEW</option>
-                                    <option value="BASE">BASE</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    color: '#374151',
-                                }}>
-                                    Selected Fields ({createFromSelectionData.fields.length})
-                                </label>
-                                <div style={{
-                                    backgroundColor: '#f9fafb',
-                                    padding: '12px',
-                                    borderRadius: '6px',
-                                    border: '1px solid #e5e7eb',
-                                    maxHeight: '200px',
-                                    overflowY: 'auto',
-                                }}>
-                                    {createFromSelectionData.fields.map((field, idx) => (
-                                        <div key={idx} style={{
-                                            padding: '4px 0',
-                                            fontSize: '13px',
-                                            color: '#1f2937',
-                                            fontFamily: 'monospace',
+                            {settingsActiveTab === 'byMode' ? (
+                                // Tab 1: Create Entity with All Runtime or Loadtime Attributes
+                                <>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
                                         }}>
-                                            • {field.name}
+                                            Filter by Attribute Mode *
+                                        </label>
+                                        <select
+                                            value={tab1FilterMode}
+                                            onChange={(e) => setTab1FilterMode(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        >
+                                            <option value="runtime">Runtime</option>
+                                            <option value="loadtime">Loadtime</option>
+                                        </select>
+                                        <p style={{
+                                            marginTop: '4px',
+                                            fontSize: '11px',
+                                            color: '#6b7280',
+                                            fontStyle: 'italic',
+                                        }}>
+                                            Only {tab1FilterMode} attributes will be shown in the list below
+                                        </p>
+                                    </div>
+
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            Entity Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newEntityName}
+                                            onChange={(e) => setNewEntityName(e.target.value)}
+                                            placeholder="Enter entity name"
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            Entity Type *
+                                        </label>
+                                        <select
+                                            value={newEntityType}
+                                            onChange={(e) => setNewEntityType(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        >
+                                            <option value="CTE">CTE</option>
+                                            <option value="VIEW">VIEW</option>
+                                            <option value="BASE">BASE</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            {tab1FilterMode.charAt(0).toUpperCase() + tab1FilterMode.slice(1)} Attributes ({
+                                                settingsData.allFields ? 
+                                                settingsData.allFields.filter(field => {
+                                                    const isToggled = attributeToggles[field.name] || false;
+                                                    const effectiveMode = isToggled 
+                                                        ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
+                                                        : globalAttributeMode;
+                                                    return effectiveMode === tab1FilterMode;
+                                                }).length 
+                                                : 0
+                                            })
+                                        </label>
+                                        <div style={{
+                                            backgroundColor: '#f9fafb',
+                                            padding: '12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #e5e7eb',
+                                            maxHeight: '250px',
+                                            overflowY: 'auto',
+                                        }}>
+                                            {settingsData.allFields && settingsData.allFields.length > 0 ? (
+                                                settingsData.allFields
+                                                    .filter(field => {
+                                                        const isToggled = attributeToggles[field.name] || false;
+                                                        const effectiveMode = isToggled 
+                                                            ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
+                                                            : globalAttributeMode;
+                                                        return effectiveMode === tab1FilterMode;
+                                                    })
+                                                    .map((field, idx, filteredArray) => {
+                                                        const isToggled = attributeToggles[field.name] || false;
+                                                        const effectiveMode = isToggled 
+                                                            ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
+                                                            : globalAttributeMode;
+                                                        
+                                                        return (
+                                                            <div key={field.name} style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'space-between',
+                                                                padding: '8px 4px',
+                                                                fontSize: '13px',
+                                                                color: '#1f2937',
+                                                                borderBottom: idx < filteredArray.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                                            }}>
+                                                                <span style={{ fontFamily: 'monospace', flex: 1 }}>
+                                                                    • {field.name} <span style={{ color: '#6b7280' }}>({field.type})</span>
+                                                                </span>
+                                                                <span style={{ 
+                                                                    fontSize: '11px', 
+                                                                    fontWeight: '600',
+                                                                    color: effectiveMode === 'runtime' ? '#10b981' : '#f59e0b',
+                                                                    textTransform: 'uppercase'
+                                                                }}>
+                                                                    {effectiveMode}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })
+                                            ) : (
+                                                <p style={{
+                                                    margin: 0,
+                                                    fontSize: '13px',
+                                                    color: '#9ca3af',
+                                                    fontStyle: 'italic',
+                                                }}>
+                                                    No attributes available
+                                                </p>
+                                            )}
+                                            {settingsData.allFields && settingsData.allFields.length > 0 && 
+                                             settingsData.allFields.filter(field => {
+                                                const isToggled = attributeToggles[field.name] || false;
+                                                const effectiveMode = isToggled 
+                                                    ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
+                                                    : globalAttributeMode;
+                                                return effectiveMode === tab1FilterMode;
+                                             }).length === 0 && (
+                                                <p style={{
+                                                    margin: 0,
+                                                    fontSize: '13px',
+                                                    color: '#9ca3af',
+                                                    fontStyle: 'italic',
+                                                }}>
+                                                    No {tab1FilterMode} attributes. Toggle attributes to change their mode.
+                                                </p>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
+                                        <p style={{
+                                            marginTop: '8px',
+                                            fontSize: '12px',
+                                            color: '#6b7280',
+                                        }}>
+                                            Showing only <strong>{tab1FilterMode}</strong> attributes. Use canvas toggles to change attribute modes.
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                // Tab 2: Create Entity from Selected Attributes
+                                <>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            Entity Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newEntityName}
+                                            onChange={(e) => setNewEntityName(e.target.value)}
+                                            placeholder="Enter entity name"
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            Entity Type *
+                                        </label>
+                                        <select
+                                            value={newEntityType}
+                                            onChange={(e) => setNewEntityType(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        >
+                                            <option value="CTE">CTE</option>
+                                            <option value="VIEW">VIEW</option>
+                                            <option value="BASE">BASE</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            Selected Attributes ({settingsData.fields.length})
+                                        </label>
+                                        {settingsData.fields.length === 0 ? (
+                                            <div style={{
+                                                backgroundColor: '#f9fafb',
+                                                padding: '12px',
+                                                borderRadius: '6px',
+                                                border: '1px solid #e5e7eb',
+                                            }}>
+                                                <p style={{
+                                                    margin: 0,
+                                                    fontSize: '13px',
+                                                    color: '#9ca3af',
+                                                    fontStyle: 'italic',
+                                                }}>
+                                                    No fields selected. Please select fields using toggles in the entity.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div style={{
+                                                backgroundColor: '#f0f9ff',
+                                                padding: '8px',
+                                                borderRadius: '6px',
+                                                border: '1px solid #bfdbfe',
+                                                marginBottom: '12px',
+                                            }}>
+                                                {settingsData.fields.map((field, idx) => (
+                                                    <span key={idx} style={{
+                                                        display: 'inline-block',
+                                                        padding: '4px 8px',
+                                                        margin: '2px',
+                                                        fontSize: '12px',
+                                                        backgroundColor: '#dbeafe',
+                                                        borderRadius: '4px',
+                                                        color: '#1e40af',
+                                                        fontFamily: 'monospace',
+                                                    }}>
+                                                        {field.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            marginTop: '16px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            All Attributes ({settingsData.allFields ? settingsData.allFields.length : 0})
+                                        </label>
+                                        <div style={{
+                                            backgroundColor: '#f9fafb',
+                                            padding: '12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #e5e7eb',
+                                            maxHeight: '250px',
+                                            overflowY: 'auto',
+                                        }}>
+                                            {settingsData.allFields && settingsData.allFields.length > 0 ? (
+                                                settingsData.allFields.map((field, idx) => {
+                                                    const isToggled = attributeToggles[field.name] || false;
+                                                    const effectiveMode = isToggled 
+                                                        ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
+                                                        : globalAttributeMode;
+                                                    
+                                                    return (
+                                                        <div key={idx} style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '8px 4px',
+                                                            fontSize: '13px',
+                                                            color: '#1f2937',
+                                                            borderBottom: idx < settingsData.allFields.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                                        }}>
+                                                            <span style={{ fontFamily: 'monospace', flex: 1 }}>
+                                                                • {field.name} <span style={{ color: '#6b7280' }}>({field.type})</span>
+                                                            </span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <span style={{ 
+                                                                    fontSize: '11px', 
+                                                                    fontWeight: '600',
+                                                                    color: effectiveMode === 'runtime' ? '#10b981' : '#f59e0b',
+                                                                    textTransform: 'uppercase'
+                                                                }}>
+                                                                    {effectiveMode}
+                                                                </span>
+                                                                <label style={{
+                                                                    position: 'relative',
+                                                                    display: 'inline-block',
+                                                                    width: '36px',
+                                                                    height: '20px',
+                                                                    cursor: 'pointer',
+                                                                }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isToggled}
+                                                                        onChange={() => {
+                                                                            setAttributeToggles(prev => ({
+                                                                                ...prev,
+                                                                                [field.name]: !prev[field.name]
+                                                                            }));
+                                                                        }}
+                                                                        style={{ display: 'none' }}
+                                                                    />
+                                                                    <span style={{
+                                                                        position: 'absolute',
+                                                                        cursor: 'pointer',
+                                                                        top: 0,
+                                                                        left: 0,
+                                                                        right: 0,
+                                                                        bottom: 0,
+                                                                        backgroundColor: isToggled ? '#6366f1' : '#cbd5e1',
+                                                                        transition: '0.3s',
+                                                                        borderRadius: '20px',
+                                                                    }}>
+                                                                        <span style={{
+                                                                            position: 'absolute',
+                                                                            content: '',
+                                                                            height: '14px',
+                                                                            width: '14px',
+                                                                            left: isToggled ? '19px' : '3px',
+                                                                            bottom: '3px',
+                                                                            backgroundColor: 'white',
+                                                                            transition: '0.3s',
+                                                                            borderRadius: '50%',
+                                                                        }}></span>
+                                                                    </span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p style={{
+                                                    margin: 0,
+                                                    fontSize: '13px',
+                                                    color: '#9ca3af',
+                                                    fontStyle: 'italic',
+                                                }}>
+                                                    No attributes available
+                                                </p>
+                                            )}
+                                        </div>
+                                        <p style={{
+                                            marginTop: '8px',
+                                            fontSize: '12px',
+                                            color: '#6b7280',
+                                        }}>
+                                            Toggle OFF = <strong>{globalAttributeMode}</strong> | Toggle ON = <strong>{globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime'}</strong>
+                                        </p>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
+                        {/* Footer Actions */}
                         <div style={{
                             padding: '16px 24px',
                             borderTop: '1px solid #e5e7eb',
@@ -2545,7 +3136,7 @@ const DataProductPage = () => {
                             gap: '12px',
                         }}>
                             <button
-                                onClick={() => setShowCreateFromSelectionDialog(false)}
+                                onClick={() => setShowSettingsDialog(false)}
                                 style={{
                                     padding: '8px 16px',
                                     backgroundColor: 'white',
@@ -2559,21 +3150,40 @@ const DataProductPage = () => {
                             >
                                 Cancel
                             </button>
-                            <button
-                                onClick={handleConfirmCreateFromSelection}
-                                style={{
-                                    padding: '8px 16px',
-                                    backgroundColor: '#6366f1',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    color: 'white',
-                                    fontWeight: '500',
-                                }}
-                            >
-                                Create Entity
-                            </button>
+                            {settingsActiveTab === 'byMode' ? (
+                                <button
+                                    onClick={handleConfirmCreateByMode}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: '#6366f1',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        color: 'white',
+                                        fontWeight: '500',
+                                    }}
+                                >
+                                    Create Entity
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleConfirmCreateFromSelected}
+                                    disabled={settingsData.fields.length === 0}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: settingsData.fields.length === 0 ? '#d1d5db' : '#6366f1',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: settingsData.fields.length === 0 ? 'not-allowed' : 'pointer',
+                                        fontSize: '14px',
+                                        color: 'white',
+                                        fontWeight: '500',
+                                    }}
+                                >
+                                    Create Entity
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
