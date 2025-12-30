@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey } from "react-icons/fi";
+import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey, FiDownload, FiX } from "react-icons/fi";
 import ReactFlow, {
     MiniMap,
     Controls,
@@ -281,6 +281,8 @@ const DataProductPage = () => {
     const [showReverseDepsDialog, setShowReverseDepsDialog] = useState(false);
     const [reverseDeps, setReverseDeps] = useState([]);
     const [selectedEntityForReverseDeps, setSelectedEntityForReverseDeps] = useState(null);
+    const [showExportDialog, setShowExportDialog] = useState(false);
+    const [exportJson, setExportJson] = useState('');
     
     // Use suggestion hook
     const {
@@ -1671,6 +1673,78 @@ const DataProductPage = () => {
                     </button>
                     
                     <button
+                        onClick={() => {
+                            const dataProduct = {
+                                name: currentDataProductName,
+                                tables: nodes.map(node => {
+                                    const primaryKeys = node.data.fields
+                                        .filter(field => field.isPK)
+                                        .map(field => field.name);
+                                    
+                                    const table = {
+                                        name: node.data.tableName,
+                                        type: node.data.tableType,
+                                        fields: node.data.fields.map(field => {
+                                            const fieldObj = { name: field.name };
+                                            if (field.calculation) {
+                                                fieldObj.calculation = field.calculation;
+                                            }
+                                            return fieldObj;
+                                        })
+                                    };
+                                    
+                                    if (primaryKeys.length > 0) {
+                                        table.primaryKeys = primaryKeys;
+                                    }
+                                    
+                                    return table;
+                                }),
+                                relationships: edges.map(edge => {
+                                    const rel = {
+                                        from: {
+                                            entity: nodes.find(n => n.id === edge.source)?.data.tableName,
+                                            field: edge.sourceHandle?.replace('-source', '')
+                                        },
+                                        to: {
+                                            entity: nodes.find(n => n.id === edge.target)?.data.tableName,
+                                            field: edge.targetHandle?.replace('-target', '')
+                                        }
+                                    };
+                                    if (edge.data?.connectionType === 'calculation' && edge.data?.calculation) {
+                                        rel.calculation = edge.data.calculation;
+                                    }
+                                    return rel;
+                                })
+                            };
+                            setExportJson(JSON.stringify(dataProduct, null, 2));
+                            setShowExportDialog(true);
+                        }}
+                        style={{
+                            background: "#6366f1",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "8px 16px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "white",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#4f46e5";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#6366f1";
+                        }}
+                    >
+                        <FiDownload size={14} />
+                        Export
+                    </button>
+                    
+                    <button
                         onClick={handleSave}
                         style={{
                             background: "#10b981",
@@ -1944,6 +2018,166 @@ const DataProductPage = () => {
                         setSelectedEntityForReverseDeps(null);
                     }}
                 />
+            )}
+
+            {/* Export JSON Dialog */}
+            {showExportDialog && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        maxWidth: '900px',
+                        width: '90%',
+                        maxHeight: '80vh',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            padding: '24px',
+                            borderBottom: '1px solid #e5e7eb',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        }}>
+                            <div>
+                                <h2 style={{ 
+                                    margin: 0, 
+                                    fontSize: '24px', 
+                                    fontWeight: 'bold',
+                                    color: '#1f2937',
+                                }}>
+                                    Export Data Product
+                                </h2>
+                                <p style={{ 
+                                    marginTop: '8px',
+                                    marginBottom: 0,
+                                    fontSize: '14px',
+                                    color: '#6b7280',
+                                }}>
+                                    JSON representation of your data product
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowExportDialog(false)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#6b7280',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                    e.currentTarget.style.color = '#1f2937';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '#6b7280';
+                                }}
+                            >
+                                <FiX size={24} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{
+                            padding: '24px',
+                            overflowY: 'auto',
+                            flex: 1,
+                        }}>
+                            <pre style={{
+                                backgroundColor: '#f9fafb',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                overflow: 'auto',
+                                fontSize: '12px',
+                                fontFamily: 'monospace',
+                                margin: 0,
+                                border: '1px solid #e5e7eb',
+                                color: '#1f2937',
+                                lineHeight: '1.5',
+                            }}>
+                                {exportJson}
+                            </pre>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{
+                            padding: '16px 24px',
+                            borderTop: '1px solid #e5e7eb',
+                            backgroundColor: '#f9fafb',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: '12px',
+                        }}>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(exportJson);
+                                    alert('JSON copied to clipboard!');
+                                }}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#6366f1',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    color: 'white',
+                                    fontWeight: '500',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#4f46e5';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#6366f1';
+                                }}
+                            >
+                                Copy to Clipboard
+                            </button>
+                            <button
+                                onClick={() => setShowExportDialog(false)}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    color: '#374151',
+                                    fontWeight: '500',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'white';
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Create Table Dialog */}
