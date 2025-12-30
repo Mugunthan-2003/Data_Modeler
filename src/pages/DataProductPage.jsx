@@ -86,6 +86,37 @@ const TableNode = memo(({ data, id }) => {
                             </button>
                         </>
                     )}
+                    {data.fields.length > 0 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const selectedFieldsForNode = data.selectedFields || [];
+                                
+                                if (selectedFieldsForNode.length > 0) {
+                                    if (data.onCreateFromSelection) {
+                                        data.onCreateFromSelection(id, selectedFieldsForNode);
+                                    } else {
+                                        alert('Error: Handler not available. Please try refreshing the page.');
+                                    }
+                                } else {
+                                    alert('Please select at least one field to create an entity');
+                                }
+                            }}
+                            style={{
+                                background: 'rgba(99, 102, 241, 0.9)',
+                                border: '1px solid rgba(255, 255, 255, 0.3)',
+                                borderRadius: '4px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                fontWeight: 600
+                            }}
+                            title="Create entity from selected fields"
+                        >
+                            {data.selectedFields && data.selectedFields.length > 0 ? `Create (${data.selectedFields.length})` : '+ Entity'}
+                        </button>
+                    )}
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -179,6 +210,21 @@ const TableNode = memo(({ data, id }) => {
                                 }}
                             />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                                <input
+                                    type="checkbox"
+                                    checked={data.selectedFields?.includes(field.name) || false}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        data.onToggleFieldSelection(id, field.name);
+                                    }}
+                                    style={{
+                                        cursor: 'pointer',
+                                        width: '14px',
+                                        height: '14px',
+                                        flexShrink: 0
+                                    }}
+                                    title="Select field for new entity"
+                                />
                                 {field.isPK && (
                                     <FiKey 
                                         size={14} 
@@ -283,6 +329,11 @@ const DataProductPage = () => {
     const [selectedEntityForReverseDeps, setSelectedEntityForReverseDeps] = useState(null);
     const [showExportDialog, setShowExportDialog] = useState(false);
     const [exportJson, setExportJson] = useState('');
+    const [selectedFields, setSelectedFields] = useState({});
+    const [showCreateFromSelectionDialog, setShowCreateFromSelectionDialog] = useState(false);
+    const [createFromSelectionData, setCreateFromSelectionData] = useState({ nodeId: null, fields: [] });
+    const [newEntityName, setNewEntityName] = useState('');
+    const [newEntityType, setNewEntityType] = useState('CTE');
     
     // Use suggestion hook
     const {
@@ -422,7 +473,10 @@ const DataProductPage = () => {
                             onRemoveField: handleRemoveField,
                             onDeleteTable: handleDeleteTable,
                             onTogglePK: handleTogglePK,
-                            onShowReverseDeps: handleShowReverseDeps
+                            onShowReverseDeps: handleShowReverseDeps,
+                            onToggleFieldSelection: handleToggleFieldSelection,
+                            onCreateFromSelection: handleCreateFromSelection,
+                            selectedFields: []
                         }
                     });
                 }
@@ -701,6 +755,160 @@ const DataProductPage = () => {
         );
     }, [setNodes]);
 
+    const handleToggleFieldSelection = useCallback((nodeId, fieldName) => {
+        setSelectedFields((prev) => {
+            const nodeSelections = prev[nodeId] || [];
+            const isSelected = nodeSelections.includes(fieldName);
+            
+            const newSelections = {
+                ...prev,
+                [nodeId]: isSelected
+                    ? nodeSelections.filter(f => f !== fieldName)
+                    : [...nodeSelections, fieldName]
+            };
+            
+            // Update node data to reflect selection
+            setNodes((nds) =>
+                nds.map((node) => {
+                    if (node.id === nodeId) {
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                selectedFields: newSelections[nodeId]
+                            }
+                        };
+                    }
+                    return node;
+                })
+            );
+            
+            return newSelections;
+        });
+    }, [setNodes]);
+
+    const handleCreateFromSelection = useCallback((nodeId, selectedFieldNames) => {
+        // Use setNodes to access current nodes
+        setNodes((currentNodes) => {
+            const node = currentNodes.find(n => n.id === nodeId);
+            
+            if (!node) {
+                return currentNodes; // Return unchanged
+            }
+            
+            const selectedFieldsData = node.data.fields.filter(f => selectedFieldNames.includes(f.name));
+            
+            setCreateFromSelectionData({
+                nodeId,
+                sourceEntityName: node.data.tableName,
+                fields: selectedFieldsData
+            });
+            setNewEntityName('');
+            setNewEntityType('CTE');
+            setShowCreateFromSelectionDialog(true);
+            
+            return currentNodes; // Return unchanged nodes
+        });
+    }, []);
+
+    const handleConfirmCreateFromSelection = useCallback(() => {
+        if (!newEntityName.trim()) {
+            alert('Please enter an entity name');
+            return;
+        }
+        
+        // Check if entity already exists
+        const entityExists = nodes.some(n => 
+            n.data.tableName === newEntityName && n.data.tableType === newEntityType
+        );
+        
+        if (entityExists) {
+            alert(`Entity "${newEntityName}" (${newEntityType}) already exists on canvas!`);
+            return;
+        }
+        
+        // Create new node with selected fields
+        const newNodeId = `table-${Date.now()}`;
+        const newNode = {
+            id: newNodeId,
+            type: 'tableNode',
+            position: { 
+                x: Math.random() * 300 + 100, 
+                y: Math.random() * 300 + 100 
+            },
+            data: { 
+                tableName: newEntityName,
+                tableType: newEntityType,
+                fields: createFromSelectionData.fields.map(f => ({ ...f })),
+                selectedFields: [],
+                onAddField: handleAddField,
+                onRemoveField: handleRemoveField,
+                onTogglePK: handleTogglePK,
+                onToggleFieldSelection: handleToggleFieldSelection
+            }
+        };
+        
+        setNodes((nds) => {
+            // Add the new node first
+            const updatedNodes = [...nds, newNode];
+            
+            // Then update it with the missing handlers
+            return updatedNodes.map(node => {
+                if (node.id === newNodeId) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            onShowReverseDeps: (nodeId, tableName, tableType) => handleShowReverseDeps(nodeId, tableName, tableType),
+                            onDeleteTable: (nodeId) => handleDeleteTable(nodeId),
+                            onCreateFromSelection: (nodeId, fields) => handleCreateFromSelection(nodeId, fields)
+                        }
+                    };
+                }
+                return node;
+            });
+        });
+        
+        // Clear selection from source node
+        setSelectedFields((prev) => ({
+            ...prev,
+            [createFromSelectionData.nodeId]: []
+        }));
+        
+        setNodes((nds) =>
+            nds.map((node) => {
+                if (node.id === createFromSelectionData.nodeId) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            selectedFields: []
+                        }
+                    };
+                }
+                return node;
+            })
+        );
+        
+        // Update appropriate list based on type
+        if (newEntityType === 'BASE') {
+            if (!fileBaseTables.includes(newEntityName)) {
+                setFileBaseTables(prev => [...prev, newEntityName]);
+            }
+        } else if (newEntityType === 'VIEW') {
+            if (!fileViewTables.includes(newEntityName)) {
+                setFileViewTables(prev => [...prev, newEntityName]);
+            }
+        } else if (newEntityType === 'CTE') {
+            setCustomTables(prev => ({
+                ...prev,
+                CTE: [...prev.CTE, newEntityName]
+            }));
+        }
+        
+        setShowCreateFromSelectionDialog(false);
+    }, [newEntityName, newEntityType, nodes, createFromSelectionData, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setCustomTables, setFileBaseTables, setFileViewTables]);
+
     const handleConfirmRemoveField = useCallback(() => {
         const { nodeId, fieldName } = deleteFieldInfo;
 
@@ -784,7 +992,10 @@ const DataProductPage = () => {
                 onRemoveField: handleRemoveField,
                 onDeleteTable: handleDeleteTable,
                 onTogglePK: handleTogglePK,
-                onShowReverseDeps: handleShowReverseDeps
+                onShowReverseDeps: handleShowReverseDeps,
+                onToggleFieldSelection: handleToggleFieldSelection,
+                onCreateFromSelection: handleCreateFromSelection,
+                selectedFields: []
             }
         };
 
@@ -1129,7 +1340,10 @@ const DataProductPage = () => {
                                 onRemoveField: handleRemoveField,
                                 onDeleteTable: handleDeleteTable,
                                 onTogglePK: handleTogglePK,
-                                onShowReverseDeps: handleShowReverseDeps
+                                onShowReverseDeps: handleShowReverseDeps,
+                                onToggleFieldSelection: handleToggleFieldSelection,
+                                onCreateFromSelection: handleCreateFromSelection,
+                                selectedFields: []
                             }
                         };
                         
@@ -1180,7 +1394,10 @@ const DataProductPage = () => {
                     onRemoveField: handleRemoveField,
                     onDeleteTable: handleDeleteTable,
                     onTogglePK: handleTogglePK,
-                    onShowReverseDeps: handleShowReverseDeps
+                    onShowReverseDeps: handleShowReverseDeps,
+                    onToggleFieldSelection: handleToggleFieldSelection,
+                    onCreateFromSelection: handleCreateFromSelection,
+                    selectedFields: []
                 }
             };
 
@@ -1330,7 +1547,10 @@ const DataProductPage = () => {
                     onRemoveField: handleRemoveField,
                     onDeleteTable: handleDeleteTable,
                     onTogglePK: handleTogglePK,
-                    onShowReverseDeps: handleShowReverseDeps
+                    onShowReverseDeps: handleShowReverseDeps,
+                    onToggleFieldSelection: handleToggleFieldSelection,
+                    onCreateFromSelection: handleCreateFromSelection,
+                    selectedFields: []
                 }
             };
 
@@ -2174,6 +2394,185 @@ const DataProductPage = () => {
                                 }}
                             >
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Entity from Selection Dialog */}
+            {showCreateFromSelectionDialog && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        width: '500px',
+                        maxHeight: '80vh',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                    }}>
+                        <div style={{
+                            padding: '24px',
+                            borderBottom: '1px solid #e5e7eb',
+                        }}>
+                            <h2 style={{ 
+                                margin: 0, 
+                                fontSize: '20px', 
+                                fontWeight: 'bold',
+                                color: '#1f2937',
+                            }}>
+                                Create Entity from Selection
+                            </h2>
+                            <p style={{ 
+                                marginTop: '8px',
+                                marginBottom: 0,
+                                fontSize: '14px',
+                                color: '#6b7280',
+                            }}>
+                                Creating from {createFromSelectionData.sourceEntityName} with {createFromSelectionData.fields.length} field{createFromSelectionData.fields.length !== 1 ? 's' : ''}
+                            </p>
+                        </div>
+
+                        <div style={{
+                            padding: '24px',
+                            overflowY: 'auto',
+                            flex: 1,
+                        }}>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    color: '#374151',
+                                }}>
+                                    Entity Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newEntityName}
+                                    onChange={(e) => setNewEntityName(e.target.value)}
+                                    placeholder="Enter entity name"
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px 12px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    color: '#374151',
+                                }}>
+                                    Entity Type *
+                                </label>
+                                <select
+                                    value={newEntityType}
+                                    onChange={(e) => setNewEntityType(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px 12px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        boxSizing: 'border-box',
+                                    }}
+                                >
+                                    <option value="CTE">CTE</option>
+                                    <option value="VIEW">VIEW</option>
+                                    <option value="BASE">BASE</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    color: '#374151',
+                                }}>
+                                    Selected Fields ({createFromSelectionData.fields.length})
+                                </label>
+                                <div style={{
+                                    backgroundColor: '#f9fafb',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e5e7eb',
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                }}>
+                                    {createFromSelectionData.fields.map((field, idx) => (
+                                        <div key={idx} style={{
+                                            padding: '4px 0',
+                                            fontSize: '13px',
+                                            color: '#1f2937',
+                                            fontFamily: 'monospace',
+                                        }}>
+                                            • {field.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{
+                            padding: '16px 24px',
+                            borderTop: '1px solid #e5e7eb',
+                            backgroundColor: '#f9fafb',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '12px',
+                        }}>
+                            <button
+                                onClick={() => setShowCreateFromSelectionDialog(false)}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    color: '#374151',
+                                    fontWeight: '500',
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmCreateFromSelection}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#6366f1',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    color: 'white',
+                                    fontWeight: '500',
+                                }}
+                            >
+                                Create Entity
                             </button>
                         </div>
                     </div>
