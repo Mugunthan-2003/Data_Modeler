@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiChevronsRight, FiChevronsLeft } from "react-icons/fi";
+import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey } from "react-icons/fi";
 import ReactFlow, {
     MiniMap,
     Controls,
@@ -11,9 +11,16 @@ import ReactFlow, {
     MarkerType,
     Handle,
     Position,
+    useReactFlow,
+    ReactFlowProvider,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { getFile, saveDataProduct } from "../utils/fileStorage";
+import { getLayoutedElements } from "../utils/layout";
+import SuggestionDialog from "../components/DataProduct/SuggestionDialog";
+import ReverseDepsDialog from "../components/DataProduct/ReverseDepsDialog";
+import DataProductSidebar from "../components/DataProduct/DataProductSidebar";
+import { useSuggestions } from "../hooks/useSuggestions";
 
 // Custom Table Node Component
 const TableNode = memo(({ data, id }) => {
@@ -56,6 +63,29 @@ const TableNode = memo(({ data, id }) => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '4px' }}>
+                    {(data.tableType === 'BASE' || data.tableType === 'CTE' || data.tableType === 'VIEW') && (
+                        <>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    data.onShowReverseDeps(id, data.tableName, data.tableType);
+                                }}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.2)',
+                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    borderRadius: '4px',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: 600
+                                }}
+                                title="Show downstream dependencies (entities this depends on)"
+                            >
+                                ⬆ Deps
+                            </button>
+                        </>
+                    )}
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -120,16 +150,20 @@ const TableNode = memo(({ data, id }) => {
                                 alignItems: 'center',
                                 gap: '8px',
                                 background: idx % 2 === 0 ? '#f9fafb' : 'white',
-                                borderLeft: '3px solid transparent',
+                                borderLeft: field.isPK ? '3px solid #f59e0b' : '3px solid transparent',
                                 transition: 'all 150ms ease'
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#eff6ff';
-                                e.currentTarget.style.borderLeftColor = colors.border;
+                                if (!field.isPK) {
+                                    e.currentTarget.style.borderLeftColor = colors.border;
+                                }
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.background = idx % 2 === 0 ? '#f9fafb' : 'white';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
+                                if (!field.isPK) {
+                                    e.currentTarget.style.borderLeftColor = 'transparent';
+                                }
                             }}
                         >
                             <Handle
@@ -144,7 +178,30 @@ const TableNode = memo(({ data, id }) => {
                                     border: '2px solid white'
                                 }}
                             />
-                            <span style={{ fontWeight: 500, flex: 1 }}>{field.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                                {field.isPK && (
+                                    <FiKey 
+                                        size={14} 
+                                        style={{ color: '#f59e0b', flexShrink: 0 }} 
+                                        title="Primary Key"
+                                    />
+                                )}
+                                <span 
+                                    style={{ 
+                                        fontWeight: field.isPK ? 600 : 500, 
+                                        flex: 1,
+                                        cursor: 'pointer',
+                                        userSelect: 'none'
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        data.onTogglePK(id, field.name);
+                                    }}
+                                    title="Click to toggle Primary Key"
+                                >
+                                    {field.name}
+                                </span>
+                            </div>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -193,6 +250,7 @@ const nodeTypes = {
 const DataProductPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const reactFlowInstance = useReactFlow();
     const { distinctTables = [], selectedFileIds = [], dataProductData = null, dataProductId = null, dataProductName = null } = location.state || {};
     
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -220,6 +278,18 @@ const DataProductPage = () => {
     const [calculationExpression, setCalculationExpression] = useState("");
     const [currentDataProductId, setCurrentDataProductId] = useState(dataProductId);
     const [currentDataProductName, setCurrentDataProductName] = useState(dataProductName);
+    const [showReverseDepsDialog, setShowReverseDepsDialog] = useState(false);
+    const [reverseDeps, setReverseDeps] = useState([]);
+    const [selectedEntityForReverseDeps, setSelectedEntityForReverseDeps] = useState(null);
+    
+    // Use suggestion hook
+    const {
+        showSuggestDialog,
+        suggestions,
+        suggestionsLevel2,
+        generateSuggestions,
+        setShowSuggestDialog
+    } = useSuggestions();
 
     // Load data product only once on mount if provided
     useEffect(() => {
@@ -348,7 +418,9 @@ const DataProductPage = () => {
                             fields,
                             onAddField: handleAddField,
                             onRemoveField: handleRemoveField,
-                            onDeleteTable: handleDeleteTable
+                            onDeleteTable: handleDeleteTable,
+                            onTogglePK: handleTogglePK,
+                            onShowReverseDeps: handleShowReverseDeps
                         }
                     });
                 }
@@ -455,6 +527,32 @@ const DataProductPage = () => {
             })
         );
     }, [setEdges]);
+
+    const onDragOver = useCallback((event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }, []);
+
+    const onDrop = useCallback((event) => {
+        event.preventDefault();
+
+        const tableData = event.dataTransfer.getData('application/reactflow');
+        
+        if (!tableData) {
+            return;
+        }
+
+        const { tableName, tableType } = JSON.parse(tableData);
+        
+        // Get the position where the table was dropped
+        const position = reactFlowInstance.screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
+        });
+
+        // Add the table at the drop position
+        addTableToCanvas(tableName, tableType, position);
+    }, [reactFlowInstance]);
 
     const onPaneClick = useCallback(() => {
         setSelectedEdge(null);
@@ -580,6 +678,27 @@ const DataProductPage = () => {
         setShowDeleteFieldConfirm(true);
     }, []);
 
+    const handleTogglePK = useCallback((nodeId, fieldName) => {
+        setNodes((nds) =>
+            nds.map((node) => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            fields: node.data.fields.map((field) =>
+                                field.name === fieldName
+                                    ? { ...field, isPK: !field.isPK }
+                                    : field
+                            )
+                        }
+                    };
+                }
+                return node;
+            })
+        );
+    }, [setNodes]);
+
     const handleConfirmRemoveField = useCallback(() => {
         const { nodeId, fieldName } = deleteFieldInfo;
 
@@ -616,9 +735,33 @@ const DataProductPage = () => {
         // Remove edges connected to this node
         setEdges((eds) => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
         setNodes((nds) => nds.filter(node => node.id !== nodeId));
-    }, [setNodes, setEdges]);
+        
+        // Refresh open dialogs after deletion to show newly available entities
+        setTimeout(() => {
+            if (showReverseDepsDialog && selectedEntityForReverseDeps) {
+                handleShowReverseDeps(
+                    selectedEntityForReverseDeps.nodeId,
+                    selectedEntityForReverseDeps.tableName,
+                    selectedEntityForReverseDeps.tableType
+                );
+            }
+            if (showSuggestDialog) {
+                generateSuggestions(nodes.filter(n => n.id !== nodeId));
+            }
+        }, 100);
+    }, [setNodes, setEdges, showReverseDepsDialog, selectedEntityForReverseDeps, showSuggestDialog, nodes]);
 
-    const addTableToCanvas = (tableName, tableType = 'BASE', fields = []) => {
+    const addTableToCanvas = (tableName, tableType = 'BASE', fields = [], customPosition = null) => {
+        // Check if entity already exists on canvas (by name AND type)
+        const entityExists = nodes.some(n => 
+            n.data.tableName === tableName && n.data.tableType === tableType
+        );
+        
+        if (entityExists) {
+            alert(`Entity "${tableName}" (${tableType}) already exists on canvas!`);
+            return false;
+        }
+        
         const table = tableMetadata[tableName];
         // Use type from metadata if available, otherwise use passed tableType
         const actualType = table?.type || tableType;
@@ -627,7 +770,7 @@ const DataProductPage = () => {
         const newNode = {
             id: `table-${Date.now()}`,
             type: 'tableNode',
-            position: { 
+            position: customPosition || { 
                 x: Math.random() * 300 + 100, 
                 y: Math.random() * 300 + 100 
             },
@@ -637,11 +780,14 @@ const DataProductPage = () => {
                 fields: finalFields,
                 onAddField: handleAddField,
                 onRemoveField: handleRemoveField,
-                onDeleteTable: handleDeleteTable
+                onDeleteTable: handleDeleteTable,
+                onTogglePK: handleTogglePK,
+                onShowReverseDeps: handleShowReverseDeps
             }
         };
 
         setNodes((nds) => [...nds, newNode]);
+        return true;
     };
 
     const handleCreateNewTable = () => {
@@ -774,6 +920,647 @@ const DataProductPage = () => {
         }
     };
 
+    const handleShowReverseDeps = async (nodeId, tableName, tableType) => {
+        try {
+            const entityKey = `${tableType}_${tableName}`;
+            setSelectedEntityForReverseDeps({ nodeId, tableName, tableType, entityKey });
+            
+            const jsonFiles = [
+                'AccountsPayable.json',
+                'AccountsPayableOverview.json',
+                'AccountsPayableTurnover.json',
+                'BalanceSheet.json',
+                'CashDiscountUtilization.json',
+                'data_model.json',
+                'InventoryKeyMetrics.json',
+                'SalesFulfillment.json',
+                'VendorLeadTimeOverview.json',
+                'VendorPerformance.json',
+                'VendorPerformanceOverview.json'
+            ];
+
+            // First, find the selected entity's data
+            let selectedEntityData = null;
+            for (const fileName of jsonFiles) {
+                try {
+                    const response = await fetch(`/src/grok_output/${fileName}`);
+                    const data = await response.json();
+                    
+                    if (data.entities && data.entities[entityKey]) {
+                        selectedEntityData = data.entities[entityKey];
+                        break;
+                    }
+                } catch (error) {
+                    console.error(`Error loading ${fileName}:`, error);
+                }
+            }
+
+            if (!selectedEntityData || !selectedEntityData.fields) {
+                setReverseDeps([]);
+                setShowReverseDepsDialog(true);
+                return;
+            }
+
+            // Now find what entities the selected entity depends on (downstream dependencies)
+            const requiredEntities = new Map(); // Map of entityKey -> {connections: [], entityType}
+            const canvasEntityKeys = new Set(nodes.map(n => `${n.data.tableType}_${n.data.tableName}`));
+
+            // Analyze all fields of the selected entity to find its dependencies
+            const entityFields = Object.keys(selectedEntityData.fields || {});
+            
+            entityFields.forEach(fieldName => {
+                const fieldData = selectedEntityData.fields[fieldName];
+                
+                const processRefs = (refs, isCalculation = false) => {
+                    if (refs && Array.isArray(refs)) {
+                        refs.forEach(refPath => {
+                            const [refEntity, refField] = refPath.split('.');
+                            if (refEntity && refField && refEntity !== entityKey) {
+                                // Skip if already on canvas
+                                if (canvasEntityKeys.has(refEntity)) return;
+                                
+                                if (!requiredEntities.has(refEntity)) {
+                                    requiredEntities.set(refEntity, {
+                                        connections: [],
+                                        entityType: refEntity.startsWith('BASE_') ? 'BASE' : 
+                                                   refEntity.startsWith('CTE_') ? 'CTE' : 'VIEW'
+                                    });
+                                }
+                                
+                                requiredEntities.get(refEntity).connections.push({
+                                    sourceField: refField,
+                                    targetField: fieldName,
+                                    isCalculation: isCalculation,
+                                    connectionType: isCalculation ? 'calculation' : 'ref',
+                                    calculation: isCalculation ? (fieldData.calculation?.expression || '') : null
+                                });
+                            }
+                        });
+                    }
+                };
+
+                processRefs(fieldData.ref, false);
+                if (fieldData.calculation) {
+                    processRefs(fieldData.calculation.ref, true);
+                }
+            });
+
+            // Now fetch full data for each required entity
+            const foundReverseDeps = [];
+            
+            for (const [requiredEntityKey, info] of requiredEntities.entries()) {
+                for (const fileName of jsonFiles) {
+                    try {
+                        const response = await fetch(`/src/grok_output/${fileName}`);
+                        const data = await response.json();
+                        
+                        if (data.entities && data.entities[requiredEntityKey]) {
+                            const reqEntity = data.entities[requiredEntityKey];
+                            const entityNameClean = requiredEntityKey.replace(/^(BASE_|CTE_|VIEW_)/, '');
+                            
+                            const entityFieldsData = Object.keys(reqEntity.fields || {}).map(fieldName => ({
+                                name: fieldName,
+                                type: 'VARCHAR'
+                            }));
+                            
+                            // Build dependency map
+                            const dependencyMap = {};
+                            dependencyMap[requiredEntityKey] = info.connections.map(conn => ({
+                                targetField: conn.targetField,
+                                sourceField: conn.sourceField,
+                                connectionType: conn.connectionType,
+                                calculation: conn.calculation
+                            }));
+                            
+                            foundReverseDeps.push({
+                                entityName: requiredEntityKey,
+                                alias: reqEntity.alias || requiredEntityKey,
+                                entityType: info.entityType,
+                                sourceFile: fileName,
+                                dependencyMap: dependencyMap,
+                                entityData: reqEntity,
+                                fields: entityFieldsData,
+                                connectionCount: info.connections.length
+                            });
+                            
+                            break;
+                        }
+                    } catch (error) {
+                        console.error(`Error loading ${fileName}:`, error);
+                    }
+                }
+            }
+
+            setReverseDeps(foundReverseDeps);
+            setShowReverseDepsDialog(true);
+        } catch (error) {
+            console.error('Error finding downstream dependencies:', error);
+            alert('Error finding downstream dependencies: ' + error.message);
+        }
+    };
+
+    const handleSuggest = async () => {
+        await generateSuggestions(nodes);
+    };
+
+    const handleAddSuggestedEntity = async (suggestion) => {
+        try {
+            // Check if entity already exists on canvas (by name AND type)
+            const checkEntityName = suggestion.entityName.replace(/^(BASE_|CTE_|VIEW_)/, '');
+            const checkEntityType = suggestion.entityType || (suggestion.entityName.startsWith('CTE_') ? 'CTE' : 'VIEW');
+            const entityExists = nodes.some(n => 
+                n.data.tableName === checkEntityName && n.data.tableType === checkEntityType
+            );
+            
+            if (entityExists) {
+                alert(`Entity "${checkEntityName}" (${checkEntityType}) already exists on canvas!`);
+                return;
+            }
+            
+            // Use stored entity data if available, otherwise load from source file
+            let entity = suggestion.entityData;
+            
+            if (!entity) {
+                const response = await fetch(`/src/grok_output/${suggestion.sourceFile}`);
+                const data = await response.json();
+                entity = data.entities[suggestion.entityName];
+            }
+            
+            if (!entity) {
+                alert('Entity not found in source file');
+                return;
+            }
+
+            // Load full source file data for missing entities
+            const response = await fetch(`/src/grok_output/${suggestion.sourceFile}`);
+            const sourceFileData = await response.json();
+
+            // Collect missing entities to add (BASE, CTE, VIEW)
+            let addedNodes = [];
+            if (suggestion.coveragePercent < 100 && suggestion.missingEntities && suggestion.missingEntities.length > 0) {
+                // Add missing entities from the same source file
+                for (const missingEntity of suggestion.missingEntities) {
+                    // Check if entity exists in the data
+                    const missingEntityData = sourceFileData.entities[missingEntity.fullKey];
+                    
+                    if (missingEntityData) {
+                        const missingFields = Object.keys(missingEntityData.fields || {}).map(fieldName => ({
+                            name: fieldName,
+                            type: 'VARCHAR'
+                        }));
+                        
+                        // Create node for missing entity (BASE, CTE, or VIEW)
+                        const missingNodeId = `table-${Date.now()}-${Math.random()}`;
+                        const missingNode = {
+                            id: missingNodeId,
+                            type: 'tableNode',
+                            position: { 
+                                x: Math.random() * 300 + 100, 
+                                y: Math.random() * 300 + 100 
+                            },
+                            data: { 
+                                tableName: missingEntity.name,
+                                tableType: missingEntity.type,
+                                fields: missingFields,
+                                entityKey: missingEntity.fullKey, // Store full entity key for mapping
+                                onAddField: handleAddField,
+                                onRemoveField: handleRemoveField,
+                                onDeleteTable: handleDeleteTable,
+                                onTogglePK: handleTogglePK,
+                                onShowReverseDeps: handleShowReverseDeps
+                            }
+                        };
+                        
+                        addedNodes.push(missingNode);
+                        
+                        // Update appropriate list based on type
+                        if (missingEntity.type === 'BASE') {
+                            if (!fileBaseTables.includes(missingEntity.name)) {
+                                setFileBaseTables(prev => [...prev, missingEntity.name]);
+                            }
+                        } else if (missingEntity.type === 'VIEW') {
+                            if (!fileViewTables.includes(missingEntity.name)) {
+                                setFileViewTables(prev => [...prev, missingEntity.name]);
+                            }
+                        } else if (missingEntity.type === 'CTE') {
+                            setCustomTables(prev => ({
+                                ...prev,
+                                CTE: [...prev.CTE, missingEntity.name]
+                            }));
+                        }
+                    }
+                }
+            }
+
+            // Extract fields from entity
+            const entityFields = Object.keys(entity.fields || {}).map(fieldName => ({
+                name: fieldName,
+                type: 'VARCHAR'
+            }));
+
+            // Add the suggested entity to canvas (use checkEntityType and checkEntityName from duplicate check above)
+            
+            // Create the new node for suggested entity
+            const newNodeId = `table-${Date.now()}`;
+            const newNode = {
+                id: newNodeId,
+                type: 'tableNode',
+                position: { 
+                    x: Math.random() * 300 + 100, 
+                    y: Math.random() * 300 + 100 
+                },
+                data: { 
+                    tableName: checkEntityName,
+                    tableType: checkEntityType,
+                    fields: entityFields,
+                    entityKey: suggestion.entityName, // Store full entity key
+                    onAddField: handleAddField,
+                    onRemoveField: handleRemoveField,
+                    onDeleteTable: handleDeleteTable,
+                    onTogglePK: handleTogglePK,
+                    onShowReverseDeps: handleShowReverseDeps
+                }
+            };
+
+            // Get current nodes and add all new nodes
+            setNodes((currentNodes) => {
+                const allNodesForMapping = [...currentNodes, ...addedNodes, newNode];
+                const updatedNodes = [...currentNodes, ...addedNodes, newNode];
+                
+                // Create connections using the dependency map
+                const newEdges = [];
+                
+                if (suggestion.dependencyMap) {
+                    // Iterate through each dependency in the map
+                    Object.keys(suggestion.dependencyMap).forEach(dependentEntityKey => {
+                        const connections = suggestion.dependencyMap[dependentEntityKey];
+                        
+                        // Find the source node (dependent entity)
+                        const sourceNode = allNodesForMapping.find(n => {
+                            const nodeEntityKey = `${n.data.tableType}_${n.data.tableName}`;
+                            return nodeEntityKey === dependentEntityKey || 
+                                   n.data.entityKey === dependentEntityKey ||
+                                   n.data.tableName === dependentEntityKey.replace(/^(BASE_|CTE_|VIEW_)/, '');
+                        });
+                        
+                        if (sourceNode) {
+                            // Create edges for each connection detail
+                            connections.forEach(conn => {
+                                // Verify source node has the required field
+                                const hasSourceField = sourceNode.data.fields.some(f => f.name === conn.sourceField);
+                                
+                                if (hasSourceField) {
+                                    const edgeColor = conn.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+                                    
+                                    newEdges.push({
+                                        id: `e-${sourceNode.id}-${newNodeId}-${conn.targetField}-${conn.sourceField}-${Date.now()}-${Math.random()}`,
+                                        source: sourceNode.id,
+                                        target: newNodeId,
+                                        sourceHandle: `${conn.sourceField}-source`,
+                                        targetHandle: `${conn.targetField}-target`,
+                                        type: 'smoothstep',
+                                        animated: true,
+                                        style: { strokeWidth: 2, stroke: edgeColor },
+                                        markerEnd: {
+                                            type: MarkerType.ArrowClosed,
+                                            width: 20,
+                                            height: 20,
+                                            color: edgeColor
+                                        },
+                                        data: {
+                                            connectionType: conn.connectionType,
+                                            calculation: conn.calculation || '',
+                                            sourceField: conn.sourceField,
+                                            targetField: conn.targetField
+                                        }
+                                    });
+                                } else {
+                                    console.warn(`Field ${conn.sourceField} not found in source node ${sourceNode.data.tableName}`);
+                                }
+                            });
+                        } else {
+                            console.warn(`Source node not found for dependency ${dependentEntityKey}`);
+                        }
+                    });
+                }
+
+                // Add edges to state
+                if (newEdges.length > 0) {
+                    setEdges((currentEdges) => [...currentEdges, ...newEdges]);
+                }
+
+                return updatedNodes;
+            });
+
+            // Auto-arrange layout after adding entity
+            setTimeout(() => {
+                setNodes((currentNodes) => {
+                    setEdges((currentEdges) => {
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                            currentNodes,
+                            currentEdges,
+                            'LR'
+                        );
+                        setNodes(layoutedNodes);
+                        setEdges(layoutedEdges);
+                        return currentEdges;
+                    });
+                    return currentNodes;
+                });
+            }, 100);
+
+            setShowSuggestDialog(false);
+        } catch (error) {
+            console.error('Error adding suggested entity:', error);
+            alert('Error adding suggested entity: ' + error.message);
+        }
+    };
+
+    const handleAddReverseDep = async (suggestion) => {
+        try {
+            // Check if entity already exists on canvas (by name AND type)
+            const checkEntityName = suggestion.entityName.replace(/^(BASE_|CTE_|VIEW_)/, '');
+            const checkEntityType = suggestion.entityType || (suggestion.entityName.startsWith('CTE_') ? 'CTE' : 'VIEW');
+            const entityExists = nodes.some(n => 
+                n.data.tableName === checkEntityName && n.data.tableType === checkEntityType
+            );
+            
+            if (entityExists) {
+                alert(`Entity "${checkEntityName}" (${checkEntityType}) already exists on canvas!`);
+                return;
+            }
+            
+            // Use stored entity data if available, otherwise load from source file
+            let entity = suggestion.entityData;
+            
+            if (!entity) {
+                const response = await fetch(`/src/grok_output/${suggestion.sourceFile}`);
+                const data = await response.json();
+                entity = data.entities[suggestion.entityName];
+            }
+            
+            if (!entity) {
+                alert('Entity not found in source file');
+                return;
+            }
+
+            // Extract fields from entity
+            const entityFields = Object.keys(entity.fields || {}).map(fieldName => ({
+                name: fieldName,
+                type: 'VARCHAR'
+            }));
+
+            // Create the new node for downstream dependency
+            const newNodeId = `table-${Date.now()}`;
+            const newNode = {
+                id: newNodeId,
+                type: 'tableNode',
+                position: { 
+                    x: Math.random() * 300 + 100, 
+                    y: Math.random() * 300 + 100 
+                },
+                data: { 
+                    tableName: checkEntityName,
+                    tableType: checkEntityType,
+                    fields: entityFields,
+                    entityKey: suggestion.entityName,
+                    onAddField: handleAddField,
+                    onRemoveField: handleRemoveField,
+                    onDeleteTable: handleDeleteTable,
+                    onTogglePK: handleTogglePK,
+                    onShowReverseDeps: handleShowReverseDeps
+                }
+            };
+
+            // Find the entity that depends on this (the selected entity)
+            const targetNode = nodes.find(n => n.id === selectedEntityForReverseDeps.nodeId);
+            
+            setNodes((currentNodes) => [...currentNodes, newNode]);
+            
+            // Create connections FROM the new dependency TO the entity that needs it
+            const newEdges = [];
+            
+            if (suggestion.dependencyMap && selectedEntityForReverseDeps && targetNode) {
+                // Iterate through connections in the dependency map
+                Object.keys(suggestion.dependencyMap).forEach(dependentEntityKey => {
+                    const connections = suggestion.dependencyMap[dependentEntityKey];
+                    
+                    // Create edges for each connection detail
+                    connections.forEach(conn => {
+                        const hasSourceField = newNode.data.fields.some(f => f.name === conn.sourceField);
+                        const hasTargetField = targetNode.data.fields.some(f => f.name === conn.targetField);
+                        
+                        if (hasSourceField && hasTargetField) {
+                            const edgeColor = conn.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+                            
+                            newEdges.push({
+                                id: `e-${newNodeId}-${targetNode.id}-${conn.sourceField}-${conn.targetField}-${Date.now()}-${Math.random()}`,
+                                source: newNodeId,
+                                target: targetNode.id,
+                                sourceHandle: `${conn.sourceField}-source`,
+                                targetHandle: `${conn.targetField}-target`,
+                                type: 'smoothstep',
+                                animated: true,
+                                style: { strokeWidth: 2, stroke: edgeColor },
+                                markerEnd: {
+                                    type: MarkerType.ArrowClosed,
+                                    width: 20,
+                                    height: 20,
+                                    color: edgeColor
+                                },
+                                label: conn.connectionType === 'calculation' ? 'calc' : 'ref'
+                            });
+                        }
+                    });
+                });
+            }
+            
+            // Add edges to state
+            if (newEdges.length > 0) {
+                setEdges((currentEdges) => [...currentEdges, ...newEdges]);
+            }
+
+            // Update appropriate list based on type
+            if (checkEntityType === 'BASE') {
+                if (!fileBaseTables.includes(checkEntityName)) {
+                    setFileBaseTables(prev => [...prev, checkEntityName]);
+                }
+            } else if (checkEntityType === 'VIEW') {
+                if (!fileViewTables.includes(checkEntityName)) {
+                    setFileViewTables(prev => [...prev, checkEntityName]);
+                }
+            } else if (checkEntityType === 'CTE') {
+                setCustomTables(prev => ({
+                    ...prev,
+                    CTE: [...prev.CTE, checkEntityName]
+                }));
+            }
+
+            // Auto-arrange layout after adding entity
+            setTimeout(() => {
+                setNodes((currentNodes) => {
+                    setEdges((currentEdges) => {
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                            currentNodes,
+                            currentEdges,
+                            'LR'
+                        );
+                        setNodes(layoutedNodes);
+                        setEdges(layoutedEdges);
+                        return currentEdges;
+                    });
+                    return currentNodes;
+                });
+            }, 100);
+
+            // Refresh the reverse deps list to remove the added entity
+            setTimeout(() => {
+                if (selectedEntityForReverseDeps) {
+                    handleShowReverseDeps(
+                        selectedEntityForReverseDeps.nodeId,
+                        selectedEntityForReverseDeps.tableName,
+                        selectedEntityForReverseDeps.tableType
+                    );
+                }
+            }, 300);
+        } catch (error) {
+            console.error('Error adding downstream dependency:', error);
+            alert('Error adding downstream dependency: ' + error.message);
+        }
+    };
+
+    const checkIfEntityCanBeFormed = (entityKey, entityFields, entity, canvasTables) => {
+        const matchingTables = new Set();
+        const foundFields = new Set();
+        const fieldSources = {};
+        const missingEntitiesMap = new Map(); // Track missing entities with their types
+        const requiredFieldsList = [];
+
+        // For each field in the entity, check if it exists in canvas tables or can be calculated
+        entityFields.forEach(fieldName => {
+            const fieldData = entity.fields[fieldName];
+
+            // Check if field has a reference to a base table
+            if (fieldData.ref && Array.isArray(fieldData.ref)) {
+                let fieldFound = false;
+                fieldData.ref.forEach(refPath => {
+                    // Parse ref like "BASE_CompaniesMD.Client_MANDT"
+                    const [refEntity, refField] = refPath.split('.');
+                    const refTableName = refEntity.replace(/^(BASE_|CTE_|VIEW_)/, '');
+                    const refType = refEntity.match(/^(BASE|CTE|VIEW)_/) ? refEntity.match(/^(BASE|CTE|VIEW)_/)[1] : 'BASE';
+
+                    // Check if this table exists in canvas (match by name or full key)
+                    const canvasTable = canvasTables.find(t => 
+                        t.name === refTableName || 
+                        t.name === refEntity ||
+                        t.fullKey === refEntity
+                    );
+
+                    if (canvasTable) {
+                        matchingTables.add(canvasTable.name);
+                        fieldFound = true;
+                        if (!fieldSources[fieldName]) fieldSources[fieldName] = [];
+                        fieldSources[fieldName].push(`${canvasTable.name}.${refField}`);
+                    } else {
+                        // Track missing source entities with their full key and type
+                        missingEntitiesMap.set(refEntity, {
+                            fullKey: refEntity,
+                            name: refTableName,
+                            type: refType
+                        });
+                        requiredFieldsList.push({
+                            field: fieldName,
+                            needsTable: refEntity,
+                            needsField: refField
+                        });
+                    }
+                });
+                if (fieldFound) {
+                    foundFields.add(fieldName);
+                }
+            }
+            // Check if field has calculation
+            else if (fieldData.calculation) {
+                // Check if calculation references are in canvas
+                if (fieldData.calculation.ref && Array.isArray(fieldData.calculation.ref)) {
+                    let allRefsFound = true;
+                    const calcRefs = [];
+                    
+                    fieldData.calculation.ref.forEach(refPath => {
+                        const [refEntity, refField] = refPath.split('.');
+                        const refTableName = refEntity.replace(/^(BASE_|CTE_|VIEW_)/, '');
+                        const refType = refEntity.match(/^(BASE|CTE|VIEW)_/) ? refEntity.match(/^(BASE|CTE|VIEW)_/)[1] : 'BASE';
+                        
+                        const canvasTable = canvasTables.find(t => 
+                            t.name === refTableName || 
+                            t.name === refEntity ||
+                            t.fullKey === refEntity
+                        );
+                        
+                        if (canvasTable) {
+                            matchingTables.add(canvasTable.name);
+                            calcRefs.push(`${canvasTable.name}.${refField}`);
+                        } else {
+                            allRefsFound = false;
+                            missingEntitiesMap.set(refEntity, {
+                                fullKey: refEntity,
+                                name: refTableName,
+                                type: refType
+                            });
+                            requiredFieldsList.push({
+                                field: fieldName,
+                                needsTable: refEntity,
+                                needsField: refField,
+                                isCalculation: true
+                            });
+                        }
+                    });
+                    
+                    if (allRefsFound) {
+                        foundFields.add(fieldName);
+                        if (!fieldSources[fieldName]) fieldSources[fieldName] = [];
+                        fieldSources[fieldName].push(`Calc: ${fieldData.calculation.expression}`);
+                    }
+                }
+            }
+            // Direct field check
+            else {
+                // Check if field exists directly in any canvas table
+                let directFound = false;
+                canvasTables.forEach(table => {
+                    if (table.fields.includes(fieldName)) {
+                        matchingTables.add(table.name);
+                        foundFields.add(fieldName);
+                        directFound = true;
+                        if (!fieldSources[fieldName]) fieldSources[fieldName] = [];
+                        fieldSources[fieldName].push(`${table.name}.${fieldName}`);
+                    }
+                });
+                
+                if (!directFound) {
+                    requiredFieldsList.push({
+                        field: fieldName,
+                        needsTable: 'Unknown',
+                        needsField: fieldName
+                    });
+                }
+            }
+        });
+
+        const coveragePercent = Math.round((foundFields.size / entityFields.length) * 100);
+        const missingFields = entityFields.filter(f => !foundFields.has(f));
+
+        return {
+            possible: foundFields.size > 0, // At least one field can be formed
+            matchingTables: Array.from(matchingTables),
+            missingEntities: Array.from(missingEntitiesMap.values()),
+            coveragePercent,
+            missingFields,
+            fieldSources,
+            requiredFields: requiredFieldsList
+        };
+    };
+
     return (
         <div
             style={{
@@ -857,6 +1644,33 @@ const DataProductPage = () => {
                     </div>
                     
                     <button
+                        onClick={handleSuggest}
+                        style={{
+                            background: "#f59e0b",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "8px 16px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "white",
+                            transition: "all 200ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#d97706";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#f59e0b";
+                        }}
+                    >
+                        <FiZap size={14} />
+                        Suggest Entities
+                    </button>
+                    
+                    <button
                         onClick={handleSave}
                         style={{
                             background: "#10b981",
@@ -894,286 +1708,20 @@ const DataProductPage = () => {
                 }}
             >
                 {/* Sidebar */}
-                <div
-                    style={{
-                        width: sidebarOpen ? "320px" : "0",
-                        background: "white",
-                        borderRight: "1px solid #e5e7eb",
-                        overflow: "hidden",
-                        transition: "width 200ms ease",
-                        display: "flex",
-                        flexDirection: "column",
-                    }}
-                >
-                    <div
-                        style={{
-                            padding: "20px 20px 16px 20px",
-                            borderBottom: "1px solid #e5e7eb",
-                            background: "#f9fafb",
-                        }}
-                    >
-                        <h2
-                            style={{
-                                fontSize: "16px",
-                                fontWeight: 600,
-                                color: "#1f2937",
-                                marginBottom: "12px",
-                            }}
-                        >
-                            Available Tables
-                        </h2>
-                        <button
-                            onClick={() => setShowCreateTableDialog(true)}
-                            style={{
-                                width: "100%",
-                                padding: "8px 12px",
-                                background: "#10b981",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontSize: "13px",
-                                fontWeight: 600,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "6px",
-                                transition: "all 200ms ease",
-                                marginBottom: "12px",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.target.style.background = "#059669";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.background = "#10b981";
-                            }}
-                        >
-                            <FiPlus size={14} />
-                            Create New Table
-                        </button>
-                        
-                        {/* Search Bar */}
-                        <div
-                            style={{
-                                position: "relative",
-                                marginBottom: "12px",
-                            }}
-                        >
-                            <input
-                                type="text"
-                                placeholder="Search tables..."
-                                value={sidebarSearchQuery}
-                                onChange={(e) => setSidebarSearchQuery(e.target.value)}
-                                style={{
-                                    width: "100%",
-                                    padding: "8px 12px 8px 36px",
-                                    border: "1px solid #d1d5db",
-                                    borderRadius: "6px",
-                                    fontSize: "13px",
-                                    outline: "none",
-                                    background: "white",
-                                }}
-                            />
-                            <FiSearch
-                                size={16}
-                                style={{
-                                    position: "absolute",
-                                    left: "12px",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                    color: "#9ca3af",
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Tabs */}
-                    <div
-                        style={{
-                            display: "flex",
-                            borderBottom: "1px solid #e5e7eb",
-                            background: "white",
-                        }}
-                    >
-                        {['BASE', 'VIEW', 'CTE'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTableTab(tab)}
-                                style={{
-                                    flex: 1,
-                                    padding: "10px 12px",
-                                    background: activeTableTab === tab ? "white" : "transparent",
-                                    border: "none",
-                                    borderBottom: activeTableTab === tab ? "2px solid #3b82f6" : "2px solid transparent",
-                                    cursor: "pointer",
-                                    fontSize: "12px",
-                                    fontWeight: activeTableTab === tab ? 600 : 500,
-                                    color: activeTableTab === tab ? "#3b82f6" : "#6b7280",
-                                    transition: "all 200ms ease",
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (activeTableTab !== tab) {
-                                        e.target.style.background = "#f9fafb";
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (activeTableTab !== tab) {
-                                        e.target.style.background = "transparent";
-                                    }
-                                }}
-                            >
-                                {tab} ({tab === 'BASE' 
-                                    ? fileBaseTables.length + customTables.BASE.length 
-                                    : tab === 'VIEW'
-                                    ? fileViewTables.length + customTables.VIEW.length
-                                    : customTables.CTE.length})
-                            </button>
-                        ))}
-                    </div>
-                    <div
-                        style={{
-                            flex: 1,
-                            overflow: "auto",
-                            padding: "12px",
-                        }}
-                    >
-                        {(() => {
-                            const getTabTables = () => {
-                                if (activeTableTab === 'BASE') {
-                                    return [
-                                        ...fileBaseTables.map(t => ({ name: t, type: 'BASE', isCustom: false })),
-                                        ...customTables.BASE.map(t => ({ name: t, type: 'BASE', isCustom: true }))
-                                    ];
-                                } else if (activeTableTab === 'VIEW') {
-                                    return [
-                                        ...fileViewTables.map(t => ({ name: t, type: 'VIEW', isCustom: false })),
-                                        ...customTables.VIEW.map(t => ({ name: t, type: 'VIEW', isCustom: true }))
-                                    ];
-                                } else {
-                                    // CTE - only show custom ones, not from files
-                                    return customTables.CTE.map(t => ({ 
-                                        name: t, 
-                                        type: 'CTE', 
-                                        isCustom: true 
-                                    }));
-                                }
-                            };
-
-                            const tables = getTabTables().filter(table => 
-                                table.name.toLowerCase().includes(sidebarSearchQuery.toLowerCase())
-                            );
-
-                            const getTypeColor = (type) => {
-                                switch (type) {
-                                    case 'BASE': return { bg: '#f9fafb', bgHover: '#eff6ff', border: '#e5e7eb', borderHover: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', icon: '#3b82f6', text: '#6b7280' };
-                                    case 'VIEW': return { bg: '#f0fdf4', bgHover: '#dcfce7', border: '#bbf7d0', borderHover: '#10b981', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', icon: '#10b981', text: '#059669' };
-                                    case 'CTE': return { bg: '#faf5ff', bgHover: '#f3e8ff', border: '#e9d5ff', borderHover: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', icon: '#8b5cf6', text: '#7c3aed' };
-                                    default: return { bg: '#f9fafb', bgHover: '#eff6ff', border: '#e5e7eb', borderHover: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', icon: '#3b82f6', text: '#6b7280' };
-                                }
-                            };
-
-                            if (tables.length === 0) {
-                                return (
-                                    <div style={{
-                                        padding: "60px 20px",
-                                        textAlign: "center",
-                                        color: "#9ca3af",
-                                    }}>
-                                        <FiDatabase size={48} style={{ marginBottom: "12px", opacity: 0.5 }} />
-                                        <div style={{ fontSize: "14px", fontWeight: 500 }}>
-                                            {sidebarSearchQuery ? "No tables found" : `No ${activeTableTab.toLowerCase()} tables`}
-                                        </div>
-                                        {sidebarSearchQuery && (
-                                            <div style={{ fontSize: "12px", marginTop: "4px" }}>
-                                                Try a different search term
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            }
-
-                            return (
-                                <div style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "8px",
-                                }}>
-                                    {tables.map((table, index) => {
-                                        const colors = getTypeColor(table.type);
-                                        return (
-                                            <div
-                                                key={`${table.type}-${index}`}
-                                                onClick={() => addTableToCanvas(table.name, table.type)}
-                                                style={{
-                                                    padding: "12px 16px",
-                                                    background: colors.bg,
-                                                    border: `2px solid ${colors.border}`,
-                                                    borderRadius: "8px",
-                                                    transition: "all 200ms ease",
-                                                    cursor: "pointer",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "10px",
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = colors.bgHover;
-                                                    e.currentTarget.style.borderColor = colors.borderHover;
-                                                    e.currentTarget.style.transform = "translateX(4px)";
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = colors.bg;
-                                                    e.currentTarget.style.borderColor = colors.border;
-                                                    e.currentTarget.style.transform = "translateX(0)";
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        width: "32px",
-                                                        height: "32px",
-                                                        background: colors.gradient,
-                                                        borderRadius: "6px",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        flexShrink: 0,
-                                                    }}
-                                                >
-                                                    <FiDatabase size={16} color="white" />
-                                                </div>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div
-                                                        style={{
-                                                            fontSize: "14px",
-                                                            fontWeight: 600,
-                                                            color: "#1f2937",
-                                                            overflow: "hidden",
-                                                            textOverflow: "ellipsis",
-                                                            whiteSpace: "nowrap",
-                                                        }}
-                                                    >
-                                                        {table.name}
-                                                    </div>
-                                                    <div
-                                                        style={{
-                                                            fontSize: "11px",
-                                                            color: colors.text,
-                                                            marginTop: "2px",
-                                                        }}
-                                                    >
-                                                        {table.isCustom 
-                                                            ? 'Custom' 
-                                                            : `${tableMetadata[table.name]?.fields?.length || 0} field(s)`}
-                                                    </div>
-                                                </div>
-                                                <FiPlus size={16} color={colors.icon} />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })()}
-                    </div>
-                </div>
+                <DataProductSidebar
+                    isOpen={sidebarOpen}
+                    onToggle={() => setSidebarOpen(!sidebarOpen)}
+                    activeTab={activeTableTab}
+                    onTabChange={setActiveTableTab}
+                    searchQuery={sidebarSearchQuery}
+                    onSearchChange={setSidebarSearchQuery}
+                    fileBaseTables={fileBaseTables}
+                    fileViewTables={fileViewTables}
+                    customTables={customTables}
+                    onAddTable={addTableToCanvas}
+                    tableMetadata={tableMetadata}
+                    canvasEntities={nodes.map(n => ({ tableName: n.data.tableName, tableType: n.data.tableType }))}
+                />
 
                 {/* Canvas */}
                 <div
@@ -1234,7 +1782,7 @@ const DataProductPage = () => {
                                 Start Building Your Data Product
                             </div>
                             <div style={{ fontSize: "14px", marginTop: "8px" }}>
-                                Click on tables from the sidebar to add them to the canvas
+                                Click or drag tables from the sidebar to add them to the canvas
                             </div>
                         </div>
                     ) : null}
@@ -1350,6 +1898,8 @@ const DataProductPage = () => {
                         onConnect={onConnect}
                         onEdgeClick={onEdgeClick}
                         onPaneClick={onPaneClick}
+                        onDrop={onDrop}
+                        onDragOver={onDragOver}
                         nodeTypes={nodeTypes}
                         defaultEdgeOptions={{
                             type: 'smoothstep',
@@ -1370,6 +1920,31 @@ const DataProductPage = () => {
                     </ReactFlow>
                 </div>
             </div>
+
+            {/* Suggest Dialog */}
+            {showSuggestDialog && (
+                <SuggestionDialog
+                    suggestions={suggestions}
+                    suggestionsLevel2={suggestionsLevel2}
+                    onAddSuggestion={handleAddSuggestedEntity}
+                    onClose={() => setShowSuggestDialog(false)}
+                    nodesCount={nodes.length}
+                />
+            )}
+
+            {/* Reverse Dependencies Dialog */}
+            {showReverseDepsDialog && selectedEntityForReverseDeps && (
+                <ReverseDepsDialog
+                    reverseDeps={reverseDeps}
+                    selectedEntity={selectedEntityForReverseDeps}
+                    onAddEntity={handleAddReverseDep}
+                    onClose={() => {
+                        setShowReverseDepsDialog(false);
+                        setReverseDeps([]);
+                        setSelectedEntityForReverseDeps(null);
+                    }}
+                />
+            )}
 
             {/* Create Table Dialog */}
             {showCreateTableDialog && (
@@ -2117,4 +2692,10 @@ const DataProductPage = () => {
     );
 };
 
-export default DataProductPage;
+const DataProductPageWrapper = () => (
+    <ReactFlowProvider>
+        <DataProductPage />
+    </ReactFlowProvider>
+);
+
+export default DataProductPageWrapper;

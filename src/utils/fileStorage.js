@@ -47,8 +47,12 @@ function openDB() {
 async function getDirectoryHandle() {
     if (directoryHandle) {
         try {
-            await directoryHandle.requestPermission({ mode: 'readwrite' });
-            return directoryHandle;
+            const permission = await directoryHandle.queryPermission({ mode: 'readwrite' });
+            if (permission === 'granted') {
+                return directoryHandle;
+            }
+            // Don't request permission here - it requires user activation
+            directoryHandle = null;
         } catch (error) {
             console.error('Permission error:', error);
             directoryHandle = null;
@@ -65,9 +69,14 @@ async function getDirectoryHandle() {
             const handle = request.result;
             if (handle) {
                 try {
-                    await handle.requestPermission({ mode: 'readwrite' });
-                    directoryHandle = handle;
-                    resolve(handle);
+                    const permission = await handle.queryPermission({ mode: 'readwrite' });
+                    if (permission === 'granted') {
+                        directoryHandle = handle;
+                        resolve(handle);
+                    } else {
+                        // Permission not granted - return null so caller can request permission with user activation
+                        resolve(null);
+                    }
                 } catch (error) {
                     console.error('Permission error:', error);
                     resolve(null);
