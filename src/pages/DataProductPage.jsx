@@ -785,12 +785,13 @@ const DataProductPage = () => {
     }, [setNodes]);
 
     const handleToggleFieldSelection = useCallback((nodeId, fieldName) => {
-        // Update attribute toggles (for runtime/loadtime mode)
+        // Update attribute toggles (for runtime/loadtime mode) using entity-specific keys
         setAttributeToggles((prev) => {
-            const currentToggle = prev[fieldName] || false;
+            const toggleKey = `${nodeId}_${fieldName}`;
+            const currentToggle = prev[toggleKey] || false;
             return {
                 ...prev,
-                [fieldName]: !currentToggle
+                [toggleKey]: !currentToggle
             };
         });
 
@@ -838,12 +839,13 @@ const DataProductPage = () => {
             const selectedFieldsData = node.data.fields.filter(f => selectedFieldNames.includes(f.name));
             
             // Initialize attributeToggles based on current selectedFields from the node
+            // Use entity-specific keys: nodeId_fieldName
             const initialToggles = {};
             node.data.fields.forEach(field => {
                 // If field is in selectedFields, it means toggle is ON
-                initialToggles[field.name] = (node.data.selectedFields || []).includes(field.name);
+                initialToggles[`${nodeId}_${field.name}`] = (node.data.selectedFields || []).includes(field.name);
             });
-            setAttributeToggles(initialToggles);
+            setAttributeToggles(prev => ({ ...prev, ...initialToggles }));
             
             setSettingsData({
                 nodeId,
@@ -881,7 +883,8 @@ const DataProductPage = () => {
         // Get all fields and apply attribute mode based on default and toggles
         // Note: We create entity with ALL attributes, the filter in UI is just for viewing
         const fieldsToUse = settingsData.allFields.map(f => {
-            const isToggled = attributeToggles[f.name] || false;
+            const toggleKey = `${settingsData.nodeId}_${f.name}`;
+            const isToggled = attributeToggles[toggleKey] || false;
             const attributeMode = isToggled 
                 ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
                 : globalAttributeMode; // Use default
@@ -995,7 +998,8 @@ const DataProductPage = () => {
         }
         
         const fieldsToUse = selectedFields.map(f => {
-            const isToggled = attributeToggles[f.name] || false;
+            const toggleKey = `${settingsData.nodeId}_${f.name}`;
+            const isToggled = attributeToggles[toggleKey] || false;
             const attributeMode = isToggled 
                 ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
                 : globalAttributeMode; // Use default
@@ -1074,6 +1078,19 @@ const DataProductPage = () => {
             // Get selected fields for this node
             const selectedFieldsForNode = node.data.selectedFields || [];
             const selectedFieldsData = node.data.fields.filter(f => selectedFieldsForNode.includes(f.name));
+            
+            // Initialize entity-specific toggles if they don't exist yet
+            setAttributeToggles(prev => {
+                const initialToggles = {};
+                node.data.fields.forEach(field => {
+                    const toggleKey = `${nodeId}_${field.name}`;
+                    // Only initialize if not already set
+                    if (prev[toggleKey] === undefined) {
+                        initialToggles[toggleKey] = false; // Default to not toggled
+                    }
+                });
+                return Object.keys(initialToggles).length > 0 ? { ...prev, ...initialToggles } : prev;
+            });
             
             setSettingsData({
                 nodeId,
@@ -2813,7 +2830,8 @@ const DataProductPage = () => {
                                             {tab1FilterMode.charAt(0).toUpperCase() + tab1FilterMode.slice(1)} Mode Attributes ({
                                                 settingsData.allFields ? 
                                                 (tab1FilterMode === 'both' ? settingsData.allFields.length : settingsData.allFields.filter(field => {
-                                                    const isToggled = attributeToggles[field.name] || false;
+                                                    const toggleKey = `${settingsData.nodeId}_${field.name}`;
+                                                    const isToggled = attributeToggles[toggleKey] || false;
                                                     const effectiveMode = isToggled 
                                                         ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
                                                         : globalAttributeMode;
@@ -2834,14 +2852,16 @@ const DataProductPage = () => {
                                                 settingsData.allFields
                                                     .filter(field => {
                                                         if (tab1FilterMode === 'both') return true;
-                                                        const isToggled = attributeToggles[field.name] || false;
+                                                        const toggleKey = `${settingsData.nodeId}_${field.name}`;
+                                                        const isToggled = attributeToggles[toggleKey] || false;
                                                         const effectiveMode = isToggled 
                                                             ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
                                                             : globalAttributeMode;
                                                         return effectiveMode === tab1FilterMode;
                                                     })
                                                     .map((field, idx, filteredArray) => {
-                                                        const isToggled = attributeToggles[field.name] || false;
+                                                        const toggleKey = `${settingsData.nodeId}_${field.name}`;
+                                                        const isToggled = attributeToggles[toggleKey] || false;
                                                         const effectiveMode = isToggled 
                                                             ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
                                                             : globalAttributeMode;
@@ -2890,7 +2910,8 @@ const DataProductPage = () => {
                                             {settingsData.allFields && settingsData.allFields.length > 0 && 
                                              tab1FilterMode !== 'both' &&
                                              settingsData.allFields.filter(field => {
-                                                const isToggled = attributeToggles[field.name] || false;
+                                                const toggleKey = `${settingsData.nodeId}_${field.name}`;
+                                                const isToggled = attributeToggles[toggleKey] || false;
                                                 const effectiveMode = isToggled 
                                                     ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
                                                     : globalAttributeMode;
@@ -3120,7 +3141,8 @@ const DataProductPage = () => {
                                                     .map((field, idx) => {
                                                     const isSelected = attributeSelections[field.name] || false;
                                                     // Determine runtime/loadtime status from canvas toggles
-                                                    const isToggled = attributeToggles[field.name] || false;
+                                                    const toggleKey = `${settingsData.nodeId}_${field.name}`;
+                                                    const isToggled = attributeToggles[toggleKey] || false;
                                                     const attributeMode = isToggled 
                                                         ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
                                                         : globalAttributeMode;
