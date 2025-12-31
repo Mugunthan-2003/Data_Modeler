@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, memo } from "react";
+import { useState, useCallback, useEffect, memo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey, FiDownload, FiX, FiSettings } from "react-icons/fi";
 import ReactFlow, {
@@ -375,6 +375,7 @@ const DataProductPage = () => {
     const [settingsActiveTab, setSettingsActiveTab] = useState('entity'); // 'entity' or 'table'
     const [globalAttributeMode, setGlobalAttributeMode] = useState('runtime'); // 'runtime' or 'loadtime' - kept for backwards compatibility
     const [entityAttributeModes, setEntityAttributeModes] = useState({}); // Track default mode per entity: { nodeId: 'runtime' | 'loadtime' }
+    const entityAttributeModesRef = useRef({}); // Ref to always access current value
     const [tab1FilterMode, setTab1FilterMode] = useState('runtime'); // Filter for Tab 1
     const [attributeToggles, setAttributeToggles] = useState({}); // Track toggle state per attribute (for canvas runtime/loadtime)
     const [attributeSelections, setAttributeSelections] = useState({}); // Track selection state for Selected Attributes tab
@@ -382,6 +383,11 @@ const DataProductPage = () => {
     const [newEntityName, setNewEntityName] = useState('');
     const [newEntityType, setNewEntityType] = useState('CTE');
     const [searchQuery, setSearchQuery] = useState('');
+    
+    // Keep ref in sync with state
+    useEffect(() => {
+        entityAttributeModesRef.current = entityAttributeModes;
+    }, [entityAttributeModes]);
     
     // Use suggestion hook
     const {
@@ -500,9 +506,109 @@ const DataProductPage = () => {
             const loadedEdges = [];
             const nodeMap = new Map(); // To track entity to node ID mapping
             
+            // Load saved modes and toggles
+            const savedEntityModes = dataProduct.entityAttributeModes || {};
+            const savedToggles = dataProduct.attributeToggles || {};
+            const defaultMode = dataProduct.globalAttributeMode || 'runtime';
+            
+            // Build mapping from entity keys to their saved node IDs
+            const entityToOldNodeId = new Map();
+            if (dataProduct.entities) {
+                // Extract field names for each entity
+                const entityFieldSets = new Map();
+                for (const entityKey in dataProduct.entities) {
+                    const entity = dataProduct.entities[entityKey];
+                    if (entity.fields) {
+                        entityFieldSets.set(entityKey, new Set(Object.keys(entity.fields)));
+                    }
+                }
+                
+                // Group toggle keys by node ID
+                const nodeIdToFields = new Map();
+                for (const toggleKey in savedToggles) {
+                    const parts = toggleKey.split('_');
+                    if (parts.length >= 2) {
+                        const oldNodeId = parts[0];
+                        const fieldName = parts.slice(1).join('_');
+                        
+                        if (!nodeIdToFields.has(oldNodeId)) {
+                            nodeIdToFields.set(oldNodeId, new Set());
+                        }
+                        nodeIdToFields.get(oldNodeId).add(fieldName);
+                    }
+                }
+                
+                // Match entities to old node IDs by comparing ALL fields
+                for (const [entityKey, entityFields] of entityFieldSets) {
+                    let bestMatch = null;
+                    let bestMatchCount = 0;
+                    
+                    for (const [oldNodeId, nodeFields] of nodeIdToFields) {
+                        // Count how many fields match
+                        let matchCount = 0;
+                        for (const field of entityFields) {
+                            if (nodeFields.has(field)) {
+                                matchCount++;
+                            }
+                        }
+                        
+                        // If all entity fields are in this node, and it's a better match
+                        if (matchCount === entityFields.size && matchCount > bestMatchCount) {
+                            bestMatch = oldNodeId;
+                            bestMatchCount = matchCount;
+                        }
+                    }
+                    
+                    if (bestMatch) {
+                        entityToOldNodeId.set(entityKey, bestMatch);
+                        // Remove this node from future matching to ensure 1-to-1 mapping
+                        nodeIdToFields.delete(bestMatch);
+                    }
+                }
+            }
+            
+            // Build reverse mapping and remap modes/toggles BEFORE creating nodes
+            const oldToNewNodeId = new Map();
+            const newAttributeToggles = {};
+            const newEntityAttributeModes = {};
+            
+            // First, build the old->new node ID mapping
+            let nodeIndex = 0;
+            if (dataProduct.entities) {
+                for (const entityKey in dataProduct.entities) {
+                    const newNodeId = `node-${nodeIndex++}`;
+                    const oldNodeId = entityToOldNodeId.get(entityKey);
+                    if (oldNodeId) {
+                        oldToNewNodeId.set(oldNodeId, newNodeId);
+                    }
+                }
+            }
+            
+            // Remap entity attribute modes
+            for (const oldNodeId in savedEntityModes) {
+                const newNodeId = oldToNewNodeId.get(oldNodeId);
+                if (newNodeId) {
+                    newEntityAttributeModes[newNodeId] = savedEntityModes[oldNodeId];
+                }
+            }
+            
+            // Remap attribute toggles
+            for (const oldToggleKey in savedToggles) {
+                const parts = oldToggleKey.split('_');
+                if (parts.length >= 2) {
+                    const oldNodeId = parts[0];
+                    const fieldName = parts.slice(1).join('_');
+                    const newNodeId = oldToNewNodeId.get(oldNodeId);
+                    if (newNodeId) {
+                        const newToggleKey = `${newNodeId}_${fieldName}`;
+                        newAttributeToggles[newToggleKey] = savedToggles[oldToggleKey];
+                    }
+                }
+            }
+            
             // First pass: Create nodes from entities
             if (dataProduct.entities) {
-                let nodeIndex = 0;
+                nodeIndex = 0; // Reset counter
                 for (const entityKey in dataProduct.entities) {
                     const entity = dataProduct.entities[entityKey];
                     
@@ -511,20 +617,32 @@ const DataProductPage = () => {
                     const tableType = parts[0];
                     const tableName = parts.slice(1).join('_');
                     
-                    // Extract fields
-                    const fields = [];
-                    if (entity.fields) {
-                        for (const fieldName in entity.fields) {
-                            fields.push({
-                                name: fieldName,
-                                type: entity.fields[fieldName].type || 'unknown'
-                            });
-                        }
-                    }
-                    
                     // Create node
                     const nodeId = `node-${nodeIndex++}`;
                     nodeMap.set(entityKey, nodeId);
+                    
+                    // Get entity-specific default mode from the already-remapped modes
+                    const entityMode = newEntityAttributeModes[nodeId] || defaultMode;
+                    
+                    // Extract fields and apply attributeMode
+                    const fields = [];
+                    if (entity.fields) {
+                        for (const fieldName in entity.fields) {
+                            // Use new node ID to look up toggles from already-remapped toggles
+                            const toggleKey = `${nodeId}_${fieldName}`;
+                            const isToggled = newAttributeToggles[toggleKey] || false;
+                            const attributeMode = isToggled 
+                                ? (entityMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of entity default
+                                : entityMode; // Entity default
+                            
+                            fields.push({
+                                name: fieldName,
+                                type: entity.fields[fieldName].type || 'unknown',
+                                attributeMode,
+                                isPK: entity.fields[fieldName].isPK || false
+                            });
+                        }
+                    }
                     
                     loadedNodes.push({
                         id: nodeId,
@@ -534,6 +652,8 @@ const DataProductPage = () => {
                             tableName,
                             tableType,
                             fields,
+                            attributeToggles: newAttributeToggles, // Include toggles in initial data
+                            globalAttributeMode: entityMode, // Include entity-specific mode
                             onAddField: handleAddField,
                             onRemoveField: handleRemoveField,
                             onDeleteTable: handleDeleteTable,
@@ -593,13 +713,9 @@ const DataProductPage = () => {
                 setCustomTables(dataProduct.availableTables.customTables || { BASE: [], CTE: [], VIEW: [] });
             }
             
-            // Restore attributeToggles and modes if saved
-            if (dataProduct.attributeToggles) {
-                setAttributeToggles(dataProduct.attributeToggles);
-            }
-            if (dataProduct.entityAttributeModes) {
-                setEntityAttributeModes(dataProduct.entityAttributeModes);
-            }
+            // Set the remapped states (already computed above before node creation)
+            setAttributeToggles(newAttributeToggles);
+            setEntityAttributeModes(newEntityAttributeModes);
             if (dataProduct.globalAttributeMode) {
                 setGlobalAttributeMode(dataProduct.globalAttributeMode);
             }
@@ -1380,8 +1496,8 @@ const DataProductPage = () => {
             const selectedFieldsForNode = node.data.selectedFields || [];
             const selectedFieldsData = node.data.fields.filter(f => selectedFieldsForNode.includes(f.name));
             
-            // Get or initialize entity-specific default mode
-            const entityMode = entityAttributeModes[nodeId] || 'runtime';
+            // Get or initialize entity-specific default mode using ref to access current state
+            const entityMode = entityAttributeModesRef.current[nodeId] || 'runtime';
             setGlobalAttributeMode(entityMode); // Set to dialog for editing
             
             // Initialize entity-specific toggles if they don't exist yet
@@ -1419,7 +1535,7 @@ const DataProductPage = () => {
             
             return currentNodes;
         });
-    }, []);
+    }, []); // Empty deps - using ref for entityAttributeModes
 
     const handleConfirmRemoveField = useCallback(() => {
         const { nodeId, fieldName } = deleteFieldInfo;
@@ -2977,7 +3093,17 @@ const DataProductPage = () => {
                             </label>
                             <select
                                 value={globalAttributeMode}
-                                onChange={(e) => setGlobalAttributeMode(e.target.value)}
+                                onChange={(e) => {
+                                    const newMode = e.target.value;
+                                    setGlobalAttributeMode(newMode);
+                                    // Save the mode change immediately for this entity
+                                    if (settingsData.nodeId) {
+                                        setEntityAttributeModes(prev => ({
+                                            ...prev,
+                                            [settingsData.nodeId]: newMode
+                                        }));
+                                    }
+                                }}
                                 style={{
                                     width: '100%',
                                     padding: '8px 12px',
