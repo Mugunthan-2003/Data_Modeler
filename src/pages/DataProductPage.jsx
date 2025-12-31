@@ -247,13 +247,6 @@ const TableNode = memo(({ data, id }) => {
                                         }}></span>
                                     </span>
                                 </label>
-                                {field.isPK && (
-                                    <FiKey 
-                                        size={14} 
-                                        style={{ color: '#f59e0b', flexShrink: 0 }} 
-                                        title="Primary Key"
-                                    />
-                                )}
                                 <span 
                                     style={{ 
                                         fontWeight: field.isPK ? 600 : 500, 
@@ -267,7 +260,14 @@ const TableNode = memo(({ data, id }) => {
                                     }}
                                     title="Click to toggle Primary Key"
                                 >
-                                    {field.name}
+                                    {field.name} 
+                                    {field.isPK && (
+                                    <FiKey 
+                                        size={14} 
+                                        style={{ color: '#f59e0b', flexShrink: 0 }} 
+                                        title="Primary Key"
+                                    />
+                                )}
                                 </span>
                             </div>
                             <button
@@ -2846,6 +2846,11 @@ const DataProductPage = () => {
                                                             ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
                                                             : globalAttributeMode;
                                                         
+                                                        // Check if this field is marked as PK in any entity on canvas
+                                                        const isPKInAnyEntity = nodes.some(node => 
+                                                            node.data.fields.some(f => f.name === field.name && f.isPK)
+                                                        );
+                                                        
                                                         return (
                                                             <div key={field.name} style={{
                                                                 display: 'flex',
@@ -2856,8 +2861,10 @@ const DataProductPage = () => {
                                                                 color: '#1f2937',
                                                                 borderBottom: idx < filteredArray.length - 1 ? '1px solid #e5e7eb' : 'none',
                                                             }}>
-                                                                <span style={{ fontFamily: 'monospace', flex: 1 }}>
-                                                                    • {field.name} <span style={{ color: '#6b7280' }}>({field.type})</span>
+                                                                <span style={{ fontFamily: 'monospace', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    • {field.name} <span style={{ color: '#6b7280' }}>({field.type})</span> {isPKInAnyEntity && (
+                                                                        <FiKey size={14} style={{ color: '#f59e0b', flexShrink: 0 }} title="Primary Key" />
+                                                                    )}
                                                                 </span>
                                                                 <span style={{ 
                                                                     fontSize: '11px', 
@@ -3005,6 +3012,9 @@ const DataProductPage = () => {
                                                         color: '#1e40af',
                                                         fontFamily: 'monospace',
                                                     }}>
+                                                        {nodes.some(node => node.data.fields.some(f => f.name === field.name && f.isPK)) && (
+                                                            <FiKey size={12} style={{ color: '#f59e0b', marginRight: '4px' }} title="Primary Key" />
+                                                        )}
                                                         {field.name}
                                                         <button
                                                             onClick={() => {
@@ -3115,6 +3125,11 @@ const DataProductPage = () => {
                                                         ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
                                                         : globalAttributeMode;
                                                     
+                                                    // Check if this field is marked as PK in any entity on canvas
+                                                    const isPKInAnyEntity = nodes.some(node => 
+                                                        node.data.fields.some(f => f.name === field.name && f.isPK)
+                                                    );
+                                                    
                                                     return (
                                                         <div key={idx} style={{
                                                             display: 'flex',
@@ -3127,8 +3142,11 @@ const DataProductPage = () => {
                                                             backgroundColor: isSelected ? '#f0fdf4' : 'transparent',
                                                             borderRadius: '4px',
                                                         }}>
-                                                            <span style={{ fontFamily: 'monospace', flex: 1 }}>
-                                                                • {field.name} <span style={{ color: '#6b7280' }}>({field.type})</span>
+                                                            <span style={{ fontFamily: 'monospace', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                
+                                                                • {field.name} <span style={{ color: '#6b7280' }}>({field.type})</span> {isPKInAnyEntity && (
+                                                                    <FiKey size={14} style={{ color: '#f59e0b', flexShrink: 0 }} title="Primary Key" />
+                                                                )}
                                                             </span>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                 <span style={{ 
