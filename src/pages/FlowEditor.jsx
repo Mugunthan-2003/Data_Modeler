@@ -445,7 +445,6 @@ const FlowEditor = () => {
                     zoomOnPinch={true}
                     panOnScroll={false}
                     panOnDrag={true}
-                    wheelDelta={0.01}
                     connectionLineType="step"
                     defaultEdgeOptions={{
                         type: "step",

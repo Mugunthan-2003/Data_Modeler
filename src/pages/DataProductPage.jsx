@@ -357,7 +357,8 @@ const DataProductPage = () => {
     const [settingsActiveTab, setSettingsActiveTab] = useState('entity'); // 'entity' or 'table'
     const [globalAttributeMode, setGlobalAttributeMode] = useState('runtime'); // 'runtime' or 'loadtime'
     const [tab1FilterMode, setTab1FilterMode] = useState('runtime'); // Filter for Tab 1
-    const [attributeToggles, setAttributeToggles] = useState({}); // Track toggle state per attribute
+    const [attributeToggles, setAttributeToggles] = useState({}); // Track toggle state per attribute (for canvas runtime/loadtime)
+    const [attributeSelections, setAttributeSelections] = useState({}); // Track selection state for Selected Attributes tab
     const [newEntityName, setNewEntityName] = useState('');
     const [newEntityType, setNewEntityType] = useState('CTE');
     const [searchQuery, setSearchQuery] = useState('');
@@ -984,8 +985,15 @@ const DataProductPage = () => {
             return;
         }
         
-        // Get selected fields only (from checkboxes) and apply attribute mode
-        const fieldsToUse = settingsData.fields.map(f => {
+        // Get selected fields from attributeSelections and apply attribute mode based on canvas toggles
+        const selectedFields = settingsData.allFields ? settingsData.allFields.filter(f => attributeSelections[f.name]) : [];
+        
+        if (selectedFields.length === 0) {
+            alert('Please select at least one attribute');
+            return;
+        }
+        
+        const fieldsToUse = selectedFields.map(f => {
             const isToggled = attributeToggles[f.name] || false;
             const attributeMode = isToggled 
                 ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
@@ -1076,6 +1084,7 @@ const DataProductPage = () => {
             setNewEntityType('CTE');
             setSearchQuery('');
             setSettingsActiveTab('byMode');
+            setAttributeSelections({}); // Reset selection state for new dialog
             // Keep globalAttributeMode, tab1FilterMode, and attributeToggles as-is (don't reset)
             setShowSettingsDialog(true);
             
@@ -2658,7 +2667,7 @@ const DataProductPage = () => {
                                 color: '#6b7280',
                                 fontStyle: 'italic',
                             }}>
-                                This is the default mode for all attributes. Toggle OFF in canvas = <strong>{globalAttributeMode}</strong>, Toggle ON = <strong>{globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime'}</strong>
+                                In canvas,<br/>Toggle OFF = <strong>{globalAttributeMode}</strong><br/>Toggle ON = <strong>{globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime'}</strong>
                             </p>
                         </div>
 
@@ -2967,9 +2976,9 @@ const DataProductPage = () => {
                                             fontWeight: '500',
                                             color: '#374151',
                                         }}>
-                                            Selected Attributes ({settingsData.fields.length})
+                                            Selected Attributes ({settingsData.allFields ? settingsData.allFields.filter(f => attributeSelections[f.name]).length : 0})
                                         </label>
-                                        {settingsData.fields.length === 0 ? (
+                                        {(!settingsData.allFields || settingsData.allFields.filter(f => attributeSelections[f.name]).length === 0) ? (
                                             <div style={{
                                                 backgroundColor: '#f9fafb',
                                                 padding: '12px',
@@ -2982,7 +2991,7 @@ const DataProductPage = () => {
                                                     color: '#9ca3af',
                                                     fontStyle: 'italic',
                                                 }}>
-                                                    No fields selected. Please select fields using toggles in the entity.
+                                                    No fields selected. Use toggles below to select attributes for this entity.
                                                 </p>
                                             </div>
                                         ) : (
@@ -2993,7 +3002,7 @@ const DataProductPage = () => {
                                                 border: '1px solid #bfdbfe',
                                                 marginBottom: '12px',
                                             }}>
-                                                {settingsData.fields.map((field, idx) => (
+                                                {settingsData.allFields.filter(f => attributeSelections[f.name]).map((field, idx) => (
                                                     <span key={idx} style={{
                                                         display: 'inline-block',
                                                         padding: '4px 8px',
@@ -3030,10 +3039,7 @@ const DataProductPage = () => {
                                         }}>
                                             {settingsData.allFields && settingsData.allFields.length > 0 ? (
                                                 settingsData.allFields.map((field, idx) => {
-                                                    const isToggled = attributeToggles[field.name] || false;
-                                                    const effectiveMode = isToggled 
-                                                        ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
-                                                        : globalAttributeMode;
+                                                    const isSelected = attributeSelections[field.name] || false;
                                                     
                                                     return (
                                                         <div key={idx} style={{
@@ -3044,6 +3050,8 @@ const DataProductPage = () => {
                                                             fontSize: '13px',
                                                             color: '#1f2937',
                                                             borderBottom: idx < settingsData.allFields.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                                            backgroundColor: isSelected ? '#f0fdf4' : 'transparent',
+                                                            borderRadius: '4px',
                                                         }}>
                                                             <span style={{ fontFamily: 'monospace', flex: 1 }}>
                                                                 • {field.name} <span style={{ color: '#6b7280' }}>({field.type})</span>
@@ -3052,10 +3060,10 @@ const DataProductPage = () => {
                                                                 <span style={{ 
                                                                     fontSize: '11px', 
                                                                     fontWeight: '600',
-                                                                    color: effectiveMode === 'runtime' ? '#10b981' : '#f59e0b',
+                                                                    color: isSelected ? '#10b981' : '#9ca3af',
                                                                     textTransform: 'uppercase'
                                                                 }}>
-                                                                    {effectiveMode}
+                                                                    {isSelected ? 'Selected' : 'Not Selected'}
                                                                 </span>
                                                                 <label style={{
                                                                     position: 'relative',
@@ -3066,9 +3074,9 @@ const DataProductPage = () => {
                                                                 }}>
                                                                     <input
                                                                         type="checkbox"
-                                                                        checked={isToggled}
+                                                                        checked={isSelected}
                                                                         onChange={() => {
-                                                                            setAttributeToggles(prev => ({
+                                                                            setAttributeSelections(prev => ({
                                                                                 ...prev,
                                                                                 [field.name]: !prev[field.name]
                                                                             }));
@@ -3082,7 +3090,7 @@ const DataProductPage = () => {
                                                                         left: 0,
                                                                         right: 0,
                                                                         bottom: 0,
-                                                                        backgroundColor: isToggled ? '#6366f1' : '#cbd5e1',
+                                                                        backgroundColor: isSelected ? '#10b981' : '#cbd5e1',
                                                                         transition: '0.3s',
                                                                         borderRadius: '20px',
                                                                     }}>
@@ -3091,7 +3099,7 @@ const DataProductPage = () => {
                                                                             content: '',
                                                                             height: '14px',
                                                                             width: '14px',
-                                                                            left: isToggled ? '19px' : '3px',
+                                                                            left: isSelected ? '19px' : '3px',
                                                                             bottom: '3px',
                                                                             backgroundColor: 'white',
                                                                             transition: '0.3s',
@@ -3119,7 +3127,7 @@ const DataProductPage = () => {
                                             fontSize: '12px',
                                             color: '#6b7280',
                                         }}>
-                                            Toggle OFF = <strong>{globalAttributeMode}</strong> | Toggle ON = <strong>{globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime'}</strong>
+                                            Toggle attributes ON to include them in the new entity. Selected attributes will appear in the box above.
                                         </p>
                                     </div>
                                 </>
@@ -3169,13 +3177,13 @@ const DataProductPage = () => {
                             ) : (
                                 <button
                                     onClick={handleConfirmCreateFromSelected}
-                                    disabled={settingsData.fields.length === 0}
+                                    disabled={!settingsData.allFields || settingsData.allFields.filter(f => attributeSelections[f.name]).length === 0}
                                     style={{
                                         padding: '8px 16px',
-                                        backgroundColor: settingsData.fields.length === 0 ? '#d1d5db' : '#6366f1',
+                                        backgroundColor: (!settingsData.allFields || settingsData.allFields.filter(f => attributeSelections[f.name]).length === 0) ? '#d1d5db' : '#6366f1',
                                         border: 'none',
                                         borderRadius: '6px',
-                                        cursor: settingsData.fields.length === 0 ? 'not-allowed' : 'pointer',
+                                        cursor: (!settingsData.allFields || settingsData.allFields.filter(f => attributeSelections[f.name]).length === 0) ? 'not-allowed' : 'pointer',
                                         fontSize: '14px',
                                         color: 'white',
                                         fontWeight: '500',
