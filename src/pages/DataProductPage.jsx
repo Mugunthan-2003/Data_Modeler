@@ -212,11 +212,21 @@ const TableNode = memo(({ data, id }) => {
                                     flexShrink: 0,
                                     cursor: 'pointer',
                                 }}
-                                title="Toggle to select/deselect field"
+                                title={(() => {
+                                    const toggleKey = `${id}_${field.name}`;
+                                    const isToggled = data.attributeToggles?.[toggleKey] || false;
+                                    const effectiveMode = isToggled 
+                                        ? (data.globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
+                                        : data.globalAttributeMode;
+                                    return `Current mode: ${effectiveMode}. Click to toggle.`;
+                                })()}
                                 >
                                     <input
                                         type="checkbox"
-                                        checked={data.selectedFields?.includes(field.name) || false}
+                                        checked={(() => {
+                                            const toggleKey = `${id}_${field.name}`;
+                                            return data.attributeToggles?.[toggleKey] || false;
+                                        })()}
                                         onChange={(e) => {
                                             e.stopPropagation();
                                             data.onToggleFieldSelection(id, field.name);
@@ -230,7 +240,11 @@ const TableNode = memo(({ data, id }) => {
                                         left: 0,
                                         right: 0,
                                         bottom: 0,
-                                        backgroundColor: (data.selectedFields?.includes(field.name) || false) ? '#6366f1' : '#cbd5e1',
+                                        backgroundColor: (() => {
+                                            const toggleKey = `${id}_${field.name}`;
+                                            const isToggled = data.attributeToggles?.[toggleKey] || false;
+                                            return isToggled ? '#6366f1' : '#cbd5e1';
+                                        })(),
                                         transition: '0.3s',
                                         borderRadius: '16px',
                                     }}>
@@ -239,7 +253,11 @@ const TableNode = memo(({ data, id }) => {
                                             content: '',
                                             height: '12px',
                                             width: '12px',
-                                            left: (data.selectedFields?.includes(field.name) || false) ? '14px' : '2px',
+                                            left: (() => {
+                                                const toggleKey = `${id}_${field.name}`;
+                                                const isToggled = data.attributeToggles?.[toggleKey] || false;
+                                                return isToggled ? '14px' : '2px';
+                                            })(),
                                             bottom: '2px',
                                             backgroundColor: 'white',
                                             transition: '0.3s',
@@ -355,7 +373,8 @@ const DataProductPage = () => {
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
     const [settingsData, setSettingsData] = useState({ nodeId: null, fields: [] });
     const [settingsActiveTab, setSettingsActiveTab] = useState('entity'); // 'entity' or 'table'
-    const [globalAttributeMode, setGlobalAttributeMode] = useState('runtime'); // 'runtime' or 'loadtime'
+    const [globalAttributeMode, setGlobalAttributeMode] = useState('runtime'); // 'runtime' or 'loadtime' - kept for backwards compatibility
+    const [entityAttributeModes, setEntityAttributeModes] = useState({}); // Track default mode per entity: { nodeId: 'runtime' | 'loadtime' }
     const [tab1FilterMode, setTab1FilterMode] = useState('runtime'); // Filter for Tab 1
     const [attributeToggles, setAttributeToggles] = useState({}); // Track toggle state per attribute (for canvas runtime/loadtime)
     const [attributeSelections, setAttributeSelections] = useState({}); // Track selection state for Selected Attributes tab
@@ -386,6 +405,23 @@ const DataProductPage = () => {
             loadTableMetadata();
         }
     }, [selectedFileIds]);
+
+    // Update all nodes with current attributeToggles and entityAttributeModes
+    useEffect(() => {
+        setNodes((currentNodes) => 
+            currentNodes.map(node => {
+                const entityMode = entityAttributeModes[node.id] || 'runtime';
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        attributeToggles,
+                        globalAttributeMode: entityMode // Pass entity-specific mode as globalAttributeMode for backwards compatibility
+                    }
+                };
+            })
+        );
+    }, [attributeToggles, entityAttributeModes]);
 
     const loadTableMetadata = async () => {
         const metadata = {};
@@ -555,6 +591,17 @@ const DataProductPage = () => {
                 setFileBaseTables(dataProduct.availableTables.fileBaseTables || []);
                 setFileViewTables(dataProduct.availableTables.fileViewTables || []);
                 setCustomTables(dataProduct.availableTables.customTables || { BASE: [], CTE: [], VIEW: [] });
+            }
+            
+            // Restore attributeToggles and modes if saved
+            if (dataProduct.attributeToggles) {
+                setAttributeToggles(dataProduct.attributeToggles);
+            }
+            if (dataProduct.entityAttributeModes) {
+                setEntityAttributeModes(dataProduct.entityAttributeModes);
+            }
+            if (dataProduct.globalAttributeMode) {
+                setGlobalAttributeMode(dataProduct.globalAttributeMode);
             }
             
             // Keep sidebar open to show available tables
@@ -880,15 +927,26 @@ const DataProductPage = () => {
             return;
         }
         
+        // Get source node to copy PK and connection details
+        const sourceNode = nodes.find(n => n.id === settingsData.nodeId);
+        
+        // Get entity-specific mode (from dialog)
+        const entityMode = globalAttributeMode; // This is set when dialog opens to entity's mode
+        
         // Get all fields and apply attribute mode based on default and toggles
         // Note: We create entity with ALL attributes, the filter in UI is just for viewing
         const fieldsToUse = settingsData.allFields.map(f => {
             const toggleKey = `${settingsData.nodeId}_${f.name}`;
             const isToggled = attributeToggles[toggleKey] || false;
             const attributeMode = isToggled 
-                ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
-                : globalAttributeMode; // Use default
-            return { ...f, attributeMode };
+                ? (entityMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
+                : entityMode; // Use default
+            
+            // Copy PK status from source entity
+            const sourceField = sourceNode?.data.fields.find(sf => sf.name === f.name);
+            const isPK = sourceField?.isPK || false;
+            
+            return { ...f, attributeMode, isPK };
         });
         
         // Create new node with selected fields
@@ -933,6 +991,123 @@ const DataProductPage = () => {
             });
         });
         
+        // Save entity-specific default mode for new entity
+        setEntityAttributeModes(prev => ({
+            ...prev,
+            [newNodeId]: entityMode
+        }));
+        
+        // Copy toggle states from source entity to new entity
+        setAttributeToggles(prev => {
+            const newToggles = { ...prev };
+            fieldsToUse.forEach(field => {
+                const sourceToggleKey = `${settingsData.nodeId}_${field.name}`;
+                const newToggleKey = `${newNodeId}_${field.name}`;
+                // Copy the toggle state from source to new entity
+                if (prev[sourceToggleKey] !== undefined) {
+                    newToggles[newToggleKey] = prev[sourceToggleKey];
+                }
+            });
+            return newToggles;
+        });
+        
+        // Collect edge information before setTimeout
+        const edgesToCopy = [];
+        const sourceNodeId = settingsData.nodeId;
+        
+        fieldsToUse.forEach((field, idx) => {
+            // Check if source field has any outgoing connections - use filter to get ALL matches
+            const outgoingEdges = edges.filter(e => 
+                e.source === sourceNodeId && 
+                e.sourceHandle === `${field.name}-source`
+            );
+            
+            outgoingEdges.forEach((sourceEdge, edgeIdx) => {
+                edgesToCopy.push({
+                    field: field.name,
+                    idx: `${idx}-${edgeIdx}`,
+                    target: sourceEdge.target,
+                    targetHandle: sourceEdge.targetHandle,
+                    connectionType: sourceEdge.data?.connectionType || 'ref',
+                    calculation: sourceEdge.data?.calculation || '',
+                    type: 'outgoing'
+                });
+            });
+            
+            // Also check for incoming connections to this field - use filter to get ALL matches
+            const incomingEdges = edges.filter(e => 
+                e.target === sourceNodeId && 
+                e.targetHandle === `${field.name}-target`
+            );
+            
+            incomingEdges.forEach((incomingEdge, edgeIdx) => {
+                edgesToCopy.push({
+                    field: field.name,
+                    idx: `${idx}-${edgeIdx}`,
+                    source: incomingEdge.source,
+                    sourceHandle: incomingEdge.sourceHandle,
+                    connectionType: incomingEdge.data?.connectionType || 'ref',
+                    calculation: incomingEdge.data?.calculation || '',
+                    type: 'incoming'
+                });
+            });
+        });
+        
+        // Create edges from source entity to new entity for all fields
+        // Use setTimeout to ensure node is created first
+        setTimeout(() => {
+            if (edgesToCopy.length > 0) {
+                const newEdges = edgesToCopy.map(edgeInfo => {
+                    if (edgeInfo.type === 'outgoing') {
+                        // Outgoing edge: new node is the source
+                        return {
+                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-out`,
+                            source: newNodeId,
+                            target: edgeInfo.target,
+                            sourceHandle: `${edgeInfo.field}-source`,
+                            targetHandle: edgeInfo.targetHandle,
+                            type: 'smoothstep',
+                            animated: true,
+                            markerEnd: { type: MarkerType.ArrowClosed },
+                            data: { 
+                                connectionType: edgeInfo.connectionType,
+                                calculation: edgeInfo.calculation
+                            },
+                            style: { 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                strokeWidth: 2 
+                            }
+                        };
+                    } else {
+                        // Incoming edge: new node is the target
+                        return {
+                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-in`,
+                            source: edgeInfo.source,
+                            target: newNodeId,
+                            sourceHandle: edgeInfo.sourceHandle,
+                            targetHandle: `${edgeInfo.field}-target`,
+                            type: 'smoothstep',
+                            animated: true,
+                            markerEnd: { type: MarkerType.ArrowClosed },
+                            data: { 
+                                connectionType: edgeInfo.connectionType,
+                                calculation: edgeInfo.calculation
+                            },
+                            style: { 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                strokeWidth: 2 
+                            }
+                        };
+                    }
+                });
+                
+                setEdges((eds) => {
+                    const updated = [...eds, ...newEdges];
+                    return updated;
+                });
+            }
+        }, 100);
+        
         // Clear selection from source node
         setSelectedFields((prev) => ({
             ...prev,
@@ -971,7 +1146,7 @@ const DataProductPage = () => {
         }
         
         setShowSettingsDialog(false);
-    }, [newEntityName, newEntityType, nodes, settingsData, globalAttributeMode, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setCustomTables, setFileBaseTables, setFileViewTables]);
+    }, [newEntityName, newEntityType, nodes, settingsData, globalAttributeMode, attributeToggles, edges, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setEdges, setCustomTables, setFileBaseTables, setFileViewTables]);
 
     const handleConfirmCreateFromSelected = useCallback(() => {
         if (!newEntityName.trim()) {
@@ -989,6 +1164,12 @@ const DataProductPage = () => {
             return;
         }
         
+        // Get source node to copy PK and connection details
+        const sourceNode = nodes.find(n => n.id === settingsData.nodeId);
+        
+        // Get entity-specific mode (from dialog)
+        const entityMode = globalAttributeMode; // This is set when dialog opens to entity's mode
+        
         // Get selected fields from attributeSelections and apply attribute mode based on canvas toggles
         const selectedFields = settingsData.allFields ? settingsData.allFields.filter(f => attributeSelections[f.name]) : [];
         
@@ -1001,13 +1182,19 @@ const DataProductPage = () => {
             const toggleKey = `${settingsData.nodeId}_${f.name}`;
             const isToggled = attributeToggles[toggleKey] || false;
             const attributeMode = isToggled 
-                ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
-                : globalAttributeMode; // Use default
-            return { ...f, attributeMode };
+                ? (entityMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
+                : entityMode; // Use default
+            
+            // Copy PK status from source entity
+            const sourceField = sourceNode?.data.fields.find(sf => sf.name === f.name);
+            const isPK = sourceField?.isPK || false;
+            
+            return { ...f, attributeMode, isPK };
         });
         
         // Create new node with all fields
         const newNodeId = `table-${Date.now()}`;
+        
         const newNode = {
             id: newNodeId,
             type: 'tableNode',
@@ -1048,6 +1235,120 @@ const DataProductPage = () => {
             });
         });
         
+        // Save entity-specific default mode for new entity
+        setEntityAttributeModes(prev => ({
+            ...prev,
+            [newNodeId]: entityMode
+        }));
+        
+        // Copy toggle states from source entity to new entity
+        setAttributeToggles(prev => {
+            const newToggles = { ...prev };
+            fieldsToUse.forEach(field => {
+                const sourceToggleKey = `${settingsData.nodeId}_${field.name}`;
+                const newToggleKey = `${newNodeId}_${field.name}`;
+                // Copy the toggle state from source to new entity
+                if (prev[sourceToggleKey] !== undefined) {
+                    newToggles[newToggleKey] = prev[sourceToggleKey];
+                }
+            });
+            return newToggles;
+        });
+        
+        // Collect edge information before setTimeout
+        const edgesToCopy = [];
+        const sourceNodeId = settingsData.nodeId;
+        
+        fieldsToUse.forEach((field, idx) => {
+            // Check if source field has any outgoing connections
+            const outgoingEdges = edges.filter(e => 
+                e.source === sourceNodeId && 
+                e.sourceHandle === `${field.name}-source`
+            );
+            
+            outgoingEdges.forEach((sourceEdge, edgeIdx) => {
+                edgesToCopy.push({
+                    field: field.name,
+                    idx: `${idx}-${edgeIdx}`,
+                    target: sourceEdge.target,
+                    targetHandle: sourceEdge.targetHandle,
+                    connectionType: sourceEdge.data?.connectionType || 'ref',
+                    calculation: sourceEdge.data?.calculation || '',
+                    type: 'outgoing'
+                });
+            });
+            
+            // Also check for incoming connections to this field
+            const incomingEdges = edges.filter(e => 
+                e.target === sourceNodeId && 
+                e.targetHandle === `${field.name}-target`
+            );
+            
+            incomingEdges.forEach((incomingEdge, edgeIdx) => {
+                edgesToCopy.push({
+                    field: field.name,
+                    idx: `${idx}-${edgeIdx}`,
+                    source: incomingEdge.source,
+                    sourceHandle: incomingEdge.sourceHandle,
+                    connectionType: incomingEdge.data?.connectionType || 'ref',
+                    calculation: incomingEdge.data?.calculation || '',
+                    type: 'incoming'
+                });
+            });
+        });
+        
+        // Create edges from source entity to new entity for selected fields
+        // Use setTimeout to ensure node is created first
+        setTimeout(() => {
+            if (edgesToCopy.length > 0) {
+                const newEdges = edgesToCopy.map(edgeInfo => {
+                    if (edgeInfo.type === 'outgoing') {
+                        // Outgoing edge: new node is the source
+                        return {
+                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-out`,
+                            source: newNodeId,
+                            target: edgeInfo.target,
+                            sourceHandle: `${edgeInfo.field}-source`,
+                            targetHandle: edgeInfo.targetHandle,
+                            type: 'smoothstep',
+                            animated: true,
+                            markerEnd: { type: MarkerType.ArrowClosed },
+                            data: { 
+                                connectionType: edgeInfo.connectionType,
+                                calculation: edgeInfo.calculation
+                            },
+                            style: { 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                strokeWidth: 2 
+                            }
+                        };
+                    } else {
+                        // Incoming edge: new node is the target
+                        return {
+                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-in`,
+                            source: edgeInfo.source,
+                            target: newNodeId,
+                            sourceHandle: edgeInfo.sourceHandle,
+                            targetHandle: `${edgeInfo.field}-target`,
+                            type: 'smoothstep',
+                            animated: true,
+                            markerEnd: { type: MarkerType.ArrowClosed },
+                            data: { 
+                                connectionType: edgeInfo.connectionType,
+                                calculation: edgeInfo.calculation
+                            },
+                            style: { 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                strokeWidth: 2 
+                            }
+                        };
+                    }
+                });
+                
+                setEdges((eds) => [...eds, ...newEdges]);
+            }
+        }, 100);
+        
         // Update appropriate list based on type
         if (newEntityType === 'BASE') {
             if (!fileBaseTables.includes(newEntityName)) {
@@ -1065,7 +1366,7 @@ const DataProductPage = () => {
         }
         
         setShowSettingsDialog(false);
-    }, [newEntityName, newEntityType, nodes, settingsData, globalAttributeMode, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setCustomTables, setFileBaseTables, setFileViewTables]);
+    }, [newEntityName, newEntityType, nodes, settingsData, globalAttributeMode, attributeToggles, attributeSelections, edges, handleAddField, handleRemoveField, handleTogglePK, handleToggleFieldSelection, fileBaseTables, fileViewTables, setNodes, setEdges, setCustomTables, setFileBaseTables, setFileViewTables]);
 
     const handleOpenSettings = useCallback((nodeId) => {
         setNodes((currentNodes) => {
@@ -1079,6 +1380,10 @@ const DataProductPage = () => {
             const selectedFieldsForNode = node.data.selectedFields || [];
             const selectedFieldsData = node.data.fields.filter(f => selectedFieldsForNode.includes(f.name));
             
+            // Get or initialize entity-specific default mode
+            const entityMode = entityAttributeModes[nodeId] || 'runtime';
+            setGlobalAttributeMode(entityMode); // Set to dialog for editing
+            
             // Initialize entity-specific toggles if they don't exist yet
             setAttributeToggles(prev => {
                 const initialToggles = {};
@@ -1086,7 +1391,12 @@ const DataProductPage = () => {
                     const toggleKey = `${nodeId}_${field.name}`;
                     // Only initialize if not already set
                     if (prev[toggleKey] === undefined) {
-                        initialToggles[toggleKey] = false; // Default to not toggled
+                        // Read from field.attributeMode if it exists
+                        // If attributeMode matches entityMode, toggle is OFF
+                        // If attributeMode is opposite of entityMode, toggle is ON
+                        const fieldMode = field.attributeMode || entityMode;
+                        const shouldToggle = fieldMode !== entityMode;
+                        initialToggles[toggleKey] = shouldToggle;
                     }
                 });
                 return Object.keys(initialToggles).length > 0 ? { ...prev, ...initialToggles } : prev;
@@ -1316,7 +1626,10 @@ const DataProductPage = () => {
                     fileBaseTables,
                     fileViewTables,
                     customTables
-                }
+                },
+                attributeToggles,
+                entityAttributeModes,
+                globalAttributeMode
             };
             
             // Save to data_products folder using fileStorage utility
