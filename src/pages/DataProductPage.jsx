@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, memo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey, FiDownload, FiX, FiSettings } from "react-icons/fi";
+import { FiArrowLeft, FiPackage, FiDatabase, FiPlus, FiSave, FiTrash2, FiSearch, FiEdit2, FiZap, FiChevronsLeft, FiChevronsRight, FiKey, FiDownload, FiX, FiSettings, FiLayout } from "react-icons/fi";
 import ReactFlow, {
     MiniMap,
     Controls,
@@ -16,7 +16,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { getFile, saveDataProduct } from "../utils/fileStorage";
-import { getLayoutedElements } from "../utils/layout";
+import { getLayoutedElements, applyLayout } from "../utils/layout";
 import SuggestionDialog from "../components/DataProduct/SuggestionDialog";
 import ReverseDepsDialog from "../components/DataProduct/ReverseDepsDialog";
 import DataProductSidebar from "../components/DataProduct/DataProductSidebar";
@@ -428,6 +428,29 @@ const DataProductPage = () => {
             })
         );
     }, [attributeToggles, entityAttributeModes]);
+
+    // Auto-arrange layout function
+    const onLayout = useCallback(() => {
+        const { nodes: layoutedNodes, edges: layoutedEdges } = applyLayout(
+            nodes,
+            edges,
+            "dagre",
+            "LR"
+        );
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
+    }, [nodes, edges, setNodes, setEdges]);
+
+    // Auto-arrange on initial load when nodes are available
+    useEffect(() => {
+        if (nodes.length > 0 && edges.length >= 0) {
+            // Small delay to ensure nodes are fully rendered
+            const timer = setTimeout(() => {
+                onLayout();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, []); // Empty deps - only run once on mount
 
     const loadTableMetadata = async () => {
         const metadata = {};
@@ -2484,6 +2507,41 @@ const DataProductPage = () => {
                     >
                         <FiArrowLeft size={14} />
                         Back
+                    </button>
+                    
+                    <button
+                        onClick={onLayout}
+                        style={{
+                            background: "rgba(59, 130, 246, 0.15)",
+                            border: "1px solid rgba(59, 130, 246, 0.3)",
+                            borderRadius: "6px",
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            color: "#3b82f6",
+                            transition: "all 200ms ease",
+                            boxShadow: "0 2px 8px rgba(59, 130, 246, 0.2)",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(59, 130, 246, 0.25)";
+                            e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.5)";
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(59, 130, 246, 0.15)";
+                            e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.3)";
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(59, 130, 246, 0.2)";
+                        }}
+                        title="Auto-arrange nodes in a layout"
+                    >
+                        <FiLayout size={14} />
+                        Auto-Arrange
                     </button>
                     
                     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "12px" }}>
