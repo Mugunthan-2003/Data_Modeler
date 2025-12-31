@@ -1049,21 +1049,36 @@ const DataProductPage = () => {
         // Get entity-specific mode (from dialog)
         const entityMode = globalAttributeMode; // This is set when dialog opens to entity's mode
         
-        // Get all fields and apply attribute mode based on default and toggles
-        // Note: We create entity with ALL attributes, the filter in UI is just for viewing
-        const fieldsToUse = settingsData.allFields.map(f => {
-            const toggleKey = `${settingsData.nodeId}_${f.name}`;
-            const isToggled = attributeToggles[toggleKey] || false;
-            const attributeMode = isToggled 
-                ? (entityMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
-                : entityMode; // Use default
-            
-            // Copy PK status from source entity
-            const sourceField = sourceNode?.data.fields.find(sf => sf.name === f.name);
-            const isPK = sourceField?.isPK || false;
-            
-            return { ...f, attributeMode, isPK };
-        });
+        // Filter and map fields based on tab1FilterMode dropdown
+        const fieldsToUse = settingsData.allFields
+            .filter(f => {
+                // Calculate the field's effective attribute mode
+                const toggleKey = `${settingsData.nodeId}_${f.name}`;
+                const isToggled = attributeToggles[toggleKey] || false;
+                const fieldAttributeMode = isToggled 
+                    ? (entityMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
+                    : entityMode; // Use default
+                
+                // Apply filter based on tab1FilterMode
+                if (tab1FilterMode === 'both') {
+                    return true; // Include all fields
+                } else {
+                    return fieldAttributeMode === tab1FilterMode; // Only include matching mode
+                }
+            })
+            .map(f => {
+                const toggleKey = `${settingsData.nodeId}_${f.name}`;
+                const isToggled = attributeToggles[toggleKey] || false;
+                const attributeMode = isToggled 
+                    ? (entityMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of default
+                    : entityMode; // Use default
+                
+                // Copy PK status from source entity
+                const sourceField = sourceNode?.data.fields.find(sf => sf.name === f.name);
+                const isPK = sourceField?.isPK || false;
+                
+                return { ...f, attributeMode, isPK };
+            });
         
         // Create new node with selected fields
         const newNodeId = `table-${Date.now()}`;
