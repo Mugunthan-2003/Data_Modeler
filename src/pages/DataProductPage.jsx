@@ -2991,7 +2991,7 @@ const DataProductPage = () => {
                                                     color: '#9ca3af',
                                                     fontStyle: 'italic',
                                                 }}>
-                                                    No fields selected. Use toggles below to select attributes for this entity.
+                                                    No fields selected.
                                                 </p>
                                             </div>
                                         ) : (
@@ -3040,6 +3040,11 @@ const DataProductPage = () => {
                                             {settingsData.allFields && settingsData.allFields.length > 0 ? (
                                                 settingsData.allFields.map((field, idx) => {
                                                     const isSelected = attributeSelections[field.name] || false;
+                                                    // Determine runtime/loadtime status from canvas toggles
+                                                    const isToggled = attributeToggles[field.name] || false;
+                                                    const attributeMode = isToggled 
+                                                        ? (globalAttributeMode === 'runtime' ? 'loadtime' : 'runtime')
+                                                        : globalAttributeMode;
                                                     
                                                     return (
                                                         <div key={idx} style={{
@@ -3060,10 +3065,10 @@ const DataProductPage = () => {
                                                                 <span style={{ 
                                                                     fontSize: '11px', 
                                                                     fontWeight: '600',
-                                                                    color: isSelected ? '#10b981' : '#9ca3af',
+                                                                    color: attributeMode === 'runtime' ? '#10b981' : '#f59e0b',
                                                                     textTransform: 'uppercase'
                                                                 }}>
-                                                                    {isSelected ? 'Selected' : 'Not Selected'}
+                                                                    {attributeMode}
                                                                 </span>
                                                                 <label style={{
                                                                     position: 'relative',
@@ -3127,7 +3132,7 @@ const DataProductPage = () => {
                                             fontSize: '12px',
                                             color: '#6b7280',
                                         }}>
-                                            Toggle attributes ON to include them in the new entity. Selected attributes will appear in the box above.
+                                            Toggle to include .
                                         </p>
                                     </div>
                                 </>
