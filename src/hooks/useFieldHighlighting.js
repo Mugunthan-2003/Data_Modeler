@@ -96,6 +96,7 @@ export const useFieldHighlighting = (edges, linkDirection = 'upstream') => {
                     nodeId,
                     fieldName,
                     calculation: fieldData.calculation.expression,
+                    refs: fieldData.calculation.ref || fieldData.ref || [],
                 });
             } else {
                 setSelectedField(null);

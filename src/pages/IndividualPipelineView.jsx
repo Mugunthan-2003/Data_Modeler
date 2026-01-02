@@ -503,6 +503,7 @@ const IndividualPipelineView = () => {
 
             <FieldDrawer
                 selectedField={selectedField}
+                onUpdateFieldCalculation={handleUpdateFieldCalculation}
                 onClose={() => {
                     setSelectedField(null);
                     setHighlightedEdges(new Set());
