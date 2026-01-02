@@ -383,6 +383,7 @@ const DataProductPage = () => {
     const [newEntityName, setNewEntityName] = useState('');
     const [newEntityType, setNewEntityType] = useState('CTE');
     const [searchQuery, setSearchQuery] = useState('');
+    const [sourceDataProduct, setSourceDataProduct] = useState(dataProductData || null);
     
     // Keep ref in sync with state
     useEffect(() => {
@@ -456,11 +457,15 @@ const DataProductPage = () => {
         const metadata = {};
         const baseTables = new Set();
         const viewTables = new Set();
+        const combinedEntities = {};
         
         for (const fileId of selectedFileIds) {
             try {
                 const fileData = await getFile(fileId);
                 if (fileData && fileData.data && fileData.data.entities) {
+                    // Merge entities for suggestions/source data
+                    Object.assign(combinedEntities, fileData.data.entities);
+
                     for (const entityName in fileData.data.entities) {
                         // Process BASE tables
                         if (entityName.startsWith('BASE_')) {
@@ -521,10 +526,20 @@ const DataProductPage = () => {
         setTableMetadata(metadata);
         setFileBaseTables(Array.from(baseTables).sort());
         setFileViewTables(Array.from(viewTables).sort());
+
+        // Expose merged entities for suggestion/reverse-deps when creating a new data product
+        if (Object.keys(combinedEntities).length > 0) {
+            setSourceDataProduct({
+                entities: combinedEntities,
+                metadata: { name: 'Selected Files' }
+            });
+        }
     };
 
     const loadDataProduct = (dataProduct) => {
         try {
+            setSourceDataProduct(dataProduct || null);
+
             const loadedNodes = [];
             const loadedEdges = [];
             const nodeMap = new Map(); // To track entity to node ID mapping
@@ -1622,7 +1637,7 @@ const DataProductPage = () => {
                 );
             }
             if (showSuggestDialog) {
-                generateSuggestions(nodes.filter(n => n.id !== nodeId));
+                generateSuggestions(nodes.filter(n => n.id !== nodeId), sourceDataProduct);
             }
         }, 100);
     }, [setNodes, setEdges, showReverseDepsDialog, selectedEntityForReverseDeps, showSuggestDialog, nodes]);
@@ -1807,35 +1822,8 @@ const DataProductPage = () => {
             const entityKey = `${tableType}_${tableName}`;
             setSelectedEntityForReverseDeps({ nodeId, tableName, tableType, entityKey });
             
-            const jsonFiles = [
-                'AccountsPayable.json',
-                'AccountsPayableOverview.json',
-                'AccountsPayableTurnover.json',
-                'BalanceSheet.json',
-                'CashDiscountUtilization.json',
-                'data_model.json',
-                'InventoryKeyMetrics.json',
-                'SalesFulfillment.json',
-                'VendorLeadTimeOverview.json',
-                'VendorPerformance.json',
-                'VendorPerformanceOverview.json'
-            ];
-
-            // First, find the selected entity's data
-            let selectedEntityData = null;
-            for (const fileName of jsonFiles) {
-                try {
-                    const response = await fetch(`/src/grok_output/${fileName}`);
-                    const data = await response.json();
-                    
-                    if (data.entities && data.entities[entityKey]) {
-                        selectedEntityData = data.entities[entityKey];
-                        break;
-                    }
-                } catch (error) {
-                    console.error(`Error loading ${fileName}:`, error);
-                }
-            }
+            const entities = sourceDataProduct?.entities || {};
+            const selectedEntityData = entities[entityKey];
 
             if (!selectedEntityData || !selectedEntityData.fields) {
                 setReverseDeps([]);
@@ -1887,50 +1875,42 @@ const DataProductPage = () => {
                 }
             });
 
-            // Now fetch full data for each required entity
+            // Build reverse dependencies list from the current data product source
             const foundReverseDeps = [];
             
             for (const [requiredEntityKey, info] of requiredEntities.entries()) {
-                for (const fileName of jsonFiles) {
-                    try {
-                        const response = await fetch(`/src/grok_output/${fileName}`);
-                        const data = await response.json();
-                        
-                        if (data.entities && data.entities[requiredEntityKey]) {
-                            const reqEntity = data.entities[requiredEntityKey];
-                            const entityNameClean = requiredEntityKey.replace(/^(BASE_|CTE_|VIEW_)/, '');
-                            
-                            const entityFieldsData = Object.keys(reqEntity.fields || {}).map(fieldName => ({
-                                name: fieldName,
-                                type: 'VARCHAR'
-                            }));
-                            
-                            // Build dependency map
-                            const dependencyMap = {};
-                            dependencyMap[requiredEntityKey] = info.connections.map(conn => ({
-                                targetField: conn.targetField,
-                                sourceField: conn.sourceField,
-                                connectionType: conn.connectionType,
-                                calculation: conn.calculation
-                            }));
-                            
-                            foundReverseDeps.push({
-                                entityName: requiredEntityKey,
-                                alias: reqEntity.alias || requiredEntityKey,
-                                entityType: info.entityType,
-                                sourceFile: fileName,
-                                dependencyMap: dependencyMap,
-                                entityData: reqEntity,
-                                fields: entityFieldsData,
-                                connectionCount: info.connections.length
-                            });
-                            
-                            break;
-                        }
-                    } catch (error) {
-                        console.error(`Error loading ${fileName}:`, error);
-                    }
+                const reqEntity = entities[requiredEntityKey];
+                if (!reqEntity) {
+                    continue;
                 }
+                
+                const entityFieldsData = Object.keys(reqEntity.fields || {}).map(fieldName => ({
+                    name: fieldName,
+                    type: reqEntity.fields[fieldName]?.type || 'VARCHAR'
+                }));
+                
+                // Build dependency map
+                const dependencyMap = {};
+                dependencyMap[requiredEntityKey] = info.connections.map(conn => ({
+                    targetField: conn.targetField,
+                    sourceField: conn.sourceField,
+                    connectionType: conn.connectionType,
+                    calculation: conn.calculation
+                }));
+
+                const entityType = info.entityType || (requiredEntityKey.match(/^(BASE|CTE|VIEW)_/)?.[1] || 'BASE');
+                const sourceName = sourceDataProduct?.metadata?.name || 'Data Product';
+                
+                foundReverseDeps.push({
+                    entityName: requiredEntityKey,
+                    alias: reqEntity.alias || requiredEntityKey,
+                    entityType,
+                    sourceFile: sourceName,
+                    dependencyMap: dependencyMap,
+                    entityData: reqEntity,
+                    fields: entityFieldsData,
+                    connectionCount: info.connections.length
+                });
             }
 
             setReverseDeps(foundReverseDeps);
@@ -1942,7 +1922,7 @@ const DataProductPage = () => {
     };
 
     const handleSuggest = async () => {
-        await generateSuggestions(nodes);
+        await generateSuggestions(nodes, sourceDataProduct);
     };
 
     const handleAddSuggestedEntity = async (suggestion) => {
@@ -1959,23 +1939,13 @@ const DataProductPage = () => {
                 return;
             }
             
-            // Use stored entity data if available, otherwise load from source file
-            let entity = suggestion.entityData;
+            const sourceEntities = sourceDataProduct?.entities || {};
+            const entity = suggestion.entityData || sourceEntities[suggestion.entityName];
             
             if (!entity) {
-                const response = await fetch(`/src/grok_output/${suggestion.sourceFile}`);
-                const data = await response.json();
-                entity = data.entities[suggestion.entityName];
-            }
-            
-            if (!entity) {
-                alert('Entity not found in source file');
+                alert('Entity not found in data product source');
                 return;
             }
-
-            // Load full source file data for missing entities
-            const response = await fetch(`/src/grok_output/${suggestion.sourceFile}`);
-            const sourceFileData = await response.json();
 
             // Collect missing entities to add (BASE, CTE, VIEW)
             let addedNodes = [];
@@ -1983,7 +1953,7 @@ const DataProductPage = () => {
                 // Add missing entities from the same source file
                 for (const missingEntity of suggestion.missingEntities) {
                     // Check if entity exists in the data
-                    const missingEntityData = sourceFileData.entities[missingEntity.fullKey];
+                    const missingEntityData = sourceEntities[missingEntity.fullKey];
                     
                     if (missingEntityData) {
                         const missingFields = Object.keys(missingEntityData.fields || {}).map(fieldName => ({
@@ -2178,17 +2148,11 @@ const DataProductPage = () => {
                 return;
             }
             
-            // Use stored entity data if available, otherwise load from source file
-            let entity = suggestion.entityData;
+            const sourceEntities = sourceDataProduct?.entities || {};
+            const entity = suggestion.entityData || sourceEntities[suggestion.entityName];
             
             if (!entity) {
-                const response = await fetch(`/src/grok_output/${suggestion.sourceFile}`);
-                const data = await response.json();
-                entity = data.entities[suggestion.entityName];
-            }
-            
-            if (!entity) {
-                alert('Entity not found in source file');
+                alert('Entity not found in data product source');
                 return;
             }
 

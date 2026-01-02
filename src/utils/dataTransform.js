@@ -1,5 +1,5 @@
 // src/utils/dataTransform.js
-import rawModel from "../grok_output/AccountsPayableOverview.json";
+// import rawModel from "../grok_output/AccountsPayableOverview.json";
 
 /**
  * Extract table type (prefix) from table name
@@ -46,14 +46,15 @@ export function addTablePrefix(entityName, tableType) {
  * @param {Object} modelData - The model data object (default: imported rawModel)
  * @returns {Object} Object containing nodes and edges arrays
  */
-// export function modelToFlow(modelData = {entities: {}}) {
-  export function modelToFlow(modelData = rawModel) {
+export function modelToFlow(modelData = { entities: {} }) {
   const nodes = [];
   const edges = [];
   let y = 0;
   const rowHeight = 180;
 
-  Object.entries(modelData.entities).forEach(([entityName, entity]) => {
+  const entities = modelData?.entities || {};
+
+  Object.entries(entities).forEach(([entityName, entity]) => {
     // entityName is the full name (may include prefix like BASE_, CTE_, VIEW_)
     const tableType = extractTableType(entityName);
     const displayName = removeTablePrefix(entityName);
@@ -69,7 +70,7 @@ export function addTablePrefix(entityName, tableType) {
         // keep a user-friendly label without prefix
         label: displayName,
         alias: entity.alias || "",
-        fields: Object.entries(entity.fields).map(([fname, fdata]) => ({
+        fields: Object.entries(entity.fields || {}).map(([fname, fdata]) => ({
           name: fname,
           ...fdata,
         })),
@@ -78,8 +79,8 @@ export function addTablePrefix(entityName, tableType) {
     });
 
     // Normal ref edges
-    Object.entries(entity.fields).forEach(([fieldName, field]) => {
-      if (field.ref) {
+    Object.entries(entity.fields || {}).forEach(([fieldName, field]) => {
+      if (field?.ref) {
         field.ref.forEach((ref) => {
           const lastDot = ref.lastIndexOf(".");
           const sourceEntity = ref.substring(0, lastDot);
@@ -100,7 +101,7 @@ export function addTablePrefix(entityName, tableType) {
       }
 
       // Calculation edges
-      if (field.calculation?.ref) {
+      if (field?.calculation?.ref) {
         field.calculation.ref.forEach((ref) => {
           const lastDot = ref.lastIndexOf(".");
           const srcE = ref.substring(0, lastDot);
