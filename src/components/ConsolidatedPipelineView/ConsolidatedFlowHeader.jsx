@@ -224,7 +224,7 @@ const ConsolidatedFlowHeader = ({
                     }}
                 >
                     {showNormalRefs ? <FiCheck size={14} /> : <FiX size={14} />}
-                    Normal
+                    Direct
                 </button>
                 <button
                     onClick={onToggleCalcRefs}

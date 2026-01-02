@@ -1,10 +1,31 @@
-import { FiX, FiBarChart2, FiDatabase, FiHash } from "react-icons/fi";
+import { useState } from "react";
+import { FiX, FiBarChart2, FiDatabase, FiHash, FiEdit2, FiCheck, FiRotateCcw } from "react-icons/fi";
 
 /**
- * Drawer component for displaying field calculation details
+ * Drawer component for displaying and editing field calculation details
  */
-const FieldDrawer = ({ selectedField, onClose }) => {
+const FieldDrawer = ({ selectedField, onClose, onUpdateCalculation }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState("");
+
     if (!selectedField) return null;
+
+    const handleEditStart = () => {
+        setEditValue(selectedField.calculation || "");
+        setIsEditing(true);
+    };
+
+    const handleSave = () => {
+        if (onUpdateCalculation) {
+            onUpdateCalculation(selectedField.nodeId, selectedField.fieldName, editValue);
+        }
+        setIsEditing(false);
+    };
+
+    const handleCancel = () => {
+        setIsEditing(false);
+        setEditValue("");
+    };
 
     return (
         <div
@@ -139,7 +160,133 @@ const FieldDrawer = ({ selectedField, onClose }) => {
                     boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.06)",
                 }}
             >
-                {selectedField.calculation}
+                {isEditing ? (
+                    <textarea
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        style={{
+                            width: "100%",
+                            height: "100%",
+                            minHeight: "200px",
+                            padding: "12px",
+                            border: "2px solid #3b82f6",
+                            borderRadius: 8,
+                            fontFamily: "'Fira Code', 'Courier New', monospace",
+                            fontSize: 13,
+                            resize: "vertical",
+                            background: "#fff",
+                            color: "#1f2937",
+                            lineHeight: "1.6",
+                        }}
+                    />
+                ) : (
+                    selectedField.calculation
+                )}
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+                {isEditing ? (
+                    <>
+                        <button
+                            onClick={handleSave}
+                            style={{
+                                flex: 1,
+                                padding: "10px 16px",
+                                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: 8,
+                                cursor: "pointer",
+                                fontWeight: 600,
+                                fontSize: 14,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 8,
+                                transition: "all 150ms ease",
+                                boxShadow: "0 4px 6px rgba(16, 185, 129, 0.3)",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.background = "linear-gradient(135deg, #059669 0%, #047857 100%)";
+                                e.target.style.boxShadow = "0 6px 12px rgba(16, 185, 129, 0.4)";
+                                e.target.style.transform = "translateY(-1px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+                                e.target.style.boxShadow = "0 4px 6px rgba(16, 185, 129, 0.3)";
+                                e.target.style.transform = "translateY(0)";
+                            }}
+                        >
+                            <FiCheck size={16} />
+                            Save
+                        </button>
+                        <button
+                            onClick={handleCancel}
+                            style={{
+                                flex: 1,
+                                padding: "10px 16px",
+                                background: "#f3f4f6",
+                                color: "#374151",
+                                border: "1px solid #d1d5db",
+                                borderRadius: 8,
+                                cursor: "pointer",
+                                fontWeight: 600,
+                                fontSize: 14,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 8,
+                                transition: "all 150ms ease",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.background = "#e5e7eb";
+                                e.target.style.transform = "translateY(-1px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.background = "#f3f4f6";
+                                e.target.style.transform = "translateY(0)";
+                            }}
+                        >
+                            <FiRotateCcw size={16} />
+                            Cancel
+                        </button>
+                    </>
+                ) : (
+                    <button
+                        onClick={handleEditStart}
+                        style={{
+                            flex: 1,
+                            padding: "10px 16px",
+                            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            fontSize: 14,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                            transition: "all 150ms ease",
+                            boxShadow: "0 4px 6px rgba(59, 130, 246, 0.3)",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)";
+                            e.target.style.boxShadow = "0 6px 12px rgba(59, 130, 246, 0.4)";
+                            e.target.style.transform = "translateY(-1px)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
+                            e.target.style.boxShadow = "0 4px 6px rgba(59, 130, 246, 0.3)";
+                            e.target.style.transform = "translateY(0)";
+                        }}
+                    >
+                        <FiEdit2 size={16} />
+                        Edit
+                    </button>
+                )}
             </div>
         </div>
     );

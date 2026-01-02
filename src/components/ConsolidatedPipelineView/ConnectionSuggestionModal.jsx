@@ -125,7 +125,7 @@ const ConnectionSuggestionModal = ({
                                             whiteSpace: "nowrap",
                                         }}
                                     >
-                                        {sourceName} -> {option.name}
+                                        {sourceName} → {option.name}
                                     </div>
                                     <div
                                         style={{

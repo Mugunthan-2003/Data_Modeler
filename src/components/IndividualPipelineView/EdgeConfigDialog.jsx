@@ -135,7 +135,7 @@ const EdgeConfigDialog = ({
                             />
                             <span style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
                                 <FiFileText size={14} />
-                                Normal
+                                Direct
                             </span>
                         </label>
                         <label

@@ -290,10 +290,10 @@ const IndividualSQLView = () => {
     }, []);
 
     const handleEdgeConfigConfirmWrapper = useCallback(
-        (edgeType, calcExpr) => {
+        (edgeType) => {
             const result = handleEdgeConfigConfirm(
                 edgeType,
-                calcExpr,
+                "",
                 !!edgeConfigDialog?.existingEdgeId,
                 edgeConfigDialog?.existingEdgeId,
                 edgeConfigDialog,
@@ -311,17 +311,6 @@ const IndividualSQLView = () => {
 
     const handleEditEdge = useCallback(
         (edge) => {
-            const targetFieldName = edge.targetHandle.replace(
-                `${edge.target}-`,
-                ""
-            );
-            const targetNode = nodes.find((n) => n.id === edge.target);
-            const targetField = targetNode?.data.fields.find(
-                (f) => f.name === targetFieldName
-            );
-            const calculationExpression =
-                targetField?.calculation?.expression || "";
-
             setEdgeConfigDialog({
                 source: edge.source,
                 target: edge.target,
@@ -329,11 +318,10 @@ const IndividualSQLView = () => {
                 targetHandle: edge.targetHandle,
                 existingEdgeId: edge.id,
                 existingEdgeType: edge.ref_type,
-                existingCalculationExpression: calculationExpression,
             });
             setEdgeContextMenu(null);
         },
-        [nodes]
+        []
     );
 
     const handleDeleteEdgeWrapper = useCallback(
@@ -455,9 +443,6 @@ const IndividualSQLView = () => {
                         onConfirm={handleEdgeConfigConfirmWrapper}
                         onCancel={() => setEdgeConfigDialog(null)}
                         initialEdgeType={edgeConfigDialog.existingEdgeType}
-                        initialCalculationExpression={
-                            edgeConfigDialog.existingCalculationExpression
-                        }
                     />
                 </div>
             )}
@@ -483,6 +468,7 @@ const IndividualSQLView = () => {
                     setSelectedField(null);
                     setHighlightedEdges(new Set());
                 }}
+                onUpdateCalculation={handleUpdateFieldCalculation}
             />
         </div>
     );

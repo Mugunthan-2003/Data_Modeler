@@ -12,23 +12,13 @@ const EdgeConfigDialog = ({
     onConfirm,
     onCancel,
     initialEdgeType,
-    initialCalculationExpression,
 }) => {
     const [edgeType, setEdgeType] = useState(initialEdgeType || "normal");
-    const [calculationExpression, setCalculationExpression] = useState(
-        initialCalculationExpression || ""
-    );
 
     const handleSubmit = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        if (edgeType === "calculation" && !calculationExpression.trim()) {
-            alert("Please enter a calculation expression for calculation references.");
-            return;
-        }
-
-        onConfirm(edgeType, calculationExpression.trim());
+        onConfirm(edgeType);
     };
 
     const handleCancel = (e) => {
@@ -138,7 +128,7 @@ const EdgeConfigDialog = ({
                             />
                             <span style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
                                 <FiFileText size={14} />
-                                Normal
+                                Direct
                             </span>
                         </label>
                         <label
@@ -180,43 +170,6 @@ const EdgeConfigDialog = ({
                         </label>
                     </div>
                 </div>
-
-                {edgeType === "calculation" && (
-                    <div style={{ marginBottom: "20px" }}>
-                        <label
-                            style={{
-                                display: "block",
-                                marginBottom: "10px",
-                                fontWeight: 600,
-                                fontSize: 14,
-                                color: "#374151",
-                            }}
-                        >
-                            Calculation Expression:
-                        </label>
-                        <textarea
-                            value={calculationExpression}
-                            onChange={(e) =>
-                                setCalculationExpression(e.target.value)
-                            }
-                            placeholder="Enter calculation expression..."
-                            style={{
-                                width: "100%",
-                                minHeight: "120px",
-                                padding: "12px",
-                                border: "2px solid #d1d5db",
-                                borderRadius: 8,
-                                fontFamily: "'Fira Code', 'Courier New', monospace",
-                                fontSize: 13,
-                                resize: "vertical",
-                                background: "#fff",
-                                transition: "all 150ms ease",
-                                lineHeight: "1.5",
-                            }}
-                            required
-                        />
-                    </div>
-                )}
 
                 <div
                     style={{
