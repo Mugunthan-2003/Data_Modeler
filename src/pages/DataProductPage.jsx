@@ -3257,34 +3257,6 @@ const DataProductPage = () => {
                                             fontWeight: '500',
                                             color: '#374151',
                                         }}>
-                                            Filter by Attribute Mode *
-                                        </label>
-                                        <select
-                                            value={tab1FilterMode}
-                                            onChange={(e) => setTab1FilterMode(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '8px 12px',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: '6px',
-                                                fontSize: '14px',
-                                                boxSizing: 'border-box',
-                                            }}
-                                        >
-                                            <option value="runtime">Runtime</option>
-                                            <option value="loadtime">Loadtime</option>
-                                            <option value="both">Both</option>
-                                        </select>
-                                    </div>
-
-                                    <div style={{ marginBottom: '16px' }}>
-                                        <label style={{
-                                            display: 'block',
-                                            marginBottom: '8px',
-                                            fontSize: '14px',
-                                            fontWeight: '500',
-                                            color: '#374151',
-                                        }}>
                                             Entity Name *
                                         </label>
                                         <input
@@ -3328,6 +3300,34 @@ const DataProductPage = () => {
                                             <option value="CTE">CTE</option>
                                             <option value="VIEW">VIEW</option>
                                             <option value="BASE">BASE</option>
+                                        </select>
+                                    </div>
+
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#374151',
+                                        }}>
+                                            Filter by Attribute Mode *
+                                        </label>
+                                        <select
+                                            value={tab1FilterMode}
+                                            onChange={(e) => setTab1FilterMode(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: '6px',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        >
+                                            <option value="runtime">Runtime</option>
+                                            <option value="loadtime">Loadtime</option>
+                                            <option value="both">Both</option>
                                         </select>
                                     </div>
 
