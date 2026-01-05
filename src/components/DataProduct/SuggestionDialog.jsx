@@ -3,7 +3,6 @@ import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 const SuggestionDialog = ({ 
     suggestions, 
-    suggestionsLevel2, 
     onAddSuggestion, 
     onClose,
     nodesCount 
@@ -25,7 +24,7 @@ const SuggestionDialog = ({
 
     const isExpanded = (entityName) => expandedSuggestions.has(entityName);
 
-    const allSuggestions = [...suggestions, ...suggestionsLevel2].sort((a, b) => b.coveragePercent - a.coveragePercent);
+    const allSuggestions = suggestions.sort((a, b) => b.coveragePercent - a.coveragePercent);
 
     const renderSuggestionCard = (suggestion) => {
         const expanded = isExpanded(suggestion.entityName);

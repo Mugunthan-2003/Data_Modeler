@@ -394,7 +394,6 @@ const DataProductPage = () => {
     const {
         showSuggestDialog,
         suggestions,
-        suggestionsLevel2,
         generateSuggestions,
         setShowSuggestDialog
     } = useSuggestions();
@@ -721,12 +720,12 @@ const DataProductPage = () => {
                             type: 'default',
                             animated: false,
                             style: {
-                                stroke: rel.type === 'calculation' ? '#8b5cf6' : '#3b82f6',
+                                stroke: rel.type === 'calculation' ? '#3b82f6' : '#ef4444',
                                 strokeWidth: 2
                             },
                             markerEnd: {
                                 type: MarkerType.ArrowClosed,
-                                color: rel.type === 'calculation' ? '#8b5cf6' : '#3b82f6'
+                                color: rel.type === 'calculation' ? '#3b82f6' : '#ef4444'
                             },
                             data: {
                                 connectionType: rel.type || 'ref',
@@ -776,7 +775,7 @@ const DataProductPage = () => {
             );
             
             const connectionType = hasCalculationConnection ? 'calculation' : 'ref';
-            const color = connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+            const color = connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
             
             const newEdge = {
                 ...params,
@@ -800,12 +799,12 @@ const DataProductPage = () => {
             eds.map((e) => {
                 const isSelected = e.id === edge.id;
                 const connectionType = e.data?.connectionType || 'ref';
-                const baseColor = connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+                const baseColor = connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
                 return {
                     ...e,
                     style: {
                         ...e.style,
-                        stroke: isSelected ? '#ef4444' : baseColor,
+                        stroke: isSelected ? '#fbbf24' : baseColor,
                         strokeWidth: isSelected ? 3 : 2,
                     },
                     animated: isSelected,
@@ -847,7 +846,7 @@ const DataProductPage = () => {
         setEdges((eds) =>
             eds.map((e) => {
                 const connectionType = e.data?.connectionType || 'ref';
-                const color = connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+                const color = connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
                 return {
                     ...e,
                     style: { stroke: color, strokeWidth: 2 },
@@ -870,7 +869,7 @@ const DataProductPage = () => {
             setEdges((eds) =>
                 eds.map((e) => {
                     if (e.id === selectedEdge) {
-                        const color = newType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+                        const color = newType === 'calculation' ? '#3b82f6' : '#ef4444';
                         return {
                             ...e,
                             data: { ...e.data, connectionType: newType, calculation: e.data?.calculation || '' },
@@ -1243,7 +1242,7 @@ const DataProductPage = () => {
                                 calculation: edgeInfo.calculation
                             },
                             style: { 
-                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
                                 strokeWidth: 2 
                             }
                         };
@@ -1263,7 +1262,7 @@ const DataProductPage = () => {
                                 calculation: edgeInfo.calculation
                             },
                             style: { 
-                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
                                 strokeWidth: 2 
                             }
                         };
@@ -1487,7 +1486,7 @@ const DataProductPage = () => {
                                 calculation: edgeInfo.calculation
                             },
                             style: { 
-                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
                                 strokeWidth: 2 
                             }
                         };
@@ -1507,7 +1506,7 @@ const DataProductPage = () => {
                                 calculation: edgeInfo.calculation
                             },
                             style: { 
-                                stroke: edgeInfo.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6', 
+                                stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
                                 strokeWidth: 2 
                             }
                         };
@@ -2097,30 +2096,41 @@ const DataProductPage = () => {
                     // Iterate through each dependency in the map
                     Object.keys(suggestion.dependencyMap).forEach(dependentEntityKey => {
                         const connections = suggestion.dependencyMap[dependentEntityKey];
+                        console.log(`Processing dependency ${suggestion.entityName} -> ${dependentEntityKey} with ${connections.length} connections`);
                         
-                        // Find the source node (dependent entity)
+                        // Extract type and name from the full entity key
+                        const depEntityType = dependentEntityKey.split('_')[0];
+                        const depEntityName = dependentEntityKey.substring(depEntityType.length + 1);
+                        
+                        // Find the source node (dependent entity) - must match both type and name
                         const sourceNode = allNodesForMapping.find(n => {
                             const nodeEntityKey = `${n.data.tableType}_${n.data.tableName}`;
+                            // Check if node's entity key exactly matches the dependency entity key
                             return nodeEntityKey === dependentEntityKey || 
                                    n.data.entityKey === dependentEntityKey ||
-                                   n.data.tableName === dependentEntityKey.replace(/^(BASE_|CTE_|VIEW_)/, '');
+                                   (n.data.tableType === depEntityType && n.data.tableName === depEntityName);
                         });
                         
                         if (sourceNode) {
                             // Create edges for each connection detail
                             connections.forEach(conn => {
-                                // Verify source node has the required field
-                                const hasSourceField = sourceNode.data.fields.some(f => f.name === conn.sourceField);
+                                // Case-insensitive field lookup for robustness
+                                const sourceFieldActual = sourceNode.data.fields.find(f => 
+                                    f.name.toLowerCase() === conn.sourceField.toLowerCase()
+                                );
+                                const targetFieldActual = newNode.data.fields.find(f => 
+                                    f.name.toLowerCase() === conn.targetField.toLowerCase()
+                                );
                                 
-                                if (hasSourceField) {
-                                    const edgeColor = conn.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+                                if (sourceFieldActual && targetFieldActual) {
+                                    const edgeColor = conn.connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
                                     
                                     newEdges.push({
-                                        id: `e-${sourceNode.id}-${newNodeId}-${conn.targetField}-${conn.sourceField}-${Date.now()}-${Math.random()}`,
+                                        id: `e-${sourceNode.id}-${newNodeId}-${targetFieldActual.name}-${sourceFieldActual.name}-${Date.now()}-${Math.random()}`,
                                         source: sourceNode.id,
                                         target: newNodeId,
-                                        sourceHandle: `${conn.sourceField}-source`,
-                                        targetHandle: `${conn.targetField}-target`,
+                                        sourceHandle: `${sourceFieldActual.name}-source`,
+                                        targetHandle: `${targetFieldActual.name}-target`,
                                         type: 'smoothstep',
                                         animated: true,
                                         style: { strokeWidth: 2, stroke: edgeColor },
@@ -2133,23 +2143,28 @@ const DataProductPage = () => {
                                         data: {
                                             connectionType: conn.connectionType,
                                             calculation: conn.calculation || '',
-                                            sourceField: conn.sourceField,
-                                            targetField: conn.targetField
+                                            sourceField: sourceFieldActual.name,
+                                            targetField: targetFieldActual.name
                                         }
                                     });
                                 } else {
-                                    console.warn(`Field ${conn.sourceField} not found in source node ${sourceNode.data.tableName}`);
+                                    console.debug(`Skipping edge: source field "${conn.sourceField}" exists=${!!sourceFieldActual}, target field "${conn.targetField}" exists=${!!targetFieldActual}`);
                                 }
                             });
                         } else {
-                            console.warn(`Source node not found for dependency ${dependentEntityKey}`);
+                            console.debug(`Source node not found for dependency ${dependentEntityKey} - skipping edge creation`);
                         }
                     });
                 }
 
                 // Add edges to state
                 if (newEdges.length > 0) {
-                    setEdges((currentEdges) => [...currentEdges, ...newEdges]);
+                    setEdges((currentEdges) => {
+                        // Filter out duplicate edges to prevent duplicates
+                        const edgeIds = new Set(currentEdges.map(e => e.id));
+                        const uniqueNewEdges = newEdges.filter(e => !edgeIds.has(e.id));
+                        return [...currentEdges, ...uniqueNewEdges];
+                    });
                 }
 
                 return updatedNodes;
@@ -2251,7 +2266,7 @@ const DataProductPage = () => {
                         const hasTargetField = targetNode.data.fields.some(f => f.name === conn.targetField);
                         
                         if (hasSourceField && hasTargetField) {
-                            const edgeColor = conn.connectionType === 'calculation' ? '#8b5cf6' : '#3b82f6';
+                            const edgeColor = conn.connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
                             
                             newEdges.push({
                                 id: `e-${newNodeId}-${targetNode.id}-${conn.sourceField}-${conn.targetField}-${Date.now()}-${Math.random()}`,
@@ -2267,8 +2282,7 @@ const DataProductPage = () => {
                                     width: 20,
                                     height: 20,
                                     color: edgeColor
-                                },
-                                label: conn.connectionType === 'calculation' ? 'calc' : 'ref'
+                                }
                             });
                         }
                     });
@@ -2932,7 +2946,6 @@ const DataProductPage = () => {
             {showSuggestDialog && (
                 <SuggestionDialog
                     suggestions={suggestions}
-                    suggestionsLevel2={suggestionsLevel2}
                     onAddSuggestion={handleAddSuggestedEntity}
                     onClose={() => setShowSuggestDialog(false)}
                     nodesCount={nodes.length}
