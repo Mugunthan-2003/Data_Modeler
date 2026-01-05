@@ -819,7 +819,7 @@ const DataProductPage = () => {
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
-    const onDrop = useCallback((event) => {
+    const onDrop = useCallback(async (event) => {
         event.preventDefault();
 
         const tableData = event.dataTransfer.getData('application/reactflow');
@@ -836,8 +836,8 @@ const DataProductPage = () => {
             y: event.clientY,
         });
 
-        // Add the table at the drop position
-        addTableToCanvas(tableName, tableType, position);
+        // Add the table at the drop position (pass empty array for fields, then position)
+        await addTableToCanvas(tableName, tableType, [], position);
     }, [reactFlowInstance]);
 
     const onPaneClick = useCallback(() => {
@@ -1642,7 +1642,7 @@ const DataProductPage = () => {
         }, 100);
     }, [setNodes, setEdges, showReverseDepsDialog, selectedEntityForReverseDeps, showSuggestDialog, nodes]);
 
-    const addTableToCanvas = (tableName, tableType = 'BASE', fields = [], customPosition = null) => {
+    const addTableToCanvas = async (tableName, tableType = 'BASE', fields = [], customPosition = null) => {
         // Check if entity already exists on canvas (by name AND type)
         const entityExists = nodes.some(n => 
             n.data.tableName === tableName && n.data.tableType === tableType
@@ -1652,11 +1652,56 @@ const DataProductPage = () => {
             alert(`Entity "${tableName}" (${tableType}) already exists on canvas!`);
             return false;
         }
+
+        let table = tableMetadata[tableName];
         
-        const table = tableMetadata[tableName];
+        // If metadata for this table is not available, try to load it
+        if (!table && selectedFileIds && selectedFileIds.length > 0) {
+            // Load metadata from all selected files
+            for (const fileId of selectedFileIds) {
+                try {
+                    const fileData = await getFile(fileId);
+                    if (fileData && fileData.data && fileData.data.entities) {
+                        for (const entityName in fileData.data.entities) {
+                            // Check if this is the table we're looking for
+                            if (entityName === `${tableType}_${tableName}` || entityName === `BASE_${tableName}` || entityName === `VIEW_${tableName}` || entityName === `CTE_${tableName}`) {
+                                const entity = fileData.data.entities[entityName];
+                                const fields_list = [];
+                                if (entity.fields) {
+                                    for (const fieldName in entity.fields) {
+                                        const field = entity.fields[fieldName];
+                                        fields_list.push({
+                                            name: fieldName,
+                                            type: field.type || 'unknown'
+                                        });
+                                    }
+                                }
+                                table = {
+                                    name: tableName,
+                                    type: tableType,
+                                    fields: fields_list
+                                };
+                                // Also update the state for future use
+                                setTableMetadata(prev => ({
+                                    ...prev,
+                                    [tableName]: table
+                                }));
+                                break;
+                            }
+                        }
+                        if (table) break;
+                    }
+                } catch (error) {
+                    console.error(`Error loading metadata for file ${fileId}:`, error);
+                }
+            }
+        }
+        
         // Use type from metadata if available, otherwise use passed tableType
         const actualType = table?.type || tableType;
-        const finalFields = fields.length > 0 ? fields : (table?.fields || []);
+        
+        // Prefer passed fields, then check metadata, then use empty array
+        const finalFields = (fields && fields.length > 0) ? fields : (table?.fields || []);
 
         const newNode = {
             id: `table-${Date.now()}`,
@@ -1684,13 +1729,13 @@ const DataProductPage = () => {
         return true;
     };
 
-    const handleCreateNewTable = () => {
+    const handleCreateNewTable = async () => {
         if (!newTableName.trim()) {
             alert("Please enter a table name");
             return;
         }
 
-        addTableToCanvas(newTableName, newTableType, []);
+        await addTableToCanvas(newTableName, newTableType, []);
         setCustomTables(prev => ({
             ...prev,
             [newTableType]: [...prev[newTableType], newTableName]
