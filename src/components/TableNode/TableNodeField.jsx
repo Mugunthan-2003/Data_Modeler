@@ -105,11 +105,6 @@ const TableNodeField = ({
                     alignItems: "center",
                     gap: "4px",
                 }}
-                onClick={(e) => {
-                    if (!data.isEditing && !isEditing) {
-                        onFieldClick?.(field.name, field);
-                    }
-                }}
             >
                 {isEditing ? (
                     <TableNodeFieldEditor
@@ -122,6 +117,20 @@ const TableNodeField = ({
                     />
                 ) : (
                     <span
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isEditing) {
+                                // Single click: open calculation editor
+                                onFieldClick?.(field.name, field);
+                            }
+                        }}
+                        onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            if (!data.isEditing && !isEditing) {
+                                // Double click: edit field name
+                                setEditingField(field.name);
+                            }
+                        }}
                         style={{
                             color: field.calculation ? "#333" : "inherit",
                             fontWeight: isSelected
@@ -131,6 +140,7 @@ const TableNodeField = ({
                                 : "normal",
                             flex: 1,
                             cursor: data.isEditing ? "default" : "pointer",
+                            userSelect: "none",
                         }}
                     >
                         {field.name}

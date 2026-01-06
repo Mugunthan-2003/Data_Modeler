@@ -370,6 +370,7 @@ const FileListPage = () => {
         const allEntities = {};
         const allBaseTables = new Set();
         const allViewTables = new Set();
+        const allCteTables = new Set();
 
         for (const file of selectedFileList) {
             try {
@@ -382,7 +383,7 @@ const FileListPage = () => {
             }
         }
 
-        // Extract distinct BASE and VIEW tables (exclude CTEs)
+        // Extract distinct BASE, VIEW, and CTE tables
         for (const entityName in allEntities) {
             if (entityName.startsWith('BASE_')) {
                 const baseName = entityName.replace('BASE_', '');
@@ -390,16 +391,24 @@ const FileListPage = () => {
             } else if (entityName.startsWith('VIEW_')) {
                 const viewName = entityName.replace('VIEW_', '');
                 allViewTables.add(viewName);
+            } else if (entityName.startsWith('CTE_')) {
+                const cteName = entityName.replace('CTE_', '');
+                allCteTables.add(cteName);
             }
-            // Skip CTE_ entities - they won't be listed
         }
 
         const distinctData = {
             baseTables: Array.from(allBaseTables).sort(),
-            viewTables: Array.from(allViewTables).sort()
+            viewTables: Array.from(allViewTables).sort(),
+            cteTables: Array.from(allCteTables).sort()
         };
 
-        setDistinctTables([...distinctData.baseTables, ...distinctData.viewTables]);
+        const tablesWithTypes = [
+            ...distinctData.baseTables.map(name => ({ name, type: 'BASE' })),
+            ...distinctData.viewTables.map(name => ({ name, type: 'VIEW' })),
+            ...distinctData.cteTables.map(name => ({ name, type: 'CTE' }))
+        ];
+        setDistinctTables(tablesWithTypes);
         setDrawerOpen(true);
     };
 
@@ -1471,32 +1480,53 @@ const FileListPage = () => {
                                         gap: "8px",
                                     }}
                                 >
-                                    {distinctTables.map((table, index) => (
+                                    {distinctTables.map((table, index) => {
+                                        const typeColor = table.type === 'BASE' 
+                                            ? { bg: '#eff6ff', border: '#3b82f6', text: '#3b82f6' }
+                                            : table.type === 'VIEW'
+                                            ? { bg: '#d1fae5', border: '#10b981', text: '#10b981' }
+                                            : { bg: '#f3e8ff', border: '#8b5cf6', text: '#8b5cf6' };
+                                        return (
                                         <div
                                             key={index}
                                             style={{
                                                 padding: "16px",
                                                 background: "#f9fafb",
-                                                border: "1px solid #e5e7eb",
+                                                border: `2px solid ${typeColor.border}`,
                                                 borderRadius: "8px",
                                                 fontSize: "14px",
                                                 fontWeight: 500,
                                                 color: "#1f2937",
                                                 transition: "all 200ms ease",
                                                 cursor: "pointer",
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
                                             }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = "#eff6ff";
-                                                e.currentTarget.style.borderColor = "#3b82f6";
+                                                e.currentTarget.style.background = typeColor.bg;
+                                                e.currentTarget.style.transform = "translateX(-2px)";
+                                                e.currentTarget.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
                                             }}
                                             onMouseLeave={(e) => {
                                                 e.currentTarget.style.background = "#f9fafb";
-                                                e.currentTarget.style.borderColor = "#e5e7eb";
+                                                e.currentTarget.style.transform = "translateX(0)";
+                                                e.currentTarget.style.boxShadow = "none";
                                             }}
                                         >
-                                            {table}
+                                            <span>{table.name}</span>
+                                            <span style={{
+                                                fontSize: "11px",
+                                                fontWeight: 600,
+                                                padding: "4px 8px",
+                                                borderRadius: "4px",
+                                                background: typeColor.bg,
+                                                color: typeColor.text,
+                                            }}>
+                                                {table.type}
+                                            </span>
                                         </div>
-                                    ))}
+                                    );})}
                                 </div>
                             )}
                         </div>
@@ -1535,7 +1565,7 @@ const FileListPage = () => {
                                 onClick={() => {
                                     navigate("/data-product", {
                                         state: {
-                                            distinctTables: distinctTables,
+                                            distinctTables: distinctTables.map(t => t.name),
                                             selectedFileIds: Array.from(selectedFiles)
                                         }
                                     });

@@ -9,6 +9,7 @@ const DataProductSidebar = ({
     onSearchChange,
     fileBaseTables,
     fileViewTables,
+    fileCteTables = [],
     customTables,
     onAddTable,
     tableMetadata,
@@ -108,7 +109,7 @@ const DataProductSidebar = ({
                             {activeTab === 'BASE' && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                     {filterTables(fileBaseTables).map((table) => {
-                                        const fieldCount = tableMetadata[table]?.fields?.length || 0;
+                                        const fieldCount = tableMetadata[`BASE_${table}`]?.fields?.length || 0;
                                         const onCanvas = isOnCanvas(table, 'BASE');
                                         return (
                                             <button
@@ -181,8 +182,8 @@ const DataProductSidebar = ({
 
                             {activeTab === 'CTE' && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                    {filterTables(customTables.CTE).map((table) => {
-                                        const fieldCount = tableMetadata[table]?.fields?.length || 0;
+                                    {filterTables([...fileCteTables, ...customTables.CTE]).map((table) => {
+                                        const fieldCount = tableMetadata[`CTE_${table}`]?.fields?.length || 0;
                                         const onCanvas = isOnCanvas(table, 'CTE');
                                         return (
                                             <button
@@ -245,7 +246,7 @@ const DataProductSidebar = ({
                                             </button>
                                         );
                                     })}
-                                    {filterTables(customTables.CTE).length === 0 && (
+                                    {filterTables([...fileCteTables, ...customTables.CTE]).length === 0 && (
                                         <div style={{ textAlign: "center", color: "#9ca3af", fontSize: "13px", padding: "20px" }}>
                                             No CTE tables found
                                         </div>
@@ -256,7 +257,7 @@ const DataProductSidebar = ({
                             {activeTab === 'VIEW' && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                     {filterTables(fileViewTables).map((table) => {
-                                        const fieldCount = tableMetadata[table]?.fields?.length || 0;
+                                        const fieldCount = tableMetadata[`VIEW_${table}`]?.fields?.length || 0;
                                         const onCanvas = isOnCanvas(table, 'VIEW');
                                         return (
                                             <button

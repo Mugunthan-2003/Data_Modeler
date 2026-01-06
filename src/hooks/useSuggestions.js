@@ -92,8 +92,6 @@ export const useSuggestions = () => {
                     const totalReferencedEntities = referencedEntities.size + missingReferencedEntities.size;
                     const coveragePercent = Math.round((referencedEntities.size / totalReferencedEntities) * 100);
                     
-                    console.log(`Suggestion ${entityKey}: dependencyMap keys = [${Object.keys(dependencyMap).join(', ')}]`);
-                    
                     const missingEntitiesWithTypes = Array.from(missingReferencedEntities).map(fullKey => {
                         const type = fullKey.match(/^(BASE|CTE|VIEW)_/) ? fullKey.match(/^(BASE|CTE|VIEW)_/)[1] : 'BASE';
                         const name = fullKey.replace(/^(BASE_|CTE_|VIEW_)/, '');

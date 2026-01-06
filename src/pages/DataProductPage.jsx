@@ -63,7 +63,7 @@ const TableNode = memo(({ data, id }) => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '4px' }}>
-                    {(data.tableType === 'BASE' || data.tableType === 'CTE' || data.tableType === 'VIEW') && (
+                    {(data.tableType === 'CTE' || data.tableType === 'VIEW') && (
                         <>
                             <button
                                 onClick={(e) => {
@@ -80,9 +80,9 @@ const TableNode = memo(({ data, id }) => {
                                     fontSize: '11px',
                                     fontWeight: 600
                                 }}
-                                title="Show downstream dependencies (entities this depends on)"
+                                title="Show downstream dependency entities"
                             >
-                                ⬆ Deps
+                                ← Deps
                             </button>
                         </>
                     )}
@@ -274,9 +274,11 @@ const TableNode = memo(({ data, id }) => {
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        data.onTogglePK(id, field.name);
+                                        if (data.onFieldClick) {
+                                            data.onFieldClick(field.name, field);
+                                        }
                                     }}
-                                    title="Click to toggle Primary Key"
+                                    title="Click to edit calculation"
                                 >
                                     {field.name} 
                                     {field.isPK && (
@@ -344,6 +346,7 @@ const DataProductPage = () => {
     const [tableMetadata, setTableMetadata] = useState({});
     const [fileBaseTables, setFileBaseTables] = useState([]);
     const [fileViewTables, setFileViewTables] = useState([]);
+    const [fileCteTables, setFileCteTables] = useState([]);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [selectedEdge, setSelectedEdge] = useState(null);
     const [showCreateTableDialog, setShowCreateTableDialog] = useState(false);
@@ -456,6 +459,7 @@ const DataProductPage = () => {
         const metadata = {};
         const baseTables = new Set();
         const viewTables = new Set();
+        const cteTables = new Set();
         const combinedEntities = {};
         
         for (const fileId of selectedFileIds) {
@@ -471,8 +475,9 @@ const DataProductPage = () => {
                             const baseName = entityName.replace('BASE_', '');
                             baseTables.add(baseName);
                             const entity = fileData.data.entities[entityName];
-                            if (!metadata[baseName]) {
-                                metadata[baseName] = {
+                            const metadataKey = `BASE_${baseName}`;
+                            if (!metadata[metadataKey]) {
+                                metadata[metadataKey] = {
                                     name: baseName,
                                     type: 'BASE',
                                     fields: []
@@ -481,10 +486,12 @@ const DataProductPage = () => {
                             if (entity.fields) {
                                 for (const fieldName in entity.fields) {
                                     const field = entity.fields[fieldName];
-                                    if (!metadata[baseName].fields.some(f => f.name === fieldName)) {
-                                        metadata[baseName].fields.push({
+                                    if (!metadata[metadataKey].fields.some(f => f.name === fieldName)) {
+                                        metadata[metadataKey].fields.push({
                                             name: fieldName,
-                                            type: field.type || 'unknown'
+                                            type: field.type || 'unknown',
+                                            ref: field.ref || null,
+                                            calculation: field.calculation || null
                                         });
                                     }
                                 }
@@ -495,8 +502,9 @@ const DataProductPage = () => {
                             const viewName = entityName.replace('VIEW_', '');
                             viewTables.add(viewName);
                             const entity = fileData.data.entities[entityName];
-                            if (!metadata[viewName]) {
-                                metadata[viewName] = {
+                            const metadataKey = `VIEW_${viewName}`;
+                            if (!metadata[metadataKey]) {
+                                metadata[metadataKey] = {
                                     name: viewName,
                                     type: 'VIEW',
                                     fields: []
@@ -505,16 +513,44 @@ const DataProductPage = () => {
                             if (entity.fields) {
                                 for (const fieldName in entity.fields) {
                                     const field = entity.fields[fieldName];
-                                    if (!metadata[viewName].fields.some(f => f.name === fieldName)) {
-                                        metadata[viewName].fields.push({
+                                    if (!metadata[metadataKey].fields.some(f => f.name === fieldName)) {
+                                        metadata[metadataKey].fields.push({
                                             name: fieldName,
-                                            type: field.type || 'unknown'
+                                            type: field.type || 'unknown',
+                                            ref: field.ref || null,
+                                            calculation: field.calculation || null
                                         });
                                     }
                                 }
                             }
                         }
-                        // Skip CTE_ entities - they won't be listed from files
+                        // Process CTE tables
+                        else if (entityName.startsWith('CTE_')) {
+                            const cteName = entityName.replace('CTE_', '');
+                            cteTables.add(cteName);
+                            const entity = fileData.data.entities[entityName];
+                            const metadataKey = `CTE_${cteName}`;
+                            if (!metadata[metadataKey]) {
+                                metadata[metadataKey] = {
+                                    name: cteName,
+                                    type: 'CTE',
+                                    fields: []
+                                };
+                            }
+                            if (entity.fields) {
+                                for (const fieldName in entity.fields) {
+                                    const field = entity.fields[fieldName];
+                                    if (!metadata[metadataKey].fields.some(f => f.name === fieldName)) {
+                                        metadata[metadataKey].fields.push({
+                                            name: fieldName,
+                                            type: field.type || 'unknown',
+                                            ref: field.ref || null,
+                                            calculation: field.calculation || null
+                                        });
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             } catch (error) {
@@ -525,6 +561,7 @@ const DataProductPage = () => {
         setTableMetadata(metadata);
         setFileBaseTables(Array.from(baseTables).sort());
         setFileViewTables(Array.from(viewTables).sort());
+        setFileCteTables(Array.from(cteTables).sort());
 
         // Expose merged entities for suggestion/reverse-deps when creating a new data product
         if (Object.keys(combinedEntities).length > 0) {
@@ -676,7 +713,9 @@ const DataProductPage = () => {
                                 name: fieldName,
                                 type: entity.fields[fieldName].type || 'unknown',
                                 attributeMode,
-                                isPK: entity.fields[fieldName].isPK || false
+                                isPK: entity.fields[fieldName].isPK || false,
+                                calculation: entity.fields[fieldName].calculation || null,
+                                ref: entity.fields[fieldName].ref || null
                             });
                         }
                     }
@@ -698,6 +737,7 @@ const DataProductPage = () => {
                             onShowReverseDeps: handleShowReverseDeps,
                             onToggleFieldSelection: handleToggleFieldSelection,
                             onOpenSettings: handleOpenSettings,
+                            onFieldClick: handleFieldClick,
                             selectedFields: []
                         }
                     });
@@ -882,13 +922,6 @@ const DataProductPage = () => {
             setSelectedEdgeDetails(prev => prev ? { ...prev, data: { ...prev.data, connectionType: newType } } : null);
         }
         setShowConnectionTypeDialog(false);
-        
-        // Open calculation dialog if calculation type is selected
-        if (newType === 'calculation') {
-            const edge = selectedEdgeDetails;
-            setCalculationExpression(edge?.data?.calculation || '');
-            setShowCalculationDialog(true);
-        }
     }, [selectedEdge, selectedEdgeDetails, setEdges]);
 
     const handleSaveCalculation = useCallback(() => {
@@ -916,6 +949,30 @@ const DataProductPage = () => {
             setShowCalculationDialog(true);
         }
     }, [selectedEdgeDetails]);
+
+    const handleFieldClick = useCallback((fieldName, field) => {
+        // Open the calculation dialog when a field is clicked
+        // Try to get calculation from field object first
+        let expression = '';
+        if (field?.calculation?.expression) {
+            expression = field.calculation.expression;
+        } else if (sourceDataProduct) {
+            // Fallback: search through source data product for this field's calculation
+            for (const entityKey in sourceDataProduct.entities) {
+                const entity = sourceDataProduct.entities[entityKey];
+                if (entity.fields && entity.fields[fieldName]) {
+                    const fieldData = entity.fields[fieldName];
+                    if (fieldData.calculation?.expression) {
+                        expression = fieldData.calculation.expression;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        setCalculationExpression(expression);
+        setShowCalculationDialog(true);
+    }, [sourceDataProduct]);
 
     // Keyboard shortcut for delete
     useEffect(() => {
@@ -1134,7 +1191,8 @@ const DataProductPage = () => {
                 onAddField: handleAddField,
                 onRemoveField: handleRemoveField,
                 onTogglePK: handleTogglePK,
-                onToggleFieldSelection: handleToggleFieldSelection
+                onToggleFieldSelection: handleToggleFieldSelection,
+                onFieldClick: handleFieldClick
             }
         };
         
@@ -1378,7 +1436,8 @@ const DataProductPage = () => {
                 onAddField: handleAddField,
                 onRemoveField: handleRemoveField,
                 onTogglePK: handleTogglePK,
-                onToggleFieldSelection: handleToggleFieldSelection
+                onToggleFieldSelection: handleToggleFieldSelection,
+                onFieldClick: handleFieldClick
             }
         };
         
@@ -1652,7 +1711,7 @@ const DataProductPage = () => {
             return false;
         }
 
-        let table = tableMetadata[tableName];
+        let table = tableMetadata[`${tableType}_${tableName}`];
         
         // If metadata for this table is not available, try to load it
         if (!table && selectedFileIds && selectedFileIds.length > 0) {
@@ -1662,8 +1721,10 @@ const DataProductPage = () => {
                     const fileData = await getFile(fileId);
                     if (fileData && fileData.data && fileData.data.entities) {
                         for (const entityName in fileData.data.entities) {
-                            // Check if this is the table we're looking for
-                            if (entityName === `${tableType}_${tableName}` || entityName === `BASE_${tableName}` || entityName === `VIEW_${tableName}` || entityName === `CTE_${tableName}`) {
+                            // Look for exact entity key match with the provided tableType
+                            const expectedEntityKey = `${tableType}_${tableName}`;
+                            
+                            if (entityName === expectedEntityKey) {
                                 const entity = fileData.data.entities[entityName];
                                 const fields_list = [];
                                 if (entity.fields) {
@@ -1671,7 +1732,9 @@ const DataProductPage = () => {
                                         const field = entity.fields[fieldName];
                                         fields_list.push({
                                             name: fieldName,
-                                            type: field.type || 'unknown'
+                                            type: field.type || 'unknown',
+                                            calculation: field.calculation || null,
+                                            ref: field.ref || null
                                         });
                                     }
                                 }
@@ -1720,6 +1783,7 @@ const DataProductPage = () => {
                 onShowReverseDeps: handleShowReverseDeps,
                 onToggleFieldSelection: handleToggleFieldSelection,
                 onOpenSettings: handleOpenSettings,
+                onFieldClick: handleFieldClick,
                 selectedFields: []
             }
         };
@@ -1878,6 +1942,8 @@ const DataProductPage = () => {
             // Now find what entities the selected entity depends on (downstream dependencies)
             const requiredEntities = new Map(); // Map of entityKey -> {connections: [], entityType}
             const canvasEntityKeys = new Set(nodes.map(n => `${n.data.tableType}_${n.data.tableName}`));
+            const missingEntities = []; // Track entities that are referenced but don't exist
+            const skippedOnCanvas = []; // Track entities that are already on canvas
 
             // Analyze all fields of the selected entity to find its dependencies
             const entityFields = Object.keys(selectedEntityData.fields || {});
@@ -1889,9 +1955,21 @@ const DataProductPage = () => {
                     if (refs && Array.isArray(refs)) {
                         refs.forEach(refPath => {
                             const [refEntity, refField] = refPath.split('.');
+                            
                             if (refEntity && refField && refEntity !== entityKey) {
-                                // Skip if already on canvas
-                                if (canvasEntityKeys.has(refEntity)) return;
+                                // Check if already on canvas
+                                if (canvasEntityKeys.has(refEntity)) {
+                                    skippedOnCanvas.push(refEntity);
+                                    return;
+                                }
+                                
+                                // Check if entity exists in source data
+                                if (!entities[refEntity]) {
+                                    if (!missingEntities.includes(refEntity)) {
+                                        missingEntities.push(refEntity);
+                                    }
+                                    return;
+                                }
                                 
                                 if (!requiredEntities.has(refEntity)) {
                                     requiredEntities.set(refEntity, {
@@ -2026,6 +2104,7 @@ const DataProductPage = () => {
                                 onShowReverseDeps: handleShowReverseDeps,
                                 onToggleFieldSelection: handleToggleFieldSelection,
                                 onOpenSettings: handleOpenSettings,
+                                onFieldClick: handleFieldClick,
                                 selectedFields: []
                             }
                         };
@@ -2080,6 +2159,7 @@ const DataProductPage = () => {
                     onShowReverseDeps: handleShowReverseDeps,
                     onToggleFieldSelection: handleToggleFieldSelection,
                     onOpenSettings: handleOpenSettings,
+                    onFieldClick: handleFieldClick,
                     selectedFields: []
                 }
             };
@@ -2096,7 +2176,6 @@ const DataProductPage = () => {
                     // Iterate through each dependency in the map
                     Object.keys(suggestion.dependencyMap).forEach(dependentEntityKey => {
                         const connections = suggestion.dependencyMap[dependentEntityKey];
-                        console.log(`Processing dependency ${suggestion.entityName} -> ${dependentEntityKey} with ${connections.length} connections`);
                         
                         // Extract type and name from the full entity key
                         const depEntityType = dependentEntityKey.split('_')[0];
@@ -2243,6 +2322,7 @@ const DataProductPage = () => {
                     onShowReverseDeps: handleShowReverseDeps,
                     onToggleFieldSelection: handleToggleFieldSelection,
                     onOpenSettings: handleOpenSettings,
+                    onFieldClick: handleFieldClick,
                     selectedFields: []
                 }
             };
@@ -2621,6 +2701,43 @@ const DataProductPage = () => {
                     
                     <button
                         onClick={() => {
+                            // Build reverse relationships: store incoming edges on target fields
+                            const fieldEdgeMap = {}; // Maps "entity.field" to {relationships, calculation}
+                            
+                            edges.forEach(edge => {
+                                const sourceNode = nodes.find(n => n.id === edge.source);
+                                const targetNode = nodes.find(n => n.id === edge.target);
+                                
+                                if (sourceNode && targetNode) {
+                                    const sourceFieldName = edge.sourceHandle?.replace('-source', '');
+                                    const targetFieldName = edge.targetHandle?.replace('-target', '');
+                                    
+                                    // Store relationship on TARGET field instead of source
+                                    const targetKey = `${targetNode.data.tableType}_${targetNode.data.tableName}.${targetFieldName}`;
+                                    
+                                    if (!fieldEdgeMap[targetKey]) {
+                                        fieldEdgeMap[targetKey] = {
+                                            relationships: [],
+                                            calculation: null
+                                        };
+                                    }
+                                    
+                                    const relationshipObj = {
+                                        sourceEntity: sourceNode.data.tableName,
+                                        sourceType: sourceNode.data.tableType,
+                                        sourceField: sourceFieldName,
+                                        type: edge.data?.connectionType || 'reference'
+                                    };
+                                    
+                                    // Store calculation in target field if it's a calculation edge
+                                    if (edge.data?.connectionType === 'calculation' && edge.data?.calculation) {
+                                        fieldEdgeMap[targetKey].calculation = edge.data.calculation;
+                                    }
+                                    
+                                    fieldEdgeMap[targetKey].relationships.push(relationshipObj);
+                                }
+                            });
+                            
                             const dataProduct = {
                                 name: currentDataProductName,
                                 tables: nodes.map(node => {
@@ -2633,9 +2750,28 @@ const DataProductPage = () => {
                                         type: node.data.tableType,
                                         fields: node.data.fields.map(field => {
                                             const fieldObj = { name: field.name };
+                                            
+                                            // Add original calculation first (takes priority)
                                             if (field.calculation) {
                                                 fieldObj.calculation = field.calculation;
                                             }
+                                            
+                                            // Add original ref if it exists
+                                            if (field.ref) {
+                                                fieldObj.ref = field.ref;
+                                            }
+                                            
+                                            // Add incoming relationships (stored on target field)
+                                            const fieldKey = `${node.data.tableType}_${node.data.tableName}.${field.name}`;
+                                            if (fieldEdgeMap[fieldKey]) {
+                                                // If incoming edge has calculation and field doesn't, use edge calculation
+                                                if (!fieldObj.calculation && fieldEdgeMap[fieldKey].calculation) {
+                                                    fieldObj.calculation = fieldEdgeMap[fieldKey].calculation;
+                                                }
+                                                
+                                                fieldObj.relationships = fieldEdgeMap[fieldKey].relationships;
+                                            }
+                                            
                                             return fieldObj;
                                         })
                                     };
@@ -2645,22 +2781,6 @@ const DataProductPage = () => {
                                     }
                                     
                                     return table;
-                                }),
-                                relationships: edges.map(edge => {
-                                    const rel = {
-                                        from: {
-                                            entity: nodes.find(n => n.id === edge.source)?.data.tableName,
-                                            field: edge.sourceHandle?.replace('-source', '')
-                                        },
-                                        to: {
-                                            entity: nodes.find(n => n.id === edge.target)?.data.tableName,
-                                            field: edge.targetHandle?.replace('-target', '')
-                                        }
-                                    };
-                                    if (edge.data?.connectionType === 'calculation' && edge.data?.calculation) {
-                                        rel.calculation = edge.data.calculation;
-                                    }
-                                    return rel;
                                 })
                             };
                             setExportJson(JSON.stringify(dataProduct, null, 2));
@@ -2738,6 +2858,7 @@ const DataProductPage = () => {
                     onSearchChange={setSidebarSearchQuery}
                     fileBaseTables={fileBaseTables}
                     fileViewTables={fileViewTables}
+                    fileCteTables={fileCteTables}
                     customTables={customTables}
                     onAddTable={addTableToCanvas}
                     tableMetadata={tableMetadata}
@@ -2848,37 +2969,6 @@ const DataProductPage = () => {
                                 <FiEdit2 size={16} />
                                 Change Type
                             </button>
-                            {selectedEdgeDetails?.data?.connectionType === 'calculation' && (
-                                <button
-                                    onClick={handleEditCalculation}
-                                    style={{
-                                        background: "#8b5cf6",
-                                        border: "none",
-                                        borderRadius: "8px",
-                                        padding: "10px 16px",
-                                        cursor: "pointer",
-                                        fontSize: "13px",
-                                        fontWeight: 600,
-                                        color: "white",
-                                        boxShadow: "0 4px 8px rgba(139, 92, 246, 0.3)",
-                                        transition: "all 200ms ease",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.background = "#7c3aed";
-                                        e.target.style.transform = "scale(1.05)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.background = "#8b5cf6";
-                                        e.target.style.transform = "scale(1)";
-                                    }}
-                                >
-                                    <FiEdit2 size={16} />
-                                    Edit Calculation
-                                </button>
-                            )}
                             <button
                                 onClick={deleteSelectedEdge}
                                 style={{
@@ -4351,7 +4441,7 @@ const DataProductPage = () => {
                                 marginBottom: "24px",
                             }}
                         >
-                            Select the type of relationship. Colors indicate: <span style={{ color: "#3b82f6", fontWeight: 600 }}>Blue</span> for Reference, <span style={{ color: "#8b5cf6", fontWeight: 600 }}>Purple</span> for Calculation.
+                            Select the type of relationship. Colors indicate: <span style={{ color: "#ef4444", fontWeight: 600 }}>Red</span> for Reference, <span style={{ color: "#3b82f6", fontWeight: 600 }}>Blue</span> for Calculation.
                         </p>
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
                             <button
@@ -4379,10 +4469,10 @@ const DataProductPage = () => {
                                 }}
                             >
                                 <div style={{ fontSize: "16px", fontWeight: 600, color: "#1f2937", marginBottom: "4px" }}>
-                                    Reference (PK → FK)
+                                    Direct Reference
                                 </div>
                                 <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                                    Standard foreign key relationship between tables
+                                    Directly projected attribute from source to target
                                 </div>
                             </button>
                             <button
