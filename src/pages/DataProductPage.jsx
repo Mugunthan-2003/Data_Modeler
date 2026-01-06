@@ -2210,6 +2210,7 @@ const DataProductPage = () => {
                                 tableName: missingEntity.name,
                                 tableType: missingEntity.type,
                                 fields: missingFields,
+                                customTables: customTables,
                                 entityKey: missingEntity.fullKey, // Store full entity key for mapping
                                 onAddField: handleAddField,
                                 onRemoveField: handleRemoveField,
@@ -2235,10 +2236,10 @@ const DataProductPage = () => {
                                 setFileViewTables(prev => [...prev, missingEntity.name]);
                             }
                         } else if (missingEntity.type === 'CTE') {
-                            setCustomTables(prev => ({
-                                ...prev,
-                                CTE: [...prev.CTE, missingEntity.name]
-                            }));
+                            // Add to file-based CTEs, not custom tables
+                            if (!fileCteTables.includes(missingEntity.name)) {
+                                setFileCteTables(prev => [...prev, missingEntity.name]);
+                            }
                         }
                     }
                 }
@@ -2249,6 +2250,21 @@ const DataProductPage = () => {
                 name: fieldName,
                 type: 'VARCHAR'
             }));
+
+            // Add the main suggested entity to appropriate file-based table list
+            if (checkEntityType === 'BASE') {
+                if (!fileBaseTables.includes(checkEntityName)) {
+                    setFileBaseTables(prev => [...prev, checkEntityName]);
+                }
+            } else if (checkEntityType === 'VIEW') {
+                if (!fileViewTables.includes(checkEntityName)) {
+                    setFileViewTables(prev => [...prev, checkEntityName]);
+                }
+            } else if (checkEntityType === 'CTE') {
+                if (!fileCteTables.includes(checkEntityName)) {
+                    setFileCteTables(prev => [...prev, checkEntityName]);
+                }
+            }
 
             // Add the suggested entity to canvas (use checkEntityType and checkEntityName from duplicate check above)
             
@@ -2265,6 +2281,7 @@ const DataProductPage = () => {
                     tableName: checkEntityName,
                     tableType: checkEntityType,
                     fields: entityFields,
+                    customTables: customTables,
                     entityKey: suggestion.entityName, // Store full entity key
                     onAddField: handleAddField,
                     onRemoveField: handleRemoveField,

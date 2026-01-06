@@ -221,7 +221,7 @@ const DataProductSidebar = ({
 
                             {activeTab === 'CTE' && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                    {filterTables([...fileCteTables, ...customTables.CTE]).map((table) => {
+                                    {filterTables([...new Set([...fileCteTables, ...customTables.CTE])]).map((table) => {
                                         const fieldCount = tableMetadata[`CTE_${table}`]?.fields?.length || 0;
                                         const onCanvas = isOnCanvas(table, 'CTE');
                                         return (
@@ -370,26 +370,6 @@ const DataProductSidebar = ({
                     </>
                 )}
             </div>
-
-            <button
-                onClick={onToggle}
-                style={{
-                    position: "absolute",
-                    left: isOpen ? "320px" : "0",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "white",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0 8px 8px 0",
-                    padding: "16px 8px",
-                    cursor: "pointer",
-                    boxShadow: "2px 0 4px rgba(0, 0, 0, 0.05)",
-                    transition: "left 300ms ease",
-                    zIndex: 10,
-                }}
-            >
-                {isOpen ? <FiChevronsLeft size={16} /> : <FiChevronsRight size={16} />}
-            </button>
 
             {showCreateDialog && (
                 <div style={{
