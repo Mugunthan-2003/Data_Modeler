@@ -1,3 +1,4 @@
+import React from 'react';
 import { FiSearch, FiChevronsLeft, FiChevronsRight, FiDatabase, FiPlus, FiCheckCircle } from "react-icons/fi";
 
 const DataProductSidebar = ({
@@ -13,8 +14,21 @@ const DataProductSidebar = ({
     customTables,
     onAddTable,
     tableMetadata,
-    canvasEntities = []
+    canvasEntities = [],
+    onCreateNewEntity
 }) => {
+    const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+    const [newEntityName, setNewEntityName] = React.useState('');
+    const [newEntityType, setNewEntityType] = React.useState('BASE');
+
+    const handleCreateEntity = () => {
+        if (newEntityName.trim()) {
+            onCreateNewEntity(newEntityName, newEntityType);
+            setNewEntityName('');
+            setNewEntityType('BASE');
+            setShowCreateDialog(false);
+        }
+    };
     const isOnCanvas = (tableName, tableType) => {
         return canvasEntities.some(entity => 
             entity.tableName === tableName && entity.tableType === tableType
@@ -44,9 +58,34 @@ const DataProductSidebar = ({
                 {isOpen && (
                     <>
                         <div style={{ padding: "16px", borderBottom: "1px solid #e5e7eb" }}>
-                            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#1f2937", margin: "0 0 16px 0" }}>
-                                Available Tables
-                            </h3>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#1f2937", margin: 0 }}>
+                                    Available Tables
+                                </h3>
+                                <button
+                                    onClick={() => setShowCreateDialog(true)}
+                                    style={{
+                                        padding: "6px 10px",
+                                        background: "#10b981",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "4px",
+                                        fontSize: "12px",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        transition: "all 200ms ease"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = "#059669"}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = "#10b981"}
+                                    title="Create new entity"
+                                >
+                                    <FiPlus size={14} />
+                                    New
+                                </button>
+                            </div>
                             
                             <div style={{ position: "relative", marginBottom: "12px" }}>
                                 <FiSearch
@@ -351,6 +390,144 @@ const DataProductSidebar = ({
             >
                 {isOpen ? <FiChevronsLeft size={16} /> : <FiChevronsRight size={16} />}
             </button>
+
+            {showCreateDialog && (
+                <div style={{
+                    position: "fixed",
+                    inset: 0,
+                    background: "rgba(0, 0, 0, 0.5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        background: "white",
+                        borderRadius: "8px",
+                        padding: "32px",
+                        maxWidth: "400px",
+                        width: "90%",
+                        boxShadow: "0 20px 25px rgba(0, 0, 0, 0.15)"
+                    }}>
+                        <h2 style={{ margin: "0 0 24px 0", fontSize: "18px", fontWeight: 600, color: "#1f2937" }}>
+                            Create New Entity
+                        </h2>
+
+                        <div style={{ marginBottom: "16px" }}>
+                            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
+                                Entity Name
+                            </label>
+                            <input
+                                type="text"
+                                value={newEntityName}
+                                onChange={(e) => setNewEntityName(e.target.value)}
+                                placeholder="e.g., MyTable"
+                                onKeyPress={(e) => e.key === 'Enter' && handleCreateEntity()}
+                                autoFocus
+                                style={{
+                                    width: "100%",
+                                    padding: "10px",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: "6px",
+                                    fontSize: "13px",
+                                    outline: "none",
+                                    boxSizing: "border-box"
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: "24px" }}>
+                            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
+                                Entity Type
+                            </label>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                                {['BASE', 'CTE', 'VIEW'].map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setNewEntityType(type)}
+                                        style={{
+                                            flex: 1,
+                                            padding: "10px",
+                                            border: `2px solid ${newEntityType === type 
+                                                ? (type === 'BASE' ? '#3b82f6' : type === 'CTE' ? '#8b5cf6' : '#10b981')
+                                                : '#e5e7eb'}`,
+                                            borderRadius: "6px",
+                                            background: newEntityType === type 
+                                                ? (type === 'BASE' ? '#eff6ff' : type === 'CTE' ? '#f3e8ff' : '#d1fae5')
+                                                : 'white',
+                                            color: newEntityType === type 
+                                                ? (type === 'BASE' ? '#1e40af' : type === 'CTE' ? '#6b21a8' : '#065f46')
+                                                : '#6b7280',
+                                            cursor: "pointer",
+                                            fontSize: "12px",
+                                            fontWeight: 600,
+                                            transition: "all 200ms ease",
+                                        }}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button
+                                onClick={() => {
+                                    setShowCreateDialog(false);
+                                    setNewEntityName('');
+                                    setNewEntityType('BASE');
+                                }}
+                                style={{
+                                    padding: "10px 16px",
+                                    background: "#f3f4f6",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: "6px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    color: "#374151",
+                                    transition: "all 200ms ease"
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#e5e7eb";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "#f3f4f6";
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreateEntity}
+                                disabled={!newEntityName.trim()}
+                                style={{
+                                    padding: "10px 16px",
+                                    background: newEntityName.trim() ? "#10b981" : "#d1d5db",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    cursor: newEntityName.trim() ? "pointer" : "not-allowed",
+                                    color: "white",
+                                    transition: "all 200ms ease"
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (newEntityName.trim()) {
+                                        e.currentTarget.style.background = "#059669";
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (newEntityName.trim()) {
+                                        e.currentTarget.style.background = "#10b981";
+                                    }
+                                }}
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

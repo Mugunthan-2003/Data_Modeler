@@ -24,6 +24,9 @@ import { useSuggestions } from "../hooks/useSuggestions";
 
 // Custom Table Node Component
 const TableNode = memo(({ data, id }) => {
+    const clickTimerRef = useRef(null);
+    const lastClickRef = useRef(0);
+
     const getTypeColor = (type) => {
         switch (type) {
             case 'BASE': return { from: '#3b82f6', to: '#2563eb', border: '#3b82f6' };
@@ -63,7 +66,7 @@ const TableNode = memo(({ data, id }) => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '4px' }}>
-                    {(data.tableType === 'CTE' || data.tableType === 'VIEW') && (
+                    {(data.tableType === 'CTE' || data.tableType === 'VIEW') && data.customTables && !data.customTables[data.tableType]?.includes(data.tableName) && (
                         <>
                             <button
                                 onClick={(e) => {
@@ -86,31 +89,29 @@ const TableNode = memo(({ data, id }) => {
                             </button>
                         </>
                     )}
-                    {data.fields.length > 0 && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (data.onOpenSettings) {
-                                    data.onOpenSettings(id);
-                                } else {
-                                    alert('Error: Handler not available. Please try refreshing the page.');
-                                }
-                            }}
-                            style={{
-                                background: 'rgba(99, 102, 241, 0.9)',
-                                border: '1px solid rgba(255, 255, 255, 0.3)',
-                                borderRadius: '4px',
-                                color: 'white',
-                                cursor: 'pointer',
-                                padding: '4px 8px',
-                                fontSize: '11px',
-                                fontWeight: 600
-                            }}
-                            title="Entity settings"
-                        >
-                            <FiSettings size={12} />
-                        </button>
-                    )}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (data.onOpenSettings) {
+                                data.onOpenSettings(id);
+                            } else {
+                                alert('Error: Handler not available. Please try refreshing the page.');
+                            }
+                        }}
+                        style={{
+                            background: 'rgba(99, 102, 241, 0.9)',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            borderRadius: '4px',
+                            color: 'white',
+                            cursor: 'pointer',
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600
+                        }}
+                        title="Entity settings"
+                    >
+                        <FiSettings size={12} />
+                    </button>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -274,11 +275,30 @@ const TableNode = memo(({ data, id }) => {
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (data.onFieldClick) {
-                                            data.onFieldClick(field.name, field);
+                                        const now = Date.now();
+                                        const isDoubleClick = (now - lastClickRef.current) < 300;
+                                        
+                                        if (clickTimerRef.current) {
+                                            clearTimeout(clickTimerRef.current);
+                                        }
+
+                                        if (isDoubleClick) {
+                                            // Double click - set as primary key
+                                            if (data.onTogglePK) {
+                                                data.onTogglePK(id, field.name);
+                                            }
+                                            lastClickRef.current = 0;
+                                        } else {
+                                            // Single click - open calculation dialog (with delay to ensure it's not double-click)
+                                            lastClickRef.current = now;
+                                            clickTimerRef.current = setTimeout(() => {
+                                                if (data.onFieldClick) {
+                                                    data.onFieldClick(field.name, field);
+                                                }
+                                            }, 300);
                                         }
                                     }}
-                                    title="Click to edit calculation"
+                                    title="Click to edit calculation, double-click to set as primary key"
                                 >
                                     {field.name} 
                                     {field.isPK && (
@@ -997,13 +1017,31 @@ const DataProductPage = () => {
         setNodes((nds) =>
             nds.map((node) => {
                 if (node.id === addFieldNodeId) {
-                    return {
+                    const updatedNode = {
                         ...node,
                         data: {
                             ...node.data,
                             fields: [...node.data.fields, { name: newFieldName, type: newFieldType }]
                         }
                     };
+                    
+                    // Update metadata for custom tables
+                    const metadataKey = `${node.data.tableType}_${node.data.tableName}`;
+                    setTableMetadata(prev => ({
+                        ...prev,
+                        [metadataKey]: {
+                            name: node.data.tableName,
+                            type: node.data.tableType,
+                            fields: updatedNode.data.fields.map(f => ({
+                                name: f.name,
+                                type: f.type || 'VARCHAR',
+                                ref: f.ref || null,
+                                calculation: f.calculation || null
+                            }))
+                        }
+                    }));
+                    
+                    return updatedNode;
                 }
                 return node;
             })
@@ -1024,7 +1062,7 @@ const DataProductPage = () => {
         setNodes((nds) =>
             nds.map((node) => {
                 if (node.id === nodeId) {
-                    return {
+                    const updatedNode = {
                         ...node,
                         data: {
                             ...node.data,
@@ -1035,6 +1073,24 @@ const DataProductPage = () => {
                             )
                         }
                     };
+                    
+                    // Update metadata
+                    const metadataKey = `${node.data.tableType}_${node.data.tableName}`;
+                    setTableMetadata(prev => ({
+                        ...prev,
+                        [metadataKey]: {
+                            name: node.data.tableName,
+                            type: node.data.tableType,
+                            fields: updatedNode.data.fields.map(f => ({
+                                name: f.name,
+                                type: f.type || 'VARCHAR',
+                                ref: f.ref || null,
+                                calculation: f.calculation || null
+                            }))
+                        }
+                    }));
+                    
+                    return updatedNode;
                 }
                 return node;
             })
@@ -1662,13 +1718,31 @@ const DataProductPage = () => {
         setNodes((nds) =>
             nds.map((node) => {
                 if (node.id === nodeId) {
-                    return {
+                    const updatedNode = {
                         ...node,
                         data: {
                             ...node.data,
                             fields: node.data.fields.filter(f => f.name !== fieldName)
                         }
                     };
+                    
+                    // Update metadata after field removal
+                    const metadataKey = `${node.data.tableType}_${node.data.tableName}`;
+                    setTableMetadata(prev => ({
+                        ...prev,
+                        [metadataKey]: {
+                            name: node.data.tableName,
+                            type: node.data.tableType,
+                            fields: updatedNode.data.fields.map(f => ({
+                                name: f.name,
+                                type: f.type || 'VARCHAR',
+                                ref: f.ref || null,
+                                calculation: f.calculation || null
+                            }))
+                        }
+                    }));
+                    
+                    return updatedNode;
                 }
                 return node;
             })
@@ -1681,9 +1755,30 @@ const DataProductPage = () => {
     const handleDeleteTable = useCallback((nodeId) => {
         if (!window.confirm("Delete this table?")) return;
         
+        // Get the node being deleted to find its metadata key
+        const nodeToDelete = nodes.find(n => n.id === nodeId);
+        
         // Remove edges connected to this node
         setEdges((eds) => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
         setNodes((nds) => nds.filter(node => node.id !== nodeId));
+        
+        // Remove metadata for custom tables
+        if (nodeToDelete) {
+            const metadataKey = `${nodeToDelete.data.tableType}_${nodeToDelete.data.tableName}`;
+            setTableMetadata(prev => {
+                const updated = { ...prev };
+                delete updated[metadataKey];
+                return updated;
+            });
+            
+            // Also remove from customTables if it's a custom table
+            setCustomTables(prev => ({
+                ...prev,
+                [nodeToDelete.data.tableType]: prev[nodeToDelete.data.tableType].filter(
+                    t => t !== nodeToDelete.data.tableName
+                )
+            }));
+        }
         
         // Refresh open dialogs after deletion to show newly available entities
         setTimeout(() => {
@@ -1776,6 +1871,7 @@ const DataProductPage = () => {
                 tableName: tableName,
                 tableType: actualType,
                 fields: finalFields,
+                customTables: customTables,
                 onAddField: handleAddField,
                 onRemoveField: handleRemoveField,
                 onDeleteTable: handleDeleteTable,
@@ -1792,21 +1888,39 @@ const DataProductPage = () => {
         return true;
     };
 
-    const handleCreateNewTable = async () => {
-        if (!newTableName.trim()) {
+    const handleCreateNewTable = async (entityName, entityType) => {
+        // If called from sidebar with params, use those; otherwise use state
+        const tableName = entityName || newTableName;
+        const tableType = entityType || newTableType;
+
+        if (!tableName.trim()) {
             alert("Please enter a table name");
             return;
         }
 
-        await addTableToCanvas(newTableName, newTableType, []);
+        // Initialize metadata for the new custom table
+        const metadataKey = `${tableType}_${tableName}`;
+        setTableMetadata(prev => ({
+            ...prev,
+            [metadataKey]: {
+                name: tableName,
+                type: tableType,
+                fields: []
+            }
+        }));
+
+        await addTableToCanvas(tableName, tableType, []);
         setCustomTables(prev => ({
             ...prev,
-            [newTableType]: [...prev[newTableType], newTableName]
+            [tableType]: [...prev[tableType], tableName]
         }));
         
-        setNewTableName("");
-        setNewTableType("BASE");
-        setShowCreateTableDialog(false);
+        // Only reset state if called from dialog (no params)
+        if (!entityName) {
+            setNewTableName("");
+            setNewTableType("BASE");
+            setShowCreateTableDialog(false);
+        }
     };
 
     const handleSave = async () => {
@@ -1817,7 +1931,7 @@ const DataProductPage = () => {
             if (currentDataProductName) {
                 finalFileName = currentDataProductName;
             } else {
-                const fileName = window.prompt('Enter data product name:', 'data_product.json');
+                const fileName = window.prompt('Enter data product name:', 'data_product');
                 if (!fileName) return; // User cancelled
                 
                 // Ensure .json extension
@@ -2877,6 +2991,9 @@ const DataProductPage = () => {
                     onAddTable={addTableToCanvas}
                     tableMetadata={tableMetadata}
                     canvasEntities={nodes.map(n => ({ tableName: n.data.tableName, tableType: n.data.tableType }))}
+                    onCreateNewEntity={(entityName, entityType) => {
+                        handleCreateNewTable(entityName, entityType);
+                    }}
                 />
 
                 {/* Canvas */}
