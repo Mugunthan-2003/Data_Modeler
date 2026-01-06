@@ -113,7 +113,7 @@ const DataProductSidebar = ({
                                         const onCanvas = isOnCanvas(table, 'BASE');
                                         return (
                                             <button
-                                                key={table}
+                                                key={`BASE_${table}`}
                                                 onClick={() => onAddTable(table, 'BASE')}
                                                 draggable
                                                 onDragStart={(e) => {
@@ -187,7 +187,7 @@ const DataProductSidebar = ({
                                         const onCanvas = isOnCanvas(table, 'CTE');
                                         return (
                                             <button
-                                                key={table}
+                                                key={`CTE_${table}`}
                                                 onClick={() => onAddTable(table, 'CTE')}
                                                 draggable
                                                 onDragStart={(e) => {
@@ -261,7 +261,7 @@ const DataProductSidebar = ({
                                         const onCanvas = isOnCanvas(table, 'VIEW');
                                         return (
                                             <button
-                                                key={table}
+                                                key={`VIEW_${table}`}
                                                 onClick={() => onAddTable(table, 'VIEW')}
                                                 draggable
                                                 onDragStart={(e) => {
