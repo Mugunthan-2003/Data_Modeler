@@ -2166,10 +2166,12 @@ const DataProductPage = () => {
 
             // Get current nodes and add all new nodes
             setNodes((currentNodes) => {
-                const allNodesForMapping = [...currentNodes, ...addedNodes, newNode];
-                const updatedNodes = [...currentNodes, ...addedNodes, newNode];
-                
-                // Create connections using the dependency map
+                return [...currentNodes, ...addedNodes, newNode];
+            });
+
+            // Create and add edges OUTSIDE of setNodes callback to prevent duplicates
+            setTimeout(() => {
+                const allNodesForMapping = [...nodes, ...addedNodes, newNode];
                 const newEdges = [];
                 
                 if (suggestion.dependencyMap) {
@@ -2203,9 +2205,10 @@ const DataProductPage = () => {
                                 
                                 if (sourceFieldActual && targetFieldActual) {
                                     const edgeColor = conn.connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
+                                    const edgeId = `e-${sourceNode.id}-${newNodeId}-${targetFieldActual.name}-${sourceFieldActual.name}-${Date.now()}-${Math.random()}`;
                                     
-                                    newEdges.push({
-                                        id: `e-${sourceNode.id}-${newNodeId}-${targetFieldActual.name}-${sourceFieldActual.name}-${Date.now()}-${Math.random()}`,
+                                    const newEdge = {
+                                        id: edgeId,
                                         source: sourceNode.id,
                                         target: newNodeId,
                                         sourceHandle: `${sourceFieldActual.name}-source`,
@@ -2225,7 +2228,9 @@ const DataProductPage = () => {
                                             sourceField: sourceFieldActual.name,
                                             targetField: targetFieldActual.name
                                         }
-                                    });
+                                    };
+                                    
+                                    newEdges.push(newEdge);
                                 } else {
                                     console.debug(`Skipping edge: source field "${conn.sourceField}" exists=${!!sourceFieldActual}, target field "${conn.targetField}" exists=${!!targetFieldActual}`);
                                 }
@@ -2239,32 +2244,41 @@ const DataProductPage = () => {
                 // Add edges to state
                 if (newEdges.length > 0) {
                     setEdges((currentEdges) => {
-                        // Filter out duplicate edges to prevent duplicates
-                        const edgeIds = new Set(currentEdges.map(e => e.id));
-                        const uniqueNewEdges = newEdges.filter(e => !edgeIds.has(e.id));
-                        return [...currentEdges, ...uniqueNewEdges];
+                        const updatedEdges = [...currentEdges, ...newEdges];
+                        
+                        // Apply layout after edges are added
+                        setTimeout(() => {
+                            setNodes((currentNodes) => {
+                                const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                                    currentNodes,
+                                    updatedEdges,
+                                    'LR'
+                                );
+                                setEdges(layoutedEdges);
+                                return layoutedNodes;
+                            });
+                        }, 100);
+                        
+                        return updatedEdges;
                     });
                 }
-
-                return updatedNodes;
-            });
-
-            // Auto-arrange layout after adding entity
-            setTimeout(() => {
-                setNodes((currentNodes) => {
-                    setEdges((currentEdges) => {
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-                            currentNodes,
-                            currentEdges,
-                            'LR'
-                        );
-                        setNodes(layoutedNodes);
-                        setEdges(layoutedEdges);
-                        return currentEdges;
-                    });
-                    return currentNodes;
-                });
             }, 100);
+
+            // Update appropriate list based on type
+            if (checkEntityType === 'BASE') {
+                if (!fileBaseTables.includes(checkEntityName)) {
+                    setFileBaseTables(prev => [...prev, checkEntityName]);
+                }
+            } else if (checkEntityType === 'VIEW') {
+                if (!fileViewTables.includes(checkEntityName)) {
+                    setFileViewTables(prev => [...prev, checkEntityName]);
+                }
+            } else if (checkEntityType === 'CTE') {
+                setCustomTables(prev => ({
+                    ...prev,
+                    CTE: [...prev.CTE, checkEntityName]
+                }));
+            }
 
             setShowSuggestDialog(false);
         } catch (error) {
