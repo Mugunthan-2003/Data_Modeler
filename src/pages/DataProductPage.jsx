@@ -72,6 +72,7 @@ const TableNode = memo(({ data, id }) => {
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     data.onShowReverseDeps(id, data.tableName, data.tableType);
+
                                 }}
                                 style={{
                                     background: 'rgba(255, 255, 255, 0.2)',
@@ -2045,6 +2046,7 @@ const DataProductPage = () => {
             setSelectedEntityForReverseDeps({ nodeId, tableName, tableType, entityKey });
             
             const entities = sourceDataProduct?.entities || {};
+            
             const selectedEntityData = entities[entityKey];
 
             if (!selectedEntityData || !selectedEntityData.fields) {
@@ -2053,12 +2055,10 @@ const DataProductPage = () => {
                 return;
             }
 
-            // Now find what entities the selected entity depends on (downstream dependencies)
+            // Find what entities the selected entity depends on (downstream dependencies)
             const requiredEntities = new Map(); // Map of entityKey -> {connections: [], entityType}
             const canvasEntityKeys = new Set(nodes.map(n => `${n.data.tableType}_${n.data.tableName}`));
-            const missingEntities = []; // Track entities that are referenced but don't exist
-            const skippedOnCanvas = []; // Track entities that are already on canvas
-
+            
             // Analyze all fields of the selected entity to find its dependencies
             const entityFields = Object.keys(selectedEntityData.fields || {});
             
@@ -2071,17 +2071,8 @@ const DataProductPage = () => {
                             const [refEntity, refField] = refPath.split('.');
                             
                             if (refEntity && refField && refEntity !== entityKey) {
-                                // Check if already on canvas
-                                if (canvasEntityKeys.has(refEntity)) {
-                                    skippedOnCanvas.push(refEntity);
-                                    return;
-                                }
-                                
-                                // Check if entity exists in source data
+                                // Skip if entity doesn't exist in source data
                                 if (!entities[refEntity]) {
-                                    if (!missingEntities.includes(refEntity)) {
-                                        missingEntities.push(refEntity);
-                                    }
                                     return;
                                 }
                                 
@@ -2111,7 +2102,7 @@ const DataProductPage = () => {
                 }
             });
 
-            // Build reverse dependencies list from the current data product source
+            // Build reverse dependencies list
             const foundReverseDeps = [];
             
             for (const [requiredEntityKey, info] of requiredEntities.entries()) {
@@ -2128,8 +2119,8 @@ const DataProductPage = () => {
                 // Build dependency map
                 const dependencyMap = {};
                 dependencyMap[requiredEntityKey] = info.connections.map(conn => ({
-                    targetField: conn.targetField,
                     sourceField: conn.sourceField,
+                    targetField: conn.targetField,
                     connectionType: conn.connectionType,
                     calculation: conn.calculation
                 }));
@@ -2137,7 +2128,7 @@ const DataProductPage = () => {
                 const entityType = info.entityType || (requiredEntityKey.match(/^(BASE|CTE|VIEW)_/)?.[1] || 'BASE');
                 const sourceName = sourceDataProduct?.metadata?.name || 'Data Product';
                 
-                foundReverseDeps.push({
+                const depObj = {
                     entityName: requiredEntityKey,
                     alias: reqEntity.alias || requiredEntityKey,
                     entityType,
@@ -2146,7 +2137,8 @@ const DataProductPage = () => {
                     entityData: reqEntity,
                     fields: entityFieldsData,
                     connectionCount: info.connections.length
-                });
+                };
+                foundReverseDeps.push(depObj);
             }
 
             setReverseDeps(foundReverseDeps);
@@ -2300,6 +2292,34 @@ const DataProductPage = () => {
                 return [...currentNodes, ...addedNodes, newNode];
             });
 
+            // Update sourceDataProduct to include this entity and any missing entities for future dependency lookups
+            setSourceDataProduct(prev => {
+                if (!prev) return prev;
+                const updatedEntities = { ...prev.entities };
+                
+                // Add the main suggested entity
+                updatedEntities[suggestion.entityName] = suggestion.entityData || entity;
+                
+                // Add any missing entities that were added
+                addedNodes.forEach(node => {
+                    const entityKey = `${node.data.tableType}_${node.data.tableName}`;
+                    if (!updatedEntities[entityKey]) {
+                        updatedEntities[entityKey] = {
+                            fields: node.data.fields.reduce((acc, f) => {
+                                acc[f.name] = { type: f.type || 'VARCHAR' };
+                                return acc;
+                            }, {})
+                        };
+                    }
+                });
+                
+                const result = {
+                    ...prev,
+                    entities: updatedEntities
+                };
+                return result;
+            });
+
             // Create and add edges OUTSIDE of setNodes callback to prevent duplicates
             setTimeout(() => {
                 const allNodesForMapping = [...nodes, ...addedNodes, newNode];
@@ -2396,6 +2416,8 @@ const DataProductPage = () => {
             }, 100);
 
             // Update appropriate list based on type
+            // CTEs/VIEWs from source data product go to file lists (not customTables)
+            // This allows them to have the deps button
             if (checkEntityType === 'BASE') {
                 if (!fileBaseTables.includes(checkEntityName)) {
                     setFileBaseTables(prev => [...prev, checkEntityName]);
@@ -2405,10 +2427,9 @@ const DataProductPage = () => {
                     setFileViewTables(prev => [...prev, checkEntityName]);
                 }
             } else if (checkEntityType === 'CTE') {
-                setCustomTables(prev => ({
-                    ...prev,
-                    CTE: [...prev.CTE, checkEntityName]
-                }));
+                if (!fileCteTables.includes(checkEntityName)) {
+                    setFileCteTables(prev => [...prev, checkEntityName]);
+                }
             }
 
             setShowSuggestDialog(false);
@@ -2459,6 +2480,7 @@ const DataProductPage = () => {
                     tableName: checkEntityName,
                     tableType: checkEntityType,
                     fields: entityFields,
+                    customTables: customTables,
                     entityKey: suggestion.entityName,
                     onAddField: handleAddField,
                     onRemoveField: handleRemoveField,
@@ -2476,6 +2498,19 @@ const DataProductPage = () => {
             const targetNode = nodes.find(n => n.id === selectedEntityForReverseDeps.nodeId);
             
             setNodes((currentNodes) => [...currentNodes, newNode]);
+            
+            // Update sourceDataProduct to include this entity for future dependency lookups
+            setSourceDataProduct(prev => {
+                if (!prev) return prev;
+                const updated = {
+                    ...prev,
+                    entities: {
+                        ...prev.entities,
+                        [suggestion.entityName]: suggestion.entityData || entity
+                    }
+                };
+                return updated;
+            });
             
             // Create connections FROM the new dependency TO the entity that needs it
             const newEdges = [];
@@ -2520,6 +2555,8 @@ const DataProductPage = () => {
             }
 
             // Update appropriate list based on type
+            // CTEs/VIEWs from source data product go to file lists (not customTables)
+            // This allows them to have the deps button
             if (checkEntityType === 'BASE') {
                 if (!fileBaseTables.includes(checkEntityName)) {
                     setFileBaseTables(prev => [...prev, checkEntityName]);
@@ -2529,10 +2566,9 @@ const DataProductPage = () => {
                     setFileViewTables(prev => [...prev, checkEntityName]);
                 }
             } else if (checkEntityType === 'CTE') {
-                setCustomTables(prev => ({
-                    ...prev,
-                    CTE: [...prev.CTE, checkEntityName]
-                }));
+                if (!fileCteTables.includes(checkEntityName)) {
+                    setFileCteTables(prev => [...prev, checkEntityName]);
+                }
             }
 
             // Auto-arrange layout after adding entity
@@ -2804,19 +2840,19 @@ const DataProductPage = () => {
                         >
                             {currentDataProductName ? currentDataProductName.replace('.json', '') : 'New Data Product'}
                         </h1>
-                        <div style={{ 
+                    </div>
+                    
+                    <div style={{ 
                             fontSize: "12px", 
                             color: "#9ca3af",
                             display: "flex",
                             gap: "12px",
-                            marginLeft: "auto"
+                            alignItems: "center"
                         }}>
                             <span>{nodes.length} tables</span>
                             <span>•</span>
                             <span>{edges.length} connections</span>
-                        </div>
                     </div>
-                    
                     <button
                         onClick={handleSuggest}
                         style={{
