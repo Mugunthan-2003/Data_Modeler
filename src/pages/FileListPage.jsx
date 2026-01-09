@@ -1563,6 +1563,7 @@ const FileListPage = () => {
                             </button>
                             <button
                                 onClick={() => {
+                                    
                                     navigate("/data-product", {
                                         state: {
                                             distinctTables: distinctTables.map(t => t.name),

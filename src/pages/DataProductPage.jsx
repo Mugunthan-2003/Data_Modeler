@@ -293,8 +293,10 @@ const TableNode = memo(({ data, id }) => {
                                             // Single click - open calculation dialog (with delay to ensure it's not double-click)
                                             lastClickRef.current = now;
                                             clickTimerRef.current = setTimeout(() => {
+
                                                 if (data.onFieldClick) {
-                                                    data.onFieldClick(field.name, field);
+                                                    data.onFieldClick(field.name, field, id);
+                                                    console.log('Node Data:', data);
                                                 }
                                             }, 300);
                                         }
@@ -386,6 +388,8 @@ const DataProductPage = () => {
     const [selectedEdgeDetails, setSelectedEdgeDetails] = useState(null);
     const [showCalculationDialog, setShowCalculationDialog] = useState(false);
     const [calculationExpression, setCalculationExpression] = useState("");
+    const [calculationFieldNodeId, setCalculationFieldNodeId] = useState(null);
+    const [calculationFieldName, setCalculationFieldName] = useState(null);
     const [currentDataProductId, setCurrentDataProductId] = useState(dataProductId);
     const [currentDataProductName, setCurrentDataProductName] = useState(dataProductName);
     const [showReverseDepsDialog, setShowReverseDepsDialog] = useState(false);
@@ -409,6 +413,18 @@ const DataProductPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [sourceDataProduct, setSourceDataProduct] = useState(dataProductData || null);
     
+    useEffect(() => {
+        console.log("1.Canvas nodes:", nodes);
+    }, [nodes]);
+
+    useEffect(() => {
+        console.log("1.Canvas edges:", edges);
+    }, [edges]);
+
+    // useEffect(() => {
+    //      console.log("1.Table metadata:", tableMetadata);
+    // }, [tableMetadata]);
+
     // Keep ref in sync with state
     useEffect(() => {
         entityAttributeModesRef.current = entityAttributeModes;
@@ -578,6 +594,11 @@ const DataProductPage = () => {
                 console.error(`Error loading metadata for file ${fileId}:`, error);
             }
         }
+        // console.log('Metadata:', metadata);
+        // console.log('baseTables:', baseTables);
+        // console.log('viewTables:', viewTables);
+        // console.log('cteTables:', cteTables);
+        // console.log('combinedEntities:', combinedEntities);
         
         setTableMetadata(metadata);
         setFileBaseTables(Array.from(baseTables).sort());
@@ -595,232 +616,132 @@ const DataProductPage = () => {
 
     const loadDataProduct = (dataProduct) => {
         try {
+            // console.log("Loading data product:", dataProduct);
             setSourceDataProduct(dataProduct || null);
 
             const loadedNodes = [];
             const loadedEdges = [];
-            const nodeMap = new Map(); // To track entity to node ID mapping
+            const nodeMap = new Map();
             
-            // Load saved modes and toggles
             const savedEntityModes = dataProduct.entityAttributeModes || {};
             const savedToggles = dataProduct.attributeToggles || {};
             const defaultMode = dataProduct.globalAttributeMode || 'runtime';
             
-            // Build mapping from entity keys to their saved node IDs
-            const entityToOldNodeId = new Map();
-            if (dataProduct.entities) {
-                // Extract field names for each entity
-                const entityFieldSets = new Map();
-                for (const entityKey in dataProduct.entities) {
-                    const entity = dataProduct.entities[entityKey];
-                    if (entity.fields) {
-                        entityFieldSets.set(entityKey, new Set(Object.keys(entity.fields)));
-                    }
-                }
+            // Handle entities as array (your format)
+            const entitiesArray = Array.isArray(dataProduct.entities) 
+                ? dataProduct.entities 
+                : Object.values(dataProduct.entities || {});
+
+            // Build entity key mapping using existing IDs
+            const entityKeyMap = new Map(); // nodeId -> entityKey
+            entitiesArray.forEach(canvasNode => {
+                const entityKey = `${canvasNode.data.tableType}_${canvasNode.data.tableName}`;
+                entityKeyMap.set(canvasNode.id, entityKey);
+            });
+
+            // Create nodes from canvas entities array - KEEP ORIGINAL IDs
+            entitiesArray.forEach(canvasNode => {
+                const nodeId = canvasNode.id; // Use existing ID
+                const entityKey = `${canvasNode.data.tableType}_${canvasNode.data.tableName}`;
                 
-                // Group toggle keys by node ID
-                const nodeIdToFields = new Map();
-                for (const toggleKey in savedToggles) {
-                    const parts = toggleKey.split('_');
-                    if (parts.length >= 2) {
-                        const oldNodeId = parts[0];
-                        const fieldName = parts.slice(1).join('_');
-                        
-                        if (!nodeIdToFields.has(oldNodeId)) {
-                            nodeIdToFields.set(oldNodeId, new Set());
-                        }
-                        nodeIdToFields.get(oldNodeId).add(fieldName);
-                    }
-                }
-                
-                // Match entities to old node IDs by comparing ALL fields
-                for (const [entityKey, entityFields] of entityFieldSets) {
-                    let bestMatch = null;
-                    let bestMatchCount = 0;
-                    
-                    for (const [oldNodeId, nodeFields] of nodeIdToFields) {
-                        // Count how many fields match
-                        let matchCount = 0;
-                        for (const field of entityFields) {
-                            if (nodeFields.has(field)) {
-                                matchCount++;
-                            }
-                        }
-                        
-                        // If all entity fields are in this node, and it's a better match
-                        if (matchCount === entityFields.size && matchCount > bestMatchCount) {
-                            bestMatch = oldNodeId;
-                            bestMatchCount = matchCount;
-                        }
-                    }
-                    
-                    if (bestMatch) {
-                        entityToOldNodeId.set(entityKey, bestMatch);
-                        // Remove this node from future matching to ensure 1-to-1 mapping
-                        nodeIdToFields.delete(bestMatch);
-                    }
-                }
-            }
-            
-            // Build reverse mapping and remap modes/toggles BEFORE creating nodes
-            const oldToNewNodeId = new Map();
-            const newAttributeToggles = {};
-            const newEntityAttributeModes = {};
-            
-            // First, build the old->new node ID mapping
-            let nodeIndex = 0;
-            if (dataProduct.entities) {
-                for (const entityKey in dataProduct.entities) {
-                    const newNodeId = `node-${nodeIndex++}`;
-                    const oldNodeId = entityToOldNodeId.get(entityKey);
-                    if (oldNodeId) {
-                        oldToNewNodeId.set(oldNodeId, newNodeId);
-                    }
-                }
-            }
-            
-            // Remap entity attribute modes
-            for (const oldNodeId in savedEntityModes) {
-                const newNodeId = oldToNewNodeId.get(oldNodeId);
-                if (newNodeId) {
-                    newEntityAttributeModes[newNodeId] = savedEntityModes[oldNodeId];
-                }
-            }
-            
-            // Remap attribute toggles
-            for (const oldToggleKey in savedToggles) {
-                const parts = oldToggleKey.split('_');
-                if (parts.length >= 2) {
-                    const oldNodeId = parts[0];
-                    const fieldName = parts.slice(1).join('_');
-                    const newNodeId = oldToNewNodeId.get(oldNodeId);
-                    if (newNodeId) {
-                        const newToggleKey = `${newNodeId}_${fieldName}`;
-                        newAttributeToggles[newToggleKey] = savedToggles[oldToggleKey];
-                    }
-                }
-            }
-            
-            // First pass: Create nodes from entities
-            if (dataProduct.entities) {
-                nodeIndex = 0; // Reset counter
-                for (const entityKey in dataProduct.entities) {
-                    const entity = dataProduct.entities[entityKey];
-                    
-                    // Parse entity key (e.g., "BASE_users" -> type="BASE", name="users")
-                    const parts = entityKey.split('_');
-                    const tableType = parts[0];
-                    const tableName = parts.slice(1).join('_');
-                    
-                    // Create node
-                    const nodeId = `node-${nodeIndex++}`;
-                    nodeMap.set(entityKey, nodeId);
-                    
-                    // Get entity-specific default mode from the already-remapped modes
-                    const entityMode = newEntityAttributeModes[nodeId] || defaultMode;
-                    
-                    // Extract fields and apply attributeMode
-                    const fields = [];
-                    if (entity.fields) {
-                        for (const fieldName in entity.fields) {
-                            // Use new node ID to look up toggles from already-remapped toggles
-                            const toggleKey = `${nodeId}_${fieldName}`;
-                            const isToggled = newAttributeToggles[toggleKey] || false;
-                            const attributeMode = isToggled 
-                                ? (entityMode === 'runtime' ? 'loadtime' : 'runtime') // Opposite of entity default
-                                : entityMode; // Entity default
-                            
-                            fields.push({
-                                name: fieldName,
-                                type: entity.fields[fieldName].type || 'unknown',
-                                attributeMode,
-                                isPK: entity.fields[fieldName].isPK || false,
-                                calculation: entity.fields[fieldName].calculation || null,
-                                ref: entity.fields[fieldName].ref || null
-                            });
-                        }
-                    }
-                    
-                    loadedNodes.push({
-                        id: nodeId,
-                        type: 'tableNode',
-                        position: { x: 100 + (nodeIndex * 320), y: 100 + ((nodeIndex % 3) * 250) },
-                        data: {
-                            tableName,
-                            tableType,
-                            fields,
-                            attributeToggles: newAttributeToggles, // Include toggles in initial data
-                            globalAttributeMode: entityMode, // Include entity-specific mode
-                            onAddField: handleAddField,
-                            onRemoveField: handleRemoveField,
-                            onDeleteTable: handleDeleteTable,
-                            onTogglePK: handleTogglePK,
-                            onShowReverseDeps: handleShowReverseDeps,
-                            onToggleFieldSelection: handleToggleFieldSelection,
-                            onOpenSettings: handleOpenSettings,
-                            onFieldClick: handleFieldClick,
-                            selectedFields: []
-                        }
-                    });
-                }
-            }
-            
-            // Second pass: Create edges from relationships
-            if (dataProduct.relationships) {
-                dataProduct.relationships.forEach((rel, idx) => {
-                    const sourceNodeId = nodeMap.get(rel.from.entity);
-                    const targetNodeId = nodeMap.get(rel.to.entity);
-                    
-                    if (sourceNodeId && targetNodeId) {
-                        const edge = {
-                            id: `edge-${idx}`,
-                            source: sourceNodeId,
-                            target: targetNodeId,
-                            sourceHandle: `${rel.from.field}-source`,
-                            targetHandle: `${rel.to.field}-target`,
-                            type: 'default',
-                            animated: false,
-                            style: {
-                                stroke: rel.type === 'calculation' ? '#3b82f6' : '#ef4444',
-                                strokeWidth: 2
-                            },
-                            markerEnd: {
-                                type: MarkerType.ArrowClosed,
-                                color: rel.type === 'calculation' ? '#3b82f6' : '#ef4444'
-                            },
-                            data: {
-                                connectionType: rel.type || 'ref',
-                                calculation: rel.calculation || null
-                            }
-                        };
-                        
-                        loadedEdges.push(edge);
+                nodeMap.set(entityKey, nodeId);
+
+                const entityMode = savedEntityModes[nodeId] || defaultMode;
+
+                const fields = canvasNode.data.fields.map(field => {
+                    const toggleKey = `${nodeId}_${field.name}`;
+                    const isToggled = savedToggles[toggleKey] || false;
+                    const attributeMode = isToggled 
+                        ? (entityMode === 'runtime' ? 'loadtime' : 'runtime')
+                        : entityMode;
+
+                    return {
+                        name: field.name,
+                        type: field.type || 'unknown',
+                        attributeMode: field.attributeMode || attributeMode,
+                        isPK: field.isPK || false,
+                        calculation: field.calculation || null,
+                        ref: field.ref || null
+                    };
+                });
+
+                loadedNodes.push({
+                    id: nodeId, // Use original ID
+                    type: 'tableNode',
+                    position: canvasNode.position || { 
+                        x: 100 + (loadedNodes.length * 320), 
+                        y: 100 + ((loadedNodes.length % 3) * 250) 
+                    },
+                    data: {
+                        tableName: canvasNode.data.tableName,
+                        tableType: canvasNode.data.tableType,
+                        fields,
+                        attributeToggles: savedToggles,
+                        globalAttributeMode: entityMode,
+                        onAddField: handleAddField,
+                        onRemoveField: handleRemoveField,
+                        onDeleteTable: handleDeleteTable,
+                        onTogglePK: handleTogglePK,
+                        onShowReverseDeps: handleShowReverseDeps,
+                        onToggleFieldSelection: handleToggleFieldSelection,
+                        onOpenSettings: handleOpenSettings,
+                        onFieldClick: handleFieldClick,
+                        selectedFields: []
                     }
                 });
-            }
-            
-            // Set the loaded nodes and edges
+            });
+
+            // Create edges from relationships - use IDs directly
+            const relationships = Array.isArray(dataProduct.relationships)
+                ? dataProduct.relationships
+                : [];
+
+            relationships.forEach((rel, idx) => {
+                // Find nodes by their original IDs
+                const sourceNode = loadedNodes.find(n => n.id === rel.source);
+                const targetNode = loadedNodes.find(n => n.id === rel.target);
+
+                if (sourceNode && targetNode) {
+                    const sourceHandle = rel.sourceHandle || `${rel.data?.sourceField}-source`;
+                    const targetHandle = rel.targetHandle || `${rel.data?.targetField}-target`;
+                    const connectionType = rel.data?.connectionType || 'ref';
+                    const color = connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
+
+                    loadedEdges.push({
+                        id: rel.id || `edge-${idx}`,
+                        source: sourceNode.id,
+                        target: targetNode.id,
+                        sourceHandle,
+                        targetHandle,
+                        type: 'smoothstep',
+                        animated: false,
+                        style: { stroke: color, strokeWidth: 2 },
+                        markerEnd: {
+                            type: MarkerType.ArrowClosed,
+                            color
+                        },
+                        data: { connectionType }
+                    });
+                }
+            });
+
             setNodes(loadedNodes);
             setEdges(loadedEdges);
-            
-            // Restore available tables if saved
+
             if (dataProduct.availableTables) {
                 setTableMetadata(dataProduct.availableTables.tableMetadata || {});
                 setFileBaseTables(dataProduct.availableTables.fileBaseTables || []);
                 setFileViewTables(dataProduct.availableTables.fileViewTables || []);
+                setFileCteTables(dataProduct.availableTables.fileCteTables || []);
                 setCustomTables(dataProduct.availableTables.customTables || { BASE: [], CTE: [], VIEW: [] });
             }
-            
-            // Set the remapped states (already computed above before node creation)
-            setAttributeToggles(newAttributeToggles);
-            setEntityAttributeModes(newEntityAttributeModes);
-            if (dataProduct.globalAttributeMode) {
-                setGlobalAttributeMode(dataProduct.globalAttributeMode);
-            }
-            
-            // Keep sidebar open to show available tables
+
+            setAttributeToggles(savedToggles);
+            setEntityAttributeModes(savedEntityModes);
+            setGlobalAttributeMode(defaultMode);
             setSidebarOpen(true);
-            
+
+            // console.log("Data product loaded successfully");
         } catch (error) {
             console.error('Error loading data product:', error);
             alert('Error loading data product: ' + error.message);
@@ -829,26 +750,49 @@ const DataProductPage = () => {
 
     const onConnect = useCallback(
         (params) => {
-            // Check if source or target attribute already has a calculation connection
-            const hasCalculationConnection = edges.some(edge => 
-                (edge.sourceHandle === params.sourceHandle || edge.targetHandle === params.targetHandle) &&
-                edge.data?.connectionType === 'calculation'
+            // When the user attempts to connect two handles, do not immediately add
+            // the edge. Instead, decide a sensible default (prefer calculation
+            // if the target field already has a calculation) and show the
+            // ConnectionType dialog so the user can confirm or change it.
+            console.log('Connecting edge with params:', params);
+
+            // Check if an explicit connection between these exact handles already exists
+            const exists = edges.some(e =>
+                e.source === params.source &&
+                e.target === params.target &&
+                e.sourceHandle === params.sourceHandle &&
+                e.targetHandle === params.targetHandle
             );
-            
-            const connectionType = hasCalculationConnection ? 'calculation' : 'ref';
-            const color = connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
-            
-            const newEdge = {
+
+            // Determine whether the target field already has a calculation
+            const targetNode = nodes.find(n => n.id === params.target);
+            const targetFieldName = params.targetHandle ? params.targetHandle.replace('-target', '') : null;
+            const targetField = targetNode?.data?.fields?.find(f => f.name === targetFieldName);
+            const targetHasCalculation = !!(targetField && targetField.calculation);
+
+            // Default connection type: calculation if target field has a calculation, otherwise ref
+            const defaultType = targetHasCalculation ? 'calculation' : 'ref';
+            const color = defaultType === 'calculation' ? '#3b82f6' : '#ef4444';
+
+            // Prepare a tentative edge object and show the dialog. The dialog
+            // will call handleChangeConnectionType to either add the edge or
+            // update an existing one.
+            const tentativeEdge = {
                 ...params,
+                id: `edge-${Date.now()}`,
                 type: 'smoothstep',
                 animated: true,
                 markerEnd: { type: MarkerType.ArrowClosed },
-                data: { connectionType, calculation: '' },
+                data: { connectionType: defaultType },
                 style: { stroke: color, strokeWidth: 2 }
             };
-            setEdges((eds) => addEdge(newEdge, eds));
+
+            // Store tentative details so the dialog can act on them. Always
+            // show the dialog so the user confirms the type.
+            setSelectedEdgeDetails(tentativeEdge);
+            setShowConnectionTypeDialog(true);
         },
-        [edges, setEdges]
+        [edges, nodes]
     );
 
     const onEdgeClick = useCallback((event, edge) => {
@@ -895,10 +839,9 @@ const DataProductPage = () => {
             x: event.clientX,
             y: event.clientY,
         });
-
         // Add the table at the drop position (pass empty array for fields, then position)
-        await addTableToCanvas(tableName, tableType, [], position);
-    }, [reactFlowInstance]);
+        addTableToCanvas(tableName, tableType, [], position);
+    }, [reactFlowInstance, tableMetadata]);
 
     const onPaneClick = useCallback(() => {
         setSelectedEdge(null);
@@ -926,6 +869,7 @@ const DataProductPage = () => {
     }, [selectedEdge, setEdges]);
 
     const handleChangeConnectionType = useCallback((newType) => {
+        // If editing an existing selected edge, update it.
         if (selectedEdge) {
             setEdges((eds) =>
                 eds.map((e) => {
@@ -933,67 +877,89 @@ const DataProductPage = () => {
                         const color = newType === 'calculation' ? '#3b82f6' : '#ef4444';
                         return {
                             ...e,
-                            data: { ...e.data, connectionType: newType, calculation: e.data?.calculation || '' },
-                            style: { ...e.style, stroke: '#ef4444', strokeWidth: 3 },
+                            data: { connectionType: newType },
+                            style: { ...e.style, stroke: color, strokeWidth: 3 },
                         };
                     }
                     return e;
                 })
             );
-            setSelectedEdgeDetails(prev => prev ? { ...prev, data: { ...prev.data, connectionType: newType } } : null);
+            setSelectedEdgeDetails(prev => prev ? { ...prev, data: { connectionType: newType } } : null);
+            setShowConnectionTypeDialog(false);
+            return;
         }
+
+        // If we have tentative connection details (from onConnect), create the new edge
+        if (selectedEdgeDetails) {
+            const newEdge = {
+                ...selectedEdgeDetails,
+                id: selectedEdgeDetails.id || `edge-${Date.now()}`,
+                data: { connectionType: newType },
+                style: {
+                    ...selectedEdgeDetails.style,
+                    stroke: newType === 'calculation' ? '#3b82f6' : '#ef4444',
+                    strokeWidth: 2
+                }
+            };
+
+            setEdges((eds) => addEdge(newEdge, eds));
+            setSelectedEdge(newEdge.id);
+            setSelectedEdgeDetails(newEdge);
+        }
+
         setShowConnectionTypeDialog(false);
-    }, [selectedEdge, selectedEdgeDetails, setEdges]);
+    }, [selectedEdge, selectedEdgeDetails, edges]);
 
     const handleSaveCalculation = useCallback(() => {
-        if (selectedEdge) {
-            setEdges((eds) =>
-                eds.map((e) => {
-                    if (e.id === selectedEdge) {
+        // Update calculation only in the corresponding field in nodes (not in edge data)
+        console.log('Saving calculation for field:', calculationFieldName, 'in node:', calculationFieldNodeId, 'with expression:', calculationExpression);
+        if (calculationFieldNodeId && calculationFieldName) {
+            setNodes((nds) =>
+                nds.map((node) => {
+                    if (node.id === calculationFieldNodeId) {
                         return {
-                            ...e,
-                            data: { ...e.data, calculation: calculationExpression },
+                            ...node,
+                            data: {
+                                ...node.data,
+                                fields: node.data.fields.map((field) =>
+                                    field.name === calculationFieldName
+                                        ? { ...field, calculation: { ...field.calculation, expression: calculationExpression } }
+                                        : field
+                                ),
+                            },
                         };
                     }
-                    return e;
+                    return node;
                 })
             );
-            setSelectedEdgeDetails(prev => prev ? { ...prev, data: { ...prev.data, calculation: calculationExpression } } : null);
         }
+
         setShowCalculationDialog(false);
         setCalculationExpression('');
-    }, [selectedEdge, calculationExpression, setEdges]);
+        setCalculationFieldNodeId(null);
+        setCalculationFieldName(null);
+    }, [calculationExpression, setNodes, calculationFieldNodeId, calculationFieldName]);
 
     const handleEditCalculation = useCallback(() => {
         if (selectedEdgeDetails?.data?.connectionType === 'calculation') {
-            setCalculationExpression(selectedEdgeDetails.data?.calculation || '');
+            // Calculation is now stored in node field data, not in edge data
+            // Empty expression to start - user will edit from field click context
+            setCalculationExpression('');
             setShowCalculationDialog(true);
         }
     }, [selectedEdgeDetails]);
 
-    const handleFieldClick = useCallback((fieldName, field) => {
-        // Open the calculation dialog when a field is clicked
-        // Try to get calculation from field object first
+    const handleFieldClick = useCallback((fieldName, field, nodeId) => {
         let expression = '';
+        console.log('handleFieldClick called with:', fieldName, field, nodeId);
         if (field?.calculation?.expression) {
             expression = field.calculation.expression;
-        } else if (sourceDataProduct) {
-            // Fallback: search through source data product for this field's calculation
-            for (const entityKey in sourceDataProduct.entities) {
-                const entity = sourceDataProduct.entities[entityKey];
-                if (entity.fields && entity.fields[fieldName]) {
-                    const fieldData = entity.fields[fieldName];
-                    if (fieldData.calculation?.expression) {
-                        expression = fieldData.calculation.expression;
-                        break;
-                    }
-                }
-            }
         }
-        
+        setCalculationFieldNodeId(nodeId);
+        setCalculationFieldName(fieldName);
         setCalculationExpression(expression);
         setShowCalculationDialog(true);
-    }, [sourceDataProduct]);
+    }, []);
 
     // Keyboard shortcut for delete
     useEffect(() => {
@@ -1022,7 +988,7 @@ const DataProductPage = () => {
                         ...node,
                         data: {
                             ...node.data,
-                            fields: [...node.data.fields, { name: newFieldName, type: newFieldType }]
+                            fields: [...node.data.fields, { name: newFieldName, type: newFieldType, ref: null, calculation: null}]
                         }
                     };
                     
@@ -1041,7 +1007,7 @@ const DataProductPage = () => {
                             }))
                         }
                     }));
-                    
+                    // console.log("In handleaddconformfield(),Updated metadata for node:", updatedNode);
                     return updatedNode;
                 }
                 return node;
@@ -1312,7 +1278,6 @@ const DataProductPage = () => {
                     target: sourceEdge.target,
                     targetHandle: sourceEdge.targetHandle,
                     connectionType: sourceEdge.data?.connectionType || 'ref',
-                    calculation: sourceEdge.data?.calculation || '',
                     type: 'outgoing'
                 });
             });
@@ -1330,7 +1295,6 @@ const DataProductPage = () => {
                     source: incomingEdge.source,
                     sourceHandle: incomingEdge.sourceHandle,
                     connectionType: incomingEdge.data?.connectionType || 'ref',
-                    calculation: incomingEdge.data?.calculation || '',
                     type: 'incoming'
                 });
             });
@@ -1353,8 +1317,7 @@ const DataProductPage = () => {
                             animated: true,
                             markerEnd: { type: MarkerType.ArrowClosed },
                             data: { 
-                                connectionType: edgeInfo.connectionType,
-                                calculation: edgeInfo.calculation
+                                connectionType: edgeInfo.connectionType
                             },
                             style: { 
                                 stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
@@ -1373,8 +1336,7 @@ const DataProductPage = () => {
                             animated: true,
                             markerEnd: { type: MarkerType.ArrowClosed },
                             data: { 
-                                connectionType: edgeInfo.connectionType,
-                                calculation: edgeInfo.calculation
+                                connectionType: edgeInfo.connectionType
                             },
                             style: { 
                                 stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
@@ -1557,7 +1519,6 @@ const DataProductPage = () => {
                     target: sourceEdge.target,
                     targetHandle: sourceEdge.targetHandle,
                     connectionType: sourceEdge.data?.connectionType || 'ref',
-                    calculation: sourceEdge.data?.calculation || '',
                     type: 'outgoing'
                 });
             });
@@ -1575,7 +1536,6 @@ const DataProductPage = () => {
                     source: incomingEdge.source,
                     sourceHandle: incomingEdge.sourceHandle,
                     connectionType: incomingEdge.data?.connectionType || 'ref',
-                    calculation: incomingEdge.data?.calculation || '',
                     type: 'incoming'
                 });
             });
@@ -1598,8 +1558,7 @@ const DataProductPage = () => {
                             animated: true,
                             markerEnd: { type: MarkerType.ArrowClosed },
                             data: { 
-                                connectionType: edgeInfo.connectionType,
-                                calculation: edgeInfo.calculation
+                                connectionType: edgeInfo.connectionType
                             },
                             style: { 
                                 stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
@@ -1618,8 +1577,7 @@ const DataProductPage = () => {
                             animated: true,
                             markerEnd: { type: MarkerType.ArrowClosed },
                             data: { 
-                                connectionType: edgeInfo.connectionType,
-                                calculation: edgeInfo.calculation
+                                connectionType: edgeInfo.connectionType
                             },
                             style: { 
                                 stroke: edgeInfo.connectionType === 'calculation' ? '#3b82f6' : '#ef4444', 
@@ -1796,7 +1754,8 @@ const DataProductPage = () => {
         }, 100);
     }, [setNodes, setEdges, showReverseDepsDialog, selectedEntityForReverseDeps, showSuggestDialog, nodes]);
 
-    const addTableToCanvas = async (tableName, tableType = 'BASE', fields = [], customPosition = null) => {
+    const addTableToCanvas = async(tableName, tableType = 'BASE', fields = [], customPosition = null) => {
+        console.log("Consoled in addTableToCanvas function.Adding table to canvas:", tableName, tableType, fields, customPosition);
         // Check if entity already exists on canvas (by name AND type)
         const entityExists = nodes.some(n => 
             n.data.tableName === tableName && n.data.tableType === tableType
@@ -1806,61 +1765,61 @@ const DataProductPage = () => {
             alert(`Entity "${tableName}" (${tableType}) already exists on canvas!`);
             return false;
         }
-
+        console.log("Table metadata state before adding table:", tableMetadata);
         let table = tableMetadata[`${tableType}_${tableName}`];
         
-        // If metadata for this table is not available, try to load it
-        if (!table && selectedFileIds && selectedFileIds.length > 0) {
-            // Load metadata from all selected files
-            for (const fileId of selectedFileIds) {
-                try {
-                    const fileData = await getFile(fileId);
-                    if (fileData && fileData.data && fileData.data.entities) {
-                        for (const entityName in fileData.data.entities) {
-                            // Look for exact entity key match with the provided tableType
-                            const expectedEntityKey = `${tableType}_${tableName}`;
+        // // If metadata for this table is not available, try to load it
+        // if (!table && selectedFileIds && selectedFileIds.length > 0) {
+        //     // Load metadata from all selected files
+        //     for (const fileId of selectedFileIds) {
+        //         try {
+        //             const fileData = await getFile(fileId);
+        //             if (fileData && fileData.data && fileData.data.entities) {
+        //                 for (const entityName in fileData.data.entities) {
+        //                     // Look for exact entity key match with the provided tableType
+        //                     const expectedEntityKey = `${tableType}_${tableName}`;
                             
-                            if (entityName === expectedEntityKey) {
-                                const entity = fileData.data.entities[entityName];
-                                const fields_list = [];
-                                if (entity.fields) {
-                                    for (const fieldName in entity.fields) {
-                                        const field = entity.fields[fieldName];
-                                        fields_list.push({
-                                            name: fieldName,
-                                            type: field.type || 'unknown',
-                                            calculation: field.calculation || null,
-                                            ref: field.ref || null
-                                        });
-                                    }
-                                }
-                                table = {
-                                    name: tableName,
-                                    type: tableType,
-                                    fields: fields_list
-                                };
-                                // Also update the state for future use
-                                setTableMetadata(prev => ({
-                                    ...prev,
-                                    [tableName]: table
-                                }));
-                                break;
-                            }
-                        }
-                        if (table) break;
-                    }
-                } catch (error) {
-                    console.error(`Error loading metadata for file ${fileId}:`, error);
-                }
-            }
-        }
+        //                     if (entityName === expectedEntityKey) {
+        //                         const entity = fileData.data.entities[entityName];
+        //                         const fields_list = [];
+        //                         if (entity.fields) {
+        //                             for (const fieldName in entity.fields) {
+        //                                 const field = entity.fields[fieldName];
+        //                                 fields_list.push({
+        //                                     name: fieldName,
+        //                                     type: field.type || 'unknown',
+        //                                     calculation: field.calculation || null,
+        //                                     ref: field.ref || null
+        //                                 });
+        //                             }
+        //                         }
+        //                         table = {
+        //                             name: tableName,
+        //                             type: tableType,
+        //                             fields: fields_list
+        //                         };
+        //                         // Also update the state for future use
+        //                         setTableMetadata(prev => ({
+        //                             ...prev,
+        //                             [tableName]: table
+        //                         }));
+        //                         break;
+        //                     }
+        //                 }
+        //                 if (table) break;
+        //             }
+        //         } catch (error) {
+        //             console.error(`Error loading metadata for file ${fileId}:`, error);
+        //         }
+        //     }
+        // }
         
         // Use type from metadata if available, otherwise use passed tableType
         const actualType = table?.type || tableType;
         
         // Prefer passed fields, then check metadata, then use empty array
         const finalFields = (fields && fields.length > 0) ? fields : (table?.fields || []);
-
+        console.log("Consoled in addTableToCanvas function.Adding table to canvas:", tableName, tableType, finalFields, table);
         const newNode = {
             id: `table-${Date.now()}`,
             type: 'tableNode',
@@ -1872,7 +1831,6 @@ const DataProductPage = () => {
                 tableName: tableName,
                 tableType: actualType,
                 fields: finalFields,
-                customTables: customTables,
                 onAddField: handleAddField,
                 onRemoveField: handleRemoveField,
                 onDeleteTable: handleDeleteTable,
@@ -1910,12 +1868,12 @@ const DataProductPage = () => {
             }
         }));
 
-        await addTableToCanvas(tableName, tableType, []);
         setCustomTables(prev => ({
             ...prev,
             [tableType]: [...prev[tableType], tableName]
         }));
-        
+
+        addTableToCanvas(tableName, tableType, [], null);
         // Only reset state if called from dialog (no params)
         if (!entityName) {
             setNewTableName("");
@@ -1923,6 +1881,10 @@ const DataProductPage = () => {
             setShowCreateTableDialog(false);
         }
     };
+
+    // useEffect(() => {
+    //     console.log("Current Custom tables:", customTables);
+    // }, [customTables]);
 
     const handleSave = async () => {
         try {
@@ -1939,69 +1901,72 @@ const DataProductPage = () => {
                 finalFileName = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
             }
             
+            const entities = nodes;
+            const relationships = edges;
+            const cleanedTableMetadata = tableMetadata;
+
             // Build entities object in the same format as input JSON
-            const entities = {};
+            // const entities = nodes;
             
             // Process each table node on canvas
-            nodes.forEach(node => {
-                const tableName = node.data.tableName;
-                const tableType = node.data.tableType;
-                const entityKey = `${tableType}_${tableName}`;
+            // nodes.forEach(node => {
+            //     const tableName = node.data.tableName;
+            //     const tableType = node.data.tableType;
+            //     const entityKey = `${tableType}_${tableName}`;
                 
-                // Create entity with fields
-                entities[entityKey] = {
-                    fields: {}
-                };
+            //     // Create entity with fields
+            //     // entities[entityKey] = {
+            //     //     fields: {}
+            //     // };
                 
-                // Add each field (just field name, no type)
-                node.data.fields.forEach(field => {
-                    entities[entityKey].fields[field.name] = {};
-                });
-            });
+            //     // // Add each field (just field name, no type)
+            //     // node.data.fields.forEach(field => {
+            //     //     entities[entityKey].fields[field.name] = {};
+            //     // });
+            //     entities[entityKey]=node.data.fields;
+            // });
             
+            console.log("Entities to save:", entities);
             // Add relationships based on connections
-            const relationships = [];
-            edges.forEach(edge => {
-                // Find source and target nodes
-                const sourceNode = nodes.find(n => n.id === edge.source);
-                const targetNode = nodes.find(n => n.id === edge.target);
+            // const relationships = edges;
+            // edges.forEach(edge => {
+            //     // Find source and target nodes
+            //     const sourceNode = nodes.find(n => n.id === edge.source);
+            //     const targetNode = nodes.find(n => n.id === edge.target);
                 
-                if (sourceNode && targetNode) {
-                    // Extract field names from handles
-                    const sourceField = edge.sourceHandle?.replace('-source', '');
-                    const targetField = edge.targetHandle?.replace('-target', '');
+            //     if (sourceNode && targetNode) {
+            //         // Extract field names from handles
+            //         const sourceField = edge.sourceHandle?.replace('-source', '');
+            //         const targetField = edge.targetHandle?.replace('-target', '');
                     
-                    const relationship = {
-                        from: {
-                            entity: `${sourceNode.data.tableType}_${sourceNode.data.tableName}`,
-                            field: sourceField
-                        },
-                        to: {
-                            entity: `${targetNode.data.tableType}_${targetNode.data.tableName}`,
-                            field: targetField
-                        },
-                        type: edge.data?.connectionType || 'ref'
-                    };
+            //         const relationship = {
+            //             from: {
+            //                 entity: `${sourceNode.data.tableType}_${sourceNode.data.tableName}`,
+            //                 field: sourceField
+            //             },
+            //             to: {
+            //                 entity: `${targetNode.data.tableType}_${targetNode.data.tableName}`,
+            //                 field: targetField
+            //             },
+            //             type: edge.data?.connectionType || 'ref'
+            //         };
                     
-                    // Add calculation if it's a calculation type
-                    if (edge.data?.connectionType === 'calculation' && edge.data?.calculation) {
-                        relationship.calculation = edge.data.calculation;
-                    }
-                    
-                    relationships.push(relationship);
-                }
-            });
+            //         relationships.push(relationship);
+            //     }
+            // });
             
+            console.log("Relationships to save:", relationships);
             // Clean tableMetadata to remove type field from fields
-            const cleanedTableMetadata = {};
-            for (const tableName in tableMetadata) {
-                const table = tableMetadata[tableName];
-                cleanedTableMetadata[tableName] = {
-                    name: table.name,
-                    type: table.type,
-                    fields: table.fields.map(field => ({ name: field.name }))
-                };
-            }
+            // const cleanedTableMetadata = {};
+            // for (const tableName in tableMetadata) {
+            //     const table = tableMetadata[tableName];
+            //     cleanedTableMetadata[tableName] = {
+            //         name: table.name,
+            //         type: table.type,
+            //         // fields: table.fields.map(field => ({ name: field.name }))
+            //         fields: table.fields
+            //     };
+            // }
             
             // Create final data product structure
             const dataProduct = {
@@ -2016,6 +1981,7 @@ const DataProductPage = () => {
                 availableTables: {
                     tableMetadata: cleanedTableMetadata,
                     fileBaseTables,
+                    fileCteTables,
                     fileViewTables,
                     customTables
                 },
@@ -2032,7 +1998,6 @@ const DataProductPage = () => {
             if (!currentDataProductId) {
                 setCurrentDataProductId(savedProduct.id);
             }
-            
             alert('Data product saved successfully!');
         } catch (error) {
             console.error('Error saving data product:', error);
@@ -2155,6 +2120,7 @@ const DataProductPage = () => {
 
     const handleAddSuggestedEntity = async (suggestion) => {
         try {
+            
             // Check if entity already exists on canvas (by name AND type)
             const checkEntityName = suggestion.entityName.replace(/^(BASE_|CTE_|VIEW_)/, '');
             const checkEntityType = suggestion.entityType || (suggestion.entityName.startsWith('CTE_') ? 'CTE' : 'VIEW');
@@ -2184,10 +2150,22 @@ const DataProductPage = () => {
                     const missingEntityData = sourceEntities[missingEntity.fullKey];
                     
                     if (missingEntityData) {
-                        const missingFields = Object.keys(missingEntityData.fields || {}).map(fieldName => ({
-                            name: fieldName,
-                            type: 'VARCHAR'
-                        }));
+                        // Handle both array and object field formats
+                        const missingFields = Array.isArray(missingEntityData.fields)
+                            ? missingEntityData.fields.map(f => ({
+                                name: f.name,
+                                type: f.type || 'unknown',
+                                ref: f.ref || null,
+                                calculation: f.calculation || null,
+                                isPK: f.isPK || false
+                            }))
+                            : Object.keys(missingEntityData.fields || {}).map(fieldName => ({
+                                name: fieldName,
+                                type: missingEntityData.fields[fieldName].type || 'unknown',
+                                ref: missingEntityData.fields[fieldName].ref || null,
+                                calculation: missingEntityData.fields[fieldName].calculation || null,
+                                isPK: missingEntityData.fields[fieldName].isPK || false
+                            }));
                         
                         // Create node for missing entity (BASE, CTE, or VIEW)
                         const missingNodeId = `table-${Date.now()}-${Math.random()}`;
@@ -2202,7 +2180,7 @@ const DataProductPage = () => {
                                 tableName: missingEntity.name,
                                 tableType: missingEntity.type,
                                 fields: missingFields,
-                                customTables: customTables,
+                                // customTables: customTables,
                                 entityKey: missingEntity.fullKey, // Store full entity key for mapping
                                 onAddField: handleAddField,
                                 onRemoveField: handleRemoveField,
@@ -2236,13 +2214,23 @@ const DataProductPage = () => {
                     }
                 }
             }
-
-            // Extract fields from entity
-            const entityFields = Object.keys(entity.fields || {}).map(fieldName => ({
-                name: fieldName,
-                type: 'VARCHAR'
-            }));
-
+           
+            // Extract fields from entity - handle both array and object formats
+            const entityFields = Array.isArray(entity.fields)
+                ? entity.fields.map(f => ({
+                    name: f.name,
+                    type: f.type || 'unknown',
+                    ref: f.ref || null,
+                    calculation: f.calculation || null,
+                    isPK: f.isPK || false
+                }))
+                : Object.keys(entity.fields || {}).map(fieldName => ({
+                    name: fieldName,
+                    type: entity.fields[fieldName].type || 'unknown',
+                    ref: entity.fields[fieldName].ref || null,
+                    calculation: entity.fields[fieldName].calculation || null,
+                    isPK: entity.fields[fieldName].isPK || false
+                }));
             // Add the main suggested entity to appropriate file-based table list
             if (checkEntityType === 'BASE') {
                 if (!fileBaseTables.includes(checkEntityName)) {
@@ -2273,7 +2261,7 @@ const DataProductPage = () => {
                     tableName: checkEntityName,
                     tableType: checkEntityType,
                     fields: entityFields,
-                    customTables: customTables,
+                    // customTables: customTables,
                     entityKey: suggestion.entityName, // Store full entity key
                     onAddField: handleAddField,
                     onRemoveField: handleRemoveField,
@@ -2840,9 +2828,7 @@ const DataProductPage = () => {
                         >
                             {currentDataProductName ? currentDataProductName.replace('.json', '') : 'New Data Product'}
                         </h1>
-                    </div>
-                    
-                    <div style={{ 
+                        <div style={{ 
                             fontSize: "12px", 
                             color: "#9ca3af",
                             display: "flex",
@@ -2852,7 +2838,9 @@ const DataProductPage = () => {
                             <span>{nodes.length} tables</span>
                             <span>•</span>
                             <span>{edges.length} connections</span>
+                        </div>
                     </div>
+                    
                     <button
                         onClick={handleSuggest}
                         style={{
@@ -2909,11 +2897,6 @@ const DataProductPage = () => {
                                         sourceField: sourceFieldName,
                                         type: edge.data?.connectionType || 'reference'
                                     };
-                                    
-                                    // Store calculation in target field if it's a calculation edge
-                                    if (edge.data?.connectionType === 'calculation' && edge.data?.calculation) {
-                                        fieldEdgeMap[targetKey].calculation = edge.data.calculation;
-                                    }
                                     
                                     fieldEdgeMap[targetKey].relationships.push(relationshipObj);
                                 }

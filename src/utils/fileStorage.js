@@ -761,6 +761,34 @@ export async function getAllDataProducts() {
     }
 }
 
+function sanitizeForIndexedDB(obj) {
+    const seen = new WeakMap();
+    function walk(value) {
+        if (value === null) return null;
+        const t = typeof value;
+        if (t === 'function') return undefined; // drop functions
+        if (t !== 'object') return value;
+        if (value instanceof Date) return value.toISOString();
+        if (seen.has(value)) return '[Circular]';
+        seen.set(value, true);
+        if (Array.isArray(value)) {
+            const arr = [];
+            for (const item of value) {
+                const v = walk(item);
+                arr.push(v === undefined ? null : v);
+            }
+            return arr;
+        }
+        const out = {};
+        for (const [k, v] of Object.entries(value)) {
+            const w = walk(v);
+            if (w !== undefined) out[k] = w;
+        }
+        return out;
+    }
+    return walk(obj);
+}
+
 export async function saveDataProduct(fileName, fileData, existingFileId = null) {
     try {
         let handle = await getDirectoryHandle();
@@ -795,6 +823,10 @@ export async function saveDataProduct(fileName, fileData, existingFileId = null)
         await writable.write(JSON.stringify(fileData, null, 2));
         await writable.close();
 
+        // Sanitize fileData for IndexedDB (remove functions/circular refs)
+        const sanitizedData = sanitizeForIndexedDB(fileData);
+        console.log('Sanitized data for IndexedDB:', sanitizedData);
+
         // Now create transaction and perform IndexedDB operations
         const database = await openDB();
         const transaction = database.transaction([STORE_DATA_PRODUCTS], 'readwrite');
@@ -806,7 +838,7 @@ export async function saveDataProduct(fileName, fileData, existingFileId = null)
                 ...existingProduct,
                 name: fileName,
                 updatedAt: new Date().toISOString(),
-                data: fileData,
+                data: sanitizedData,
             };
             store.put(updatedEntry);
             
@@ -824,7 +856,7 @@ export async function saveDataProduct(fileName, fileData, existingFileId = null)
                 name: fileName,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
-                data: fileData,
+                data: sanitizedData,
             };
             store.add(fileEntry);
             

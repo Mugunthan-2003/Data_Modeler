@@ -125,7 +125,6 @@ export const useSuggestions = () => {
             }
 
             uniqueSuggestions.sort((a, b) => b.coveragePercent - a.coveragePercent);
-
             setSuggestions(uniqueSuggestions);
             setShowSuggestDialog(true);
         } catch (error) {

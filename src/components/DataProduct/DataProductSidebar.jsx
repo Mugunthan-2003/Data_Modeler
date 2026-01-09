@@ -21,6 +21,21 @@ const DataProductSidebar = ({
     const [newEntityName, setNewEntityName] = React.useState('');
     const [newEntityType, setNewEntityType] = React.useState('BASE');
 
+    // console.log('Rendering DataProductSidebar with props:',isOpen,
+    // onToggle,
+    // activeTab,
+    // onTabChange,
+    // searchQuery,
+    // onSearchChange,
+    // fileBaseTables,
+    // fileViewTables,
+    // fileCteTables,
+    // customTables,
+    // onAddTable,
+    // tableMetadata,
+    // canvasEntities,
+    // onCreateNewEntity );
+
     const handleCreateEntity = () => {
         if (newEntityName.trim()) {
             onCreateNewEntity(newEntityName, newEntityType);
@@ -147,7 +162,7 @@ const DataProductSidebar = ({
                         <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
                             {activeTab === 'BASE' && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                    {filterTables(fileBaseTables).map((table) => {
+                                    {filterTables([...new Set([...fileBaseTables, ...customTables.BASE])]).map((table) => {
                                         const fieldCount = tableMetadata[`BASE_${table}`]?.fields?.length || 0;
                                         const onCanvas = isOnCanvas(table, 'BASE');
                                         return (
@@ -295,7 +310,7 @@ const DataProductSidebar = ({
 
                             {activeTab === 'VIEW' && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                    {filterTables(fileViewTables).map((table) => {
+                                    {filterTables([...new Set([...fileViewTables, ...customTables.VIEW])]).map((table) => {
                                         const fieldCount = tableMetadata[`VIEW_${table}`]?.fields?.length || 0;
                                         const onCanvas = isOnCanvas(table, 'VIEW');
                                         return (
