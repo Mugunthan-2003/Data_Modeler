@@ -21,6 +21,7 @@ import SuggestionDialog from "../components/DataProduct/SuggestionDialog";
 import ReverseDepsDialog from "../components/DataProduct/ReverseDepsDialog";
 import DataProductSidebar from "../components/DataProduct/DataProductSidebar";
 import { useSuggestions } from "../hooks/useSuggestions";
+import { v4 as uuidv4 } from 'uuid';
 
 // Custom Table Node Component
 const TableNode = memo(({ data, id }) => {
@@ -357,6 +358,10 @@ TableNode.displayName = 'TableNode';
 const nodeTypes = {
     tableNode: TableNode,
 };
+
+// Generate consistent edge and node IDs using a datetime string + uuid
+const makeEdgeId = () => `edge-${Date.now()}-${uuidv4()}`;
+const makeNodeId = () => `node-${Date.now()}-${uuidv4()}`;
 
 const DataProductPage = () => {
     const location = useLocation();
@@ -708,7 +713,7 @@ const DataProductPage = () => {
                     const color = connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
 
                     loadedEdges.push({
-                        id: rel.id || `edge-${idx}`,
+                        id: rel.id || makeEdgeId(),
                         source: sourceNode.id,
                         target: targetNode.id,
                         sourceHandle,
@@ -750,12 +755,6 @@ const DataProductPage = () => {
 
     const onConnect = useCallback(
         (params) => {
-            // When the user attempts to connect two handles, do not immediately add
-            // the edge. Instead, decide a sensible default (prefer calculation
-            // if the target field already has a calculation) and show the
-            // ConnectionType dialog so the user can confirm or change it.
-            console.log('Connecting edge with params:', params);
-
             // Check if an explicit connection between these exact handles already exists
             const exists = edges.some(e =>
                 e.source === params.source &&
@@ -763,6 +762,12 @@ const DataProductPage = () => {
                 e.sourceHandle === params.sourceHandle &&
                 e.targetHandle === params.targetHandle
             );
+
+            // If edge already exists, prevent duplicate connection
+            if (exists) {
+                alert('A connection between these fields already exists.');
+                return;
+            }
 
             // Determine whether the target field already has a calculation
             const targetNode = nodes.find(n => n.id === params.target);
@@ -779,20 +784,23 @@ const DataProductPage = () => {
             // update an existing one.
             const tentativeEdge = {
                 ...params,
-                id: `edge-${Date.now()}`,
+                id: makeEdgeId(),
                 type: 'smoothstep',
                 animated: true,
-                markerEnd: { type: MarkerType.ArrowClosed },
+                markerEnd: { type: MarkerType.ArrowClosed, color },
                 data: { connectionType: defaultType },
                 style: { stroke: color, strokeWidth: 2 }
             };
+
+            // Add tentative edge to canvas immediately
+            setEdges((eds) => addEdge(tentativeEdge, eds));
 
             // Store tentative details so the dialog can act on them. Always
             // show the dialog so the user confirms the type.
             setSelectedEdgeDetails(tentativeEdge);
             setShowConnectionTypeDialog(true);
         },
-        [edges, nodes]
+        [edges, nodes, setEdges]
     );
 
     const onEdgeClick = useCallback((event, edge) => {
@@ -891,14 +899,20 @@ const DataProductPage = () => {
 
         // If we have tentative connection details (from onConnect), create the new edge
         if (selectedEdgeDetails) {
+            const edgeColor = newType === 'calculation' ? '#3b82f6' : '#ef4444';
             const newEdge = {
                 ...selectedEdgeDetails,
-                id: selectedEdgeDetails.id || `edge-${Date.now()}`,
+                id: selectedEdgeDetails.id || makeEdgeId(),
+                type: 'smoothstep',
+                animated: true,
                 data: { connectionType: newType },
                 style: {
-                    ...selectedEdgeDetails.style,
-                    stroke: newType === 'calculation' ? '#3b82f6' : '#ef4444',
+                    stroke: edgeColor,
                     strokeWidth: 2
+                },
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: edgeColor
                 }
             };
 
@@ -1198,7 +1212,7 @@ const DataProductPage = () => {
             });
         
         // Create new node with selected fields
-        const newNodeId = `table-${Date.now()}`;
+        const newNodeId = makeNodeId();
         const newNode = {
             id: newNodeId,
             type: 'tableNode',
@@ -1308,7 +1322,7 @@ const DataProductPage = () => {
                     if (edgeInfo.type === 'outgoing') {
                         // Outgoing edge: new node is the source
                         return {
-                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-out`,
+                            id: makeEdgeId(),
                             source: newNodeId,
                             target: edgeInfo.target,
                             sourceHandle: `${edgeInfo.field}-source`,
@@ -1327,7 +1341,7 @@ const DataProductPage = () => {
                     } else {
                         // Incoming edge: new node is the target
                         return {
-                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-in`,
+                            id: makeEdgeId(),
                             source: edgeInfo.source,
                             target: newNodeId,
                             sourceHandle: edgeInfo.sourceHandle,
@@ -1438,7 +1452,7 @@ const DataProductPage = () => {
         });
         
         // Create new node with all fields
-        const newNodeId = `table-${Date.now()}`;
+        const newNodeId = makeNodeId();
         
         const newNode = {
             id: newNodeId,
@@ -1549,7 +1563,7 @@ const DataProductPage = () => {
                     if (edgeInfo.type === 'outgoing') {
                         // Outgoing edge: new node is the source
                         return {
-                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-out`,
+                            id: makeEdgeId(),
                             source: newNodeId,
                             target: edgeInfo.target,
                             sourceHandle: `${edgeInfo.field}-source`,
@@ -1568,7 +1582,7 @@ const DataProductPage = () => {
                     } else {
                         // Incoming edge: new node is the target
                         return {
-                            id: `edge-${newNodeId}-${edgeInfo.field}-${edgeInfo.idx}-in`,
+                            id: makeEdgeId(),
                             source: edgeInfo.source,
                             target: newNodeId,
                             sourceHandle: edgeInfo.sourceHandle,
@@ -1755,7 +1769,6 @@ const DataProductPage = () => {
     }, [setNodes, setEdges, showReverseDepsDialog, selectedEntityForReverseDeps, showSuggestDialog, nodes]);
 
     const addTableToCanvas = async(tableName, tableType = 'BASE', fields = [], customPosition = null) => {
-        console.log("Consoled in addTableToCanvas function.Adding table to canvas:", tableName, tableType, fields, customPosition);
         // Check if entity already exists on canvas (by name AND type)
         const entityExists = nodes.some(n => 
             n.data.tableName === tableName && n.data.tableType === tableType
@@ -1765,7 +1778,6 @@ const DataProductPage = () => {
             alert(`Entity "${tableName}" (${tableType}) already exists on canvas!`);
             return false;
         }
-        console.log("Table metadata state before adding table:", tableMetadata);
         let table = tableMetadata[`${tableType}_${tableName}`];
         
         // // If metadata for this table is not available, try to load it
@@ -1819,9 +1831,8 @@ const DataProductPage = () => {
         
         // Prefer passed fields, then check metadata, then use empty array
         const finalFields = (fields && fields.length > 0) ? fields : (table?.fields || []);
-        console.log("Consoled in addTableToCanvas function.Adding table to canvas:", tableName, tableType, finalFields, table);
         const newNode = {
-            id: `table-${Date.now()}`,
+            id: makeNodeId(),
             type: 'tableNode',
             position: customPosition || { 
                 x: Math.random() * 300 + 100, 
@@ -2168,7 +2179,7 @@ const DataProductPage = () => {
                             }));
                         
                         // Create node for missing entity (BASE, CTE, or VIEW)
-                        const missingNodeId = `table-${Date.now()}-${Math.random()}`;
+                        const missingNodeId = makeNodeId();
                         const missingNode = {
                             id: missingNodeId,
                             type: 'tableNode',
@@ -2249,7 +2260,7 @@ const DataProductPage = () => {
             // Add the suggested entity to canvas (use checkEntityType and checkEntityName from duplicate check above)
             
             // Create the new node for suggested entity
-            const newNodeId = `table-${Date.now()}`;
+            const newNodeId = makeNodeId();
             const newNode = {
                 id: newNodeId,
                 type: 'tableNode',
@@ -2344,7 +2355,8 @@ const DataProductPage = () => {
                                 
                                 if (sourceFieldActual && targetFieldActual) {
                                     const edgeColor = conn.connectionType === 'calculation' ? '#3b82f6' : '#ef4444';
-                                    const edgeId = `e-${sourceNode.id}-${newNodeId}-${targetFieldActual.name}-${sourceFieldActual.name}-${Date.now()}-${Math.random()}`;
+                                    // const edgeId = `e-${sourceNode.id}-${newNodeId}-${targetFieldActual.name}-${sourceFieldActual.name}-${Date.now()}-${Math.random()}`;
+                                    const edgeId=makeEdgeId();
                                     
                                     const newEdge = {
                                         id: edgeId,
@@ -2456,7 +2468,7 @@ const DataProductPage = () => {
             }));
 
             // Create the new node for downstream dependency
-            const newNodeId = `table-${Date.now()}`;
+            const newNodeId = makeNodeId();
             const newNode = {
                 id: newNodeId,
                 type: 'tableNode',
