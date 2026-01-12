@@ -21,21 +21,6 @@ const DataProductSidebar = ({
     const [newEntityName, setNewEntityName] = React.useState('');
     const [newEntityType, setNewEntityType] = React.useState('BASE');
 
-    // console.log('Rendering DataProductSidebar with props:',isOpen,
-    // onToggle,
-    // activeTab,
-    // onTabChange,
-    // searchQuery,
-    // onSearchChange,
-    // fileBaseTables,
-    // fileViewTables,
-    // fileCteTables,
-    // customTables,
-    // onAddTable,
-    // tableMetadata,
-    // canvasEntities,
-    // onCreateNewEntity );
-
     const handleCreateEntity = () => {
         if (newEntityName.trim()) {
             onCreateNewEntity(newEntityName, newEntityType);
@@ -168,7 +153,7 @@ const DataProductSidebar = ({
                                         return (
                                             <button
                                                 key={`BASE_${table}`}
-                                                onClick={() => onAddTable(table, 'BASE')}
+                                                onClick={() => onAddTable(table, 'BASE',[],null, tableMetadata)}
                                                 draggable
                                                 onDragStart={(e) => {
                                                     e.dataTransfer.setData('application/reactflow', JSON.stringify({ tableName: table, tableType: 'BASE' }));
@@ -242,7 +227,7 @@ const DataProductSidebar = ({
                                         return (
                                             <button
                                                 key={`CTE_${table}`}
-                                                onClick={() => onAddTable(table, 'CTE')}
+                                                onClick={() => onAddTable(table, 'CTE',[],null, tableMetadata)}
                                                 draggable
                                                 onDragStart={(e) => {
                                                     e.dataTransfer.setData('application/reactflow', JSON.stringify({ tableName: table, tableType: 'CTE' }));
@@ -316,7 +301,7 @@ const DataProductSidebar = ({
                                         return (
                                             <button
                                                 key={`VIEW_${table}`}
-                                                onClick={() => onAddTable(table, 'VIEW')}
+                                                onClick={() => onAddTable(table, 'VIEW',[],null, tableMetadata)}
                                                 draggable
                                                 onDragStart={(e) => {
                                                     e.dataTransfer.setData('application/reactflow', JSON.stringify({ tableName: table, tableType: 'VIEW' }));
